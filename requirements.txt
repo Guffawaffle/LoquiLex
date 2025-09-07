@@ -1,0 +1,11 @@
+accelerate
+faster-whisper
+loguru
+numpy
+rich
+sentencepiece
+sounddevice
+torch
+transformers
+webvtt-py
+pytest

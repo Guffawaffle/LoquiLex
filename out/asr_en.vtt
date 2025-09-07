@@ -1,0 +1,17 @@
+WEBVTT
+
+00:00:00.620 --> 00:00:05.460
+Hello, this is a test of the microphone and transcription system.
+
+00:00:05.460 --> 00:00:09.660
+I am speaking clearly to check if every word is captured.
+
+00:00:09.660 --> 00:00:20.520
+Now I will pause for a moment to test the silence detection.
+
+00:00:20.520 --> 00:00:24.720
+After the pause, I will continue speaking to see if the system resumes correctly.
+
+00:00:24.720 --> 00:00:29.440
+Finally, I will end this test and press Ctrl C to stop the recording.
+
