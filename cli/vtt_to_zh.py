@@ -11,7 +11,6 @@ from greenfield.output.srt import write_srt
 
 def parse_vtt(path: str) -> List[Tuple[float, float, str]]:
     cues: List[Tuple[float, float, str]] = []
-    import re
 
     def parse_ts(s: str) -> float:
         h, m, rest = s.split(":")
@@ -33,7 +32,9 @@ def parse_vtt(path: str) -> List[Tuple[float, float, str]]:
             while i < len(lines) and lines[i].strip() != "":
                 text.append(lines[i])
                 i += 1
-            cues.append((parse_ts(a), parse_ts(b), " ".join(text).strip()))
+            txt = " ".join(text).strip()
+            if txt:
+                cues.append((parse_ts(a), parse_ts(b), txt))
         i += 1
     return cues
 
@@ -56,10 +57,13 @@ def main() -> None:
         zh_lines.append(txt)
         zh_cues.append((a, b, txt))
 
-    os.makedirs(os.path.dirname(args.out_text), exist_ok=True)
+    d = os.path.dirname(args.out_text)
+    if d:
+        os.makedirs(d, exist_ok=True)
     with open(args.out_text, "w", encoding="utf-8") as f:
         for line in zh_lines:
-            f.write(line + "\n")
+            if line:
+                f.write(line + "\n")
 
     write_srt(zh_cues, args.out_srt)
     print(f"[cli] wrote {args.out_text} and {args.out_srt} ({len(zh_cues)} cues)")

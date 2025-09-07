@@ -31,11 +31,11 @@ class Translator:
         if self._nllb is None:
             from transformers import AutoTokenizer, AutoModelForSeq2SeqLM  # type: ignore
 
-            tok = AutoTokenizer.from_pretrained(MT.nllb_model)
+            tok = AutoTokenizer.from_pretrained(MT.nllb_model, use_safetensors=True)
             model = AutoModelForSeq2SeqLM.from_pretrained(
                 MT.nllb_model,
                 device_map=None,
-                dtype=torch.float16 if self.torch_device.type == "cuda" else torch.float32,
+                torch_dtype=torch.float16 if self.torch_device.type == "cuda" else torch.float32,
             )
             model.to(self.torch_device).eval()
             self._nllb = (tok, model)
@@ -46,11 +46,11 @@ class Translator:
         if self._m2m is None:
             from transformers import M2M100Tokenizer, M2M100ForConditionalGeneration  # type: ignore
 
-            tok = M2M100Tokenizer.from_pretrained(MT.m2m_model)
+            tok = M2M100Tokenizer.from_pretrained(MT.m2m_model, use_safetensors=True)
             model = M2M100ForConditionalGeneration.from_pretrained(
                 MT.m2m_model,
                 device_map=None,
-                dtype=torch.float16 if self.torch_device.type == "cuda" else torch.float32,
+                torch_dtype=torch.float16 if self.torch_device.type == "cuda" else torch.float32,
             )
             model.to(self.torch_device).eval()
             self._m2m = (tok, model)
@@ -70,10 +70,10 @@ class Translator:
             with torch.no_grad():
                 gen = model.generate(
                     **inputs,
-                forced_bos_token_id=tok.convert_tokens_to_ids("zho_Hans"),
-                num_beams=MT.num_beams,
-                no_repeat_ngram_size=MT.no_repeat_ngram_size,
-                max_new_tokens=MT.max_new_tokens,
+                    forced_bos_token_id=tok.convert_tokens_to_ids("zho_Hans"),
+                    num_beams=MT.num_beams,
+                    no_repeat_ngram_size=MT.no_repeat_ngram_size,
+                    max_new_tokens=MT.max_new_tokens,
                 )
             out = tok.batch_decode(gen, skip_special_tokens=True)[0]
             return TranslationResult(out, MT.nllb_model)
@@ -89,10 +89,10 @@ class Translator:
             with torch.no_grad():
                 gen = model.generate(
                     **inputs,
-                forced_bos_token_id=tok.get_lang_id("zh"),
-                num_beams=max(1, min(2, MT.num_beams)),
-                no_repeat_ngram_size=MT.no_repeat_ngram_size,
-                max_new_tokens=MT.max_new_tokens,
+                    forced_bos_token_id=tok.get_lang_id("zh"),
+                    num_beams=max(1, min(2, MT.num_beams)),
+                    no_repeat_ngram_size=MT.no_repeat_ngram_size,
+                    max_new_tokens=MT.max_new_tokens,
                 )
             out = tok.batch_decode(gen, skip_special_tokens=True)[0]
             return TranslationResult(out, MT.m2m_model)

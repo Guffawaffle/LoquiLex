@@ -20,16 +20,19 @@ def _ts(sec: float) -> str:
 
 
 def write_vtt(cues: List[Tuple[float, float, str]], path: str) -> None:
-    os.makedirs(os.path.dirname(path), exist_ok=True)
+    d = os.path.dirname(path)
+    if d:
+        os.makedirs(d, exist_ok=True)
     clean: List[Tuple[float, float, str]] = []
     last_end = 0.0
     for (a, b, t) in cues:
-        if not t.strip():
+        t = t.strip()
+        if not t:
             continue
-        a = max(a, last_end)
+        a = max(a, last_end + EPS)
         if b <= a:
             b = a + EPS
-        clean.append((a, b, t.strip()))
+        clean.append((a, b, t))
         last_end = b
 
     with open(path, "w", encoding="utf-8") as f:
