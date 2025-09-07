@@ -5,6 +5,8 @@ import os
 import threading
 import queue
 import time
+import signal
+import sys
 from typing import List, Tuple
 from collections import deque
 
@@ -41,10 +43,33 @@ def main() -> None:
     out_live_zh = args.out_prefix + "_live_zh.txt"
     os.makedirs(os.path.dirname(out_vtt), exist_ok=True)
 
+    # Initialize MT first so models are loaded before we start capturing audio
+    tr = Translator()
+    agg = Aggregator()
+    # Prime MT with a tiny draft translation to load weights/caches
+    warmup_text_en = "Starting service"
+    try:
+        zh_warm = tr.translate_en_to_zh_draft(warmup_text_en).text
+        zh_warm = post_process(zh_warm)
+        # Emit initial drafts to files if requested and print once
+        if args.live_draft_files:
+            # ensure directory exists (already created above for out_vtt)
+            try:
+                with open(out_live_en, "w", encoding="utf-8") as f:
+                    f.write(warmup_text_en + "\n")
+                with open(out_live_zh, "w", encoding="utf-8") as f:
+                    f.write(zh_warm + "\n")
+            except Exception:
+                pass
+        print(f"EN ≫ {warmup_text_en}")
+        if zh_warm:
+            print(f"ZH* ≫ {zh_warm}")
+    except Exception:
+        pass
+
+    # Then initialize ASR
     eng = WhisperEngine()
     eng.warmup()
-    agg = Aggregator()
-    tr = Translator()
     # Bounded queue to provide backpressure if MT lags behind ASR
     translate_q: "queue.Queue[tuple[float,float,str]]" = queue.Queue(maxsize=32)
 
@@ -166,7 +191,9 @@ def main() -> None:
     if args.seconds <= 0:
         print("[cli] Ready — start speaking now (capturing mic)… running until Ctrl+C")
     else:
-        print(f"[cli] Ready — start speaking now (capturing mic)… for {args.seconds}s (Ctrl+C to stop early)")
+        print(f"[cli] Ready — start speaking now (capturing mic)… for {args.seconds}s (timer starts now; Ctrl+C to stop early)")
+    # Start countdown from the Ready message time to guarantee full speaking window
+    ready_time_mono = time.monotonic()
 
     # Background translator loop
     stop_mt = threading.Event()
@@ -205,13 +232,29 @@ def main() -> None:
     th_mt = threading.Thread(target=mt_worker, daemon=True)
     th_mt.start()
 
+    # Graceful shutdown handling
+    shutdown = threading.Event()
+
+    def _on_signal(signum, frame):  # type: ignore[no-untyped-def]
+        # Set shutdown flag; main loop will exit promptly
+        shutdown.set()
+        print(f"\n[cli] signal={signum} -> shutting down…", file=sys.stderr)
+
     try:
-        while True:
+        signal.signal(signal.SIGINT, _on_signal)
+        signal.signal(signal.SIGTERM, _on_signal)
+    except Exception:
+        pass
+
+    try:
+        while not shutdown.is_set():
             if args.seconds > 0:
-                base = session_t0_mono if session_t0_mono is not None else pre_capture_mono
-                if (time.monotonic() - base) >= args.seconds:
+                if (time.monotonic() - ready_time_mono) >= args.seconds:
                     break
             time.sleep(0.05)
+    except KeyboardInterrupt:
+        shutdown.set()
+        print("\n[cli] KeyboardInterrupt -> shutting down…", file=sys.stderr)
     finally:
         stop()
         stop_mt.set()
