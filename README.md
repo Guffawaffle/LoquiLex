@@ -47,3 +47,31 @@ Run examples
 See the commands at the end of this assistant message for venv, install, and running the CLIs.
 
 Never writes outside `greenfield/out/`.
+
+## Live outputs and flags
+
+This CLI now creates two kinds of concurrent outputs:
+
+- Realtime partial TT (text-only), no timestamps, a single current line that keeps getting rewritten:
+      - `--partial-en` (default: `greenfield/out/live.partial.en.txt`)
+      - `--partial-zh` (default: `greenfield/out/live.partial.zh.txt`)
+      - `--partial-word-cap N` limits EN partial to N words before translating ZH live (0 disables)
+
+- Finalized TT (TXT always; optional timed files per finalization):
+      - `--final-en` TXT and `--final-zh` TXT (max_lines enforced)
+      - `--final-vtt-en` WebVTT for EN (disable with `--no-final-vtt-en`)
+      - `--final-srt-zh` SRT for ZH (disable with `--no-final-srt-zh`)
+      - `--max-lines` caps TXT lines; oldest lines drop first
+      - `--overwrite-run` truncates selected outputs at start (default true)
+
+Audio recording
+
+- `--save-audio off|wav|flac` and `--save-audio-path` control recording of the full session. WAV is lowest overhead.
+
+Example
+
+```bash
+python -m greenfield.cli.live_en_to_zh --seconds 20 \
+      --max-lines 200 \
+      --save-audio wav --save-audio-path greenfield/out/session.wav
+```

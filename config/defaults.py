@@ -6,6 +6,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import os
+_DEFAULT_SAVE_AUDIO = os.getenv("GF_SAVE_AUDIO", "off")
+_DEFAULT_SAVE_AUDIO_PATH = os.getenv(
+    "GF_SAVE_AUDIO_PATH",
+    f"greenfield/out/session.{'flac' if _DEFAULT_SAVE_AUDIO == 'flac' else 'wav'}",
+)
 
 
 def _get_bool(name: str, default: bool) -> bool:
@@ -57,6 +62,11 @@ class RuntimeDefaults:
     decode_interval_sec: float = float(os.getenv("GF_DECODE_INTERVAL_SEC", "0.25"))
     partial_debounce_sec: float = float(os.getenv("GF_PARTIAL_DEBOUNCE_SEC", "0.25"))
     max_buffer_sec: float = float(os.getenv("GF_MAX_BUFFER_SEC", "8.0"))
+    # new IO options
+    max_lines: int = int(os.getenv("GF_MAX_LINES", "1000"))
+    partial_word_cap: int = int(os.getenv("GF_PARTIAL_WORD_CAP", "0"))
+    save_audio: str = _DEFAULT_SAVE_AUDIO  # off|wav|flac
+    save_audio_path: str = _DEFAULT_SAVE_AUDIO_PATH
 
 
 ASR = ASRDefaults()

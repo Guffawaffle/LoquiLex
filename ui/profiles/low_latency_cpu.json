@@ -1,0 +1,13 @@
+{
+  "name": "Low-latency CPU",
+  "device": "cpu",
+  "asr_model_id": "small.en",
+  "mt_enabled": true,
+  "mt_model_id": "facebook/nllb-200-distilled-600M",
+  "dest_lang": "zho_Hans",
+  "vad": true,
+  "beams": 1,
+  "pause_flush_sec": 0.7,
+  "segment_max_sec": 7.0,
+  "partial_word_cap": 10
+}

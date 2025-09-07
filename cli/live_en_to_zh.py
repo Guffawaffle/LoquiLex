@@ -9,21 +9,25 @@ import signal
 import sys
 from typing import List, Tuple
 from collections import deque
+import wave
+import subprocess
 
 import numpy as np
 
 from greenfield.audio.capture import capture_stream
 from greenfield.asr.whisper_engine import WhisperEngine, Segment
 from greenfield.segmentation.aggregator import Aggregator
-from greenfield.output.vtt import write_vtt
-from greenfield.output.srt import write_srt
+from greenfield.output.vtt import write_vtt, append_vtt_cue
+from greenfield.output.srt import write_srt, append_srt_cue
 from greenfield.mt.translator import Translator
 from greenfield.post.zh_text import post_process
 from greenfield.config.defaults import RT, ASR
+from greenfield.output.text_io import RollingTextFile
 
 
 def main() -> None:
     ap = argparse.ArgumentParser()
+    # Legacy flags (kept for compatibility with older docs)
     ap.add_argument("--out-prefix", default=f"{RT.out_dir}/live")
     ap.add_argument("--stream-zh", action="store_true", default=False)
     ap.add_argument("--zh-partial-debounce-sec", type=float, default=0.5)
@@ -32,16 +36,34 @@ def main() -> None:
     ap.add_argument("--live-update-debounce-sec", type=float, default=0.4, help="Debounce for live draft updates")
     ap.add_argument("--live-draft-files", action="store_true", default=False, help="Write live EN/ZH drafts to _live_en.txt/_live_zh.txt atomically")
     ap.add_argument("--seconds", type=int, default=20, help="Duration in seconds; <=0 to run until Ctrl+C")
+    # Verbosity flags
+    ap.add_argument("-v", "--verbose", action="store_true", help="Enable verbose logs")
+    ap.add_argument("--log-io", action="store_true", help="Log file write operations")
+
+    # New flags per task
+    ap.add_argument("--partial-en", default=f"{RT.out_dir}/live.partial.en.txt")
+    ap.add_argument("--partial-zh", default=f"{RT.out_dir}/live.partial.zh.txt")
+    ap.add_argument("--final-en", default=f"{RT.out_dir}/live.final.en.txt")
+    ap.add_argument("--final-zh", default=f"{RT.out_dir}/live.final.zh.txt")
+    ap.add_argument("--final-vtt-en", default=f"{RT.out_dir}/live.final.en.vtt")
+    ap.add_argument("--no-final-vtt-en", action="store_true")
+    ap.add_argument("--final-srt-zh", default=f"{RT.out_dir}/live.final.zh.srt")
+    ap.add_argument("--no-final-srt-zh", action="store_true")
+    ap.add_argument("--max-lines", type=int, default=RT.max_lines)
+    ap.add_argument("--overwrite-run", action="store_true", default=True)
+    ap.add_argument("--save-audio", choices=["off", "wav", "flac"], default=RT.save_audio)
+    ap.add_argument("--save-audio-path", default=RT.save_audio_path)
+    ap.add_argument("--partial-word-cap", type=int, default=RT.partial_word_cap)
     args = ap.parse_args()
 
-    out_vtt = args.out_prefix + ".vtt"
-    out_txt = args.out_prefix + "_zh.txt"
-    out_srt = args.out_prefix + "_zh.srt"
-    out_vtt_en = args.out_prefix + "_en.vtt"
-    out_vtt_zh = args.out_prefix + "_zh.vtt"
-    out_live_en = args.out_prefix + "_live_en.txt"
-    out_live_zh = args.out_prefix + "_live_zh.txt"
-    os.makedirs(os.path.dirname(out_vtt), exist_ok=True)
+    out_vtt = args.out_prefix + ".vtt"  # legacy combined if used
+    out_txt = args.out_prefix + "_zh.txt"  # legacy
+    out_srt = args.out_prefix + "_zh.srt"  # legacy
+    out_vtt_en = args.out_prefix + "_en.vtt"  # legacy
+    out_vtt_zh = args.out_prefix + "_zh.vtt"  # legacy
+    out_live_en = args.out_prefix + "_live_en.txt"  # legacy
+    out_live_zh = args.out_prefix + "_live_zh.txt"  # legacy
+    os.makedirs(os.path.dirname(args.partial_en), exist_ok=True)
 
     # Initialize MT first so models are loaded before we start capturing audio
     tr = Translator()
@@ -53,7 +75,7 @@ def main() -> None:
         zh_warm = post_process(zh_warm)
         # Emit initial drafts to files if requested and print once
         if args.live_draft_files:
-            # ensure directory exists (already created above for out_vtt)
+            # ensure directory exists
             try:
                 with open(out_live_en, "w", encoding="utf-8") as f:
                     f.write(warmup_text_en + "\n")
@@ -89,12 +111,41 @@ def main() -> None:
         with open(tmp, "w", encoding="utf-8") as f:
             f.write(text)
         os.replace(tmp, path)
+
+    # New writers
+    p_en = RollingTextFile(args.partial_en)
+    p_zh = RollingTextFile(args.partial_zh)
+    f_en = RollingTextFile(args.final_en, max_lines=args.max_lines)
+    f_zh = RollingTextFile(args.final_zh, max_lines=args.max_lines)
+
+    def _io_log(msg: str) -> None:
+        if args.verbose or args.log_io:
+            print(msg)
+
+    # Overwrite behavior
+    if args.overwrite_run:
+        for w in (p_en, p_zh, f_en, f_zh):
+            try:
+                w.reset()
+                _io_log(f"[io] reset path={w.path}")
+            except Exception:
+                pass
+        # Remove timed outputs to reset headers/indices
+        for pth in (args.final_vtt_en, args.final_srt_zh):
+            try:
+                os.remove(pth)
+                _io_log(f"[io] removed path={pth}")
+            except Exception:
+                pass
+    # Track next SRT index for ZH
+    srt_index_zh = 1
     # Start timing AFTER warmup and just before capture begins
     session_t0_mono = None  # will set once first audio frame arrives (monotonic)
     last_t1_mono = None  # monotonic time of latest captured audio end
     audio_since_reset = 0.0  # seconds fed to engine since its last reset
 
     def on_partial(txt: str) -> None:
+        nonlocal last_zh_partial_emit, last_zh_partial_text
         now = time.monotonic()
         def emit(s: str) -> None:
             nonlocal last_en_partial_print
@@ -102,32 +153,61 @@ def main() -> None:
                 print(f"EN ≫ {s}")
                 last_en_partial_print = now
         agg.on_partial(txt, emit)
-        # Optional streaming draft ZH via partials (fallback when no word timestamps or window disabled)
+        # Write partial EN line (single line)
+        part = txt.strip()
+        if args.partial_word_cap and args.partial_word_cap > 0:
+            words = part.split()
+            part = " ".join(words[: args.partial_word_cap])
+        try:
+            p_en.rewrite_current_line(part)
+            _io_log(f"[io] partial rewrite lang=en path={p_en.path} chars={len(part)}")
+        except Exception:
+            pass
+        # Live ZH partial (debounced), independent of word-window
         use_word_window = ASR.word_timestamps and args.live_window_words > 0
-        if not use_word_window:
-            if args.stream_zh and (now - last_zh_partial_emit) >= args.zh_partial_debounce_sec and txt.strip():
-                draft = tr.translate_en_to_zh_draft(txt).text
-                draft = post_process(draft)
-                if draft and draft != last_zh_partial_text:
-                    print(f"ZH* ≫ {draft}")
-                    last_zh_partial_text = draft
-                    last_zh_partial_emit = now
+        if not use_word_window and (now - last_zh_partial_emit) >= args.zh_partial_debounce_sec and part:
+            draft = tr.translate_en_to_zh_draft(part).text
+            draft = post_process(draft)
+            if draft and draft != last_zh_partial_text:
+                print(f"ZH* ≫ {draft}")
+                try:
+                    p_zh.rewrite_current_line(draft)
+                    _io_log(f"[io] partial rewrite lang=zh path={p_zh.path} chars={len(draft)}")
+                except Exception:
+                    pass
+                last_zh_partial_text = draft
+                last_zh_partial_emit = now
 
     def on_final(a: float, b: float, txt: str) -> None:
         assert session_t0_mono is not None
         rel_a = a - session_t0_mono
         rel_b = b - session_t0_mono
         cues.append((rel_a, rel_b, txt))
-        if args.combined_vtt:
-            # write combined after ZH is appended below
+        # Clear partial EN line after finalization
+        try:
+            p_en.rewrite_current_line("")
+            _io_log(f"[io] partial clear lang=en path={p_en.path}")
+        except Exception:
             pass
-        else:
-            write_vtt(cues, out_vtt_en)
+        # Append EN final line
+        try:
+            f_en.append_final_line(txt)
+            _io_log(f"[io] final append lang=en path={f_en.path} chars={len(txt)}")
+        except Exception:
+            pass
+        # Append timed EN cue if enabled
+        if not args.no_final_vtt_en:
+            try:
+                append_vtt_cue(args.final_vtt_en, rel_a, rel_b, txt)
+                _io_log(f"[io] vtt append lang=en path={args.final_vtt_en} a={rel_a:.3f} b={rel_b:.3f} chars={len(txt)}")
+            except Exception:
+                pass
         try:
             translate_q.put_nowait((a, b, txt))
         except queue.Full:
             # Drop if MT is backlogged to keep latency bounded
-            pass
+            nonlocal mt_dropped
+            mt_dropped += 1
         print(f"EN(final): {txt}")
 
     def on_seg(seg: Segment) -> None:
@@ -161,6 +241,11 @@ def main() -> None:
                 zh_draft = post_process(zh_draft)
                 if zh_draft and zh_draft != last_zh_live:
                     print(f"ZH* ≫ {zh_draft}")
+                    # Update the live ZH partial file as well
+                    try:
+                        p_zh.rewrite_current_line(zh_draft)
+                    except Exception:
+                        pass
                     if args.live_draft_files:
                         write_atomic(out_live_zh, zh_draft + "\n")
                     last_zh_live = zh_draft
@@ -169,13 +254,56 @@ def main() -> None:
 
     # Proper capture loop; start capture and set start time on first frame
     frames: List[np.ndarray] = []
+    mt_dropped = 0
     pre_capture_mono = time.monotonic()
+
+    # Optional audio recording sinks
+    audio_mode = args.save_audio
+    audio_sink_wav = None
+    audio_sink_ffmpeg = None
+    if audio_mode != "off":
+        os.makedirs(os.path.dirname(args.save_audio_path), exist_ok=True)
+        if audio_mode == "wav":
+            try:
+                wf = wave.open(args.save_audio_path, "wb")
+                wf.setnchannels(1)
+                wf.setsampwidth(2)  # int16
+                wf.setframerate(ASR.sample_rate)
+                audio_sink_wav = wf
+                print(f"[cli] save-audio started mode=wav path={args.save_audio_path}")
+            except Exception as e:
+                print(f"[cli] save-audio wav setup failed: {e}")
+                audio_mode = "off"
+        elif audio_mode == "flac":
+            try:
+                # Feed float32 raw to ffmpeg to encode FLAC
+                cmd = [
+                    "ffmpeg", "-hide_banner", "-loglevel", "error",
+                    "-f", "f32le", "-ar", str(ASR.sample_rate), "-ac", "1", "-i", "pipe:0",
+                    "-y", args.save_audio_path,
+                ]
+                proc = subprocess.Popen(cmd, stdin=subprocess.PIPE)
+                audio_sink_ffmpeg = proc
+                print(f"[cli] save-audio started mode=flac path={args.save_audio_path}")
+            except Exception as e:
+                print(f"[cli] save-audio flac setup failed: {e}")
+                audio_mode = "off"
 
     def feed(fr) -> None:
         nonlocal session_t0_mono, last_t1_mono, audio_since_reset
         if session_t0_mono is None:
             session_t0_mono = time.monotonic()
         frames.append(fr.data)
+        # Tap audio sink
+        try:
+            if audio_mode == "wav" and audio_sink_wav is not None:
+                # convert float32 [-1,1] to int16
+                pcm16 = (np.clip(fr.data, -1.0, 1.0) * 32767.0).astype(np.int16).tobytes()
+                audio_sink_wav.writeframes(pcm16)
+            elif audio_mode == "flac" and audio_sink_ffmpeg is not None and audio_sink_ffmpeg.stdin is not None:
+                audio_sink_ffmpeg.stdin.write(fr.data.tobytes())
+        except Exception:
+            pass
         # track latest monotonic time and audio seconds since engine reset
         last_t1_mono = fr.t1
         audio_since_reset += len(fr.data) / float(ASR.sample_rate)
@@ -210,9 +338,26 @@ def main() -> None:
             rel_a = a - session_t0_mono
             rel_b = b - session_t0_mono
             zh_cues.append((rel_a, rel_b, zh_txt))
-            with open(out_txt, "a", encoding="utf-8") as f:
-                f.write(zh_txt + "\n")
-            write_srt(zh_cues, out_srt)
+            # Clear partial ZH line and append final ZH TXT
+            try:
+                p_zh.rewrite_current_line("")
+                print(f"[io] partial clear lang=zh path={p_zh.path}")
+            except Exception:
+                pass
+            try:
+                f_zh.append_final_line(zh_txt)
+                print(f"[io] final append lang=zh path={f_zh.path} chars={len(zh_txt)}")
+            except Exception:
+                pass
+            # Timed outputs for ZH
+            nonlocal srt_index_zh
+            if not args.no_final_srt_zh:
+                try:
+                    used_idx = append_srt_cue(args.final_srt_zh, srt_index_zh, rel_a, rel_b, zh_txt)
+                    print(f"[io] srt append lang=zh path={args.final_srt_zh} idx={used_idx} a={rel_a:.3f} b={rel_b:.3f} chars={len(zh_txt)}")
+                    srt_index_zh = used_idx + 1
+                except Exception:
+                    pass
             if args.combined_vtt:
                 # Rebuild combined cues from pairs and write single VTT
                 combined: List[Tuple[float, float, str]] = []
@@ -222,7 +367,8 @@ def main() -> None:
                     combined.append((a2, b2, f"EN: {te}\nZH: {tz}"))
                 write_vtt(combined, out_vtt)
             else:
-                write_vtt(zh_cues, out_vtt_zh)
+                # No separate zh VTT in new spec; keep legacy optional behavior disabled
+                pass
             print(f"ZH: {zh_txt}")
             try:
                 translate_q.task_done()
@@ -263,12 +409,23 @@ def main() -> None:
             th_mt.join(timeout=0.5)
         except Exception:
             pass
-        write_vtt(cues, out_vtt)
+        # Close audio sinks
+        try:
+            if audio_mode == "wav" and audio_sink_wav is not None:
+                audio_sink_wav.close()
+            elif audio_mode == "flac" and audio_sink_ffmpeg is not None:
+                if audio_sink_ffmpeg.stdin:
+                    audio_sink_ffmpeg.stdin.close()
+                audio_sink_ffmpeg.wait(timeout=2.0)
+        except Exception:
+            pass
+        # Final flush for legacy combined vtt if used
+        if args.combined_vtt:
+            write_vtt(cues, out_vtt)
+        if mt_dropped > 0 and args.verbose:
+            print(f"[cli] MT dropped={mt_dropped}")
 
-    if args.combined_vtt:
-        print(f"[cli] wrote {out_vtt}, {out_txt}, {out_srt}")
-    else:
-        print(f"[cli] wrote {out_vtt_en}, {out_vtt_zh}, {out_txt}, {out_srt}")
+    print("[cli] run complete")
 
 
 if __name__ == "__main__":
