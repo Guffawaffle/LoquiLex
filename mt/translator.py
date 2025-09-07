@@ -11,6 +11,22 @@ def _log(msg: str) -> None:
     print(f"[mt] {msg}")
 
 
+def _dtype_kwargs(torch, device_str: str):
+    """Return a version-aware dtype kwarg for transformers.from_pretrained.
+
+    Newer transformers deprecate torch_dtype in favor of dtype. Choose based on version.
+    """
+    import transformers as tr  # type: ignore
+
+    try:
+        major, minor, *_ = (int(x) for x in tr.__version__.split("."))
+    except Exception:
+        major, minor = 4, 0
+    key = "dtype" if (major, minor) >= (4, 56) else "torch_dtype"
+    val = torch.float16 if device_str == "cuda" else torch.float32
+    return {key: val}
+
+
 @dataclass
 class TranslationResult:
     text: str
@@ -35,7 +51,7 @@ class Translator:
             model = AutoModelForSeq2SeqLM.from_pretrained(
                 MT.nllb_model,
                 device_map=None,
-                dtype=torch.float16 if self.torch_device.type == "cuda" else torch.float32,
+                **_dtype_kwargs(torch, self.torch_device.type),
             )
             model.to(self.torch_device).eval()
             self._nllb = (tok, model)
@@ -50,7 +66,7 @@ class Translator:
             model = M2M100ForConditionalGeneration.from_pretrained(
                 MT.m2m_model,
                 device_map=None,
-                dtype=torch.float16 if self.torch_device.type == "cuda" else torch.float32,
+                **_dtype_kwargs(torch, self.torch_device.type),
             )
             model.to(self.torch_device).eval()
             self._m2m = (tok, model)
