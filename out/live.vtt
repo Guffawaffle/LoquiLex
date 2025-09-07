@@ -1,11 +1,32 @@
 WEBVTT
 
-00:00:02.779 --> 00:00:04.779
-You are an expert
+00:00:01.021 --> 00:00:02.301
+Hello, this is
 
-00:00:04.914 --> 00:00:06.194
-expert in ASR.
+00:00:02.782 --> 00:00:05.822
+test of the microphone and transcription system.
 
-00:00:07.037 --> 00:00:09.037
-You have previously worked
+00:00:08.584 --> 00:00:12.584
+I am speaking clearly to check if every word is captured.
+
+00:00:12.933 --> 00:00:14.933
+Now I will pause for a
+
+00:00:14.934 --> 00:00:16.192
+moment to test the silence.
+
+00:00:16.312 --> 00:00:17.312
+detection.
+
+00:00:17.633 --> 00:00:18.753
+after the pause.
+
+00:00:19.273 --> 00:00:22.713
+I will continue speaking to see if the system resumes correctly.
+
+00:00:27.082 --> 00:00:34.082
+Finally, I will end this test and press Ctrl-C to switch to the test.
+
+00:00:34.083 --> 00:00:34.084
+stop recording.
 

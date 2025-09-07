@@ -18,7 +18,7 @@ class Aggregator:
     """Simple caption state machine.
 
     - Debounces partials (sends at most every partial_debounce_ms)
-    - Finalizes on pause >= pause_flush_sec or length >= segment_max_sec
+    - Finalization is handled by the ASR engine to avoid double gating
     """
 
     def __init__(self, now: Callable[[], float] | None = None) -> None:
@@ -42,22 +42,7 @@ class Aggregator:
                 emit_partial(text.strip())
                 self.last_partial_emit = t
 
-    def maybe_finalize(self, emit_final: Callable[[float, float, str], None]) -> None:
-        if self.state is None or self.t0 is None:
-            return
-        t = self.now()
-        st = self.state
-        if not st.text.strip():
-            return
-
-        paused = t - st.last_update >= SEG.pause_flush_sec
-        long = t - st.start_time >= SEG.segment_max_sec
-        if paused or long:
-            a = max(0.0, st.start_time - self.t0)
-            b = max(a + 0.001, t - self.t0)
-            emit_final(a, b, st.text.strip())
-            self.state = None
-            self.last_partial_emit = 0.0  # reset debounce
+    # No maybe_finalize here; engine is the single source of truth for finals
 
     def force_finalize(self, emit_final: Callable[[float, float, str], None]) -> None:
         if self.state is None or self.t0 is None:

@@ -37,7 +37,8 @@ def main() -> None:
     # Offline path: use faster-whisper directly for stability
     from faster_whisper import WhisperModel  # type: ignore
     device, _ = pick_device()
-    compute_type = ASR.compute_type if device == "cuda" else "int8"
+    # Prefer int8_float32 on CPU for better quality; fallback handled by faster-whisper if unsupported
+    compute_type = ASR.compute_type if device == "cuda" else "int8_float32"
     model = WhisperModel(ASR.model, device=device, compute_type=compute_type)
     print(f"[asr] device={device} model={ASR.model} compute={compute_type}")
     data = read_wav_mono_16k(args.wav)

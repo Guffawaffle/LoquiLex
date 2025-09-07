@@ -27,6 +27,7 @@ class ASRDefaults:
     condition_on_previous_text: bool = _get_bool("GF_ASR_COND_PREV", False)
     sample_rate: int = int(os.getenv("GF_ASR_SAMPLE_RATE", "16000"))
     cpu_threads: int = int(os.getenv("GF_ASR_CPU_THREADS", str(max(1, (os.cpu_count() or 2) - 1))))
+    word_timestamps: bool = _get_bool("GF_ASR_WORD_TS", False)
 
 
 @dataclass(frozen=True)
