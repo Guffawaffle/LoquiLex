@@ -35,7 +35,7 @@ class Translator:
             model = AutoModelForSeq2SeqLM.from_pretrained(
                 MT.nllb_model,
                 device_map=None,
-                torch_dtype=torch.float16 if self.torch_device.type == "cuda" else torch.float32,
+                dtype=torch.float16 if self.torch_device.type == "cuda" else torch.float32,
             )
             model.to(self.torch_device).eval()
             self._nllb = (tok, model)
@@ -50,7 +50,7 @@ class Translator:
             model = M2M100ForConditionalGeneration.from_pretrained(
                 MT.m2m_model,
                 device_map=None,
-                torch_dtype=torch.float16 if self.torch_device.type == "cuda" else torch.float32,
+                dtype=torch.float16 if self.torch_device.type == "cuda" else torch.float32,
             )
             model.to(self.torch_device).eval()
             self._m2m = (tok, model)
