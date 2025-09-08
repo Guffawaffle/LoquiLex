@@ -57,7 +57,7 @@ class Session:
         env["GF_OUT_DIR"] = str(self.run_dir)
         env["GF_SAVE_AUDIO"] = self.cfg.save_audio
 
-        script = [sys.executable, "-m", "greenfield.cli.live_en_to_zh", "--seconds", "-1"]
+        script = [sys.executable, "-m", "loquilex.cli.live_en_to_zh", "--seconds", "-1"]
         self.proc = subprocess.Popen(
             script,
             stdout=subprocess.PIPE,
