@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from typing import Callable, Optional
 import time
 
-from greenfield.config.defaults import SEG
+from loquilex.config.defaults import SEG
 
 
 @dataclass

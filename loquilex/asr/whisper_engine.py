@@ -11,7 +11,7 @@ import time
 
 import numpy as np
 
-from greenfield.config.defaults import ASR, RT, SEG, pick_device
+from loquilex.config.defaults import ASR, RT, SEG, pick_device
 
 
 @dataclass

@@ -1,11 +1,11 @@
-# Greenfield API
+# LoquiLex API
 
 FastAPI-based glue to orchestrate ASR+MT sessions and stream events.
 
 Run
 
 - Ensure Python env has fastapi, uvicorn.
-- Start: `python -m uvicorn greenfield.api.server:app --port 8000 --host 0.0.0.0`
+- Start: `python -m uvicorn loquilex.api.server:app --port 8000 --host 0.0.0.0`
 
 Endpoints
 

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-"""Greenfield control-plane API (FastAPI) with WebSocket events.
+"""LoquiLex control-plane API (FastAPI) with WebSocket events.
 
 Endpoints:
 - GET /models/asr -> local ASR models discovered (faster-whisper CT2 dirs or names if cached)
@@ -11,7 +11,7 @@ Endpoints:
 - DELETE /sessions/{sid} -> stop session
 - WS /events/{sid} -> multiplexed event stream for a session id (JSON messages)
 
-All new code intentionally lives under greenfield/api/.
+All new code intentionally lives under loquilex/api/.
 """
 
 import asyncio
@@ -32,8 +32,8 @@ from .supervisor import SessionConfig, SessionManager
 from .events import EventStamper
 
 
-ALLOWED_ORIGINS = os.getenv("GF_ALLOWED_ORIGINS", "http://localhost:5173").split(",")
-app = FastAPI(title="Greenfield API", version="0.1.0")
+ALLOWED_ORIGINS = os.getenv("LLX_ALLOWED_ORIGINS", "http://localhost:5173").split(",")
+app = FastAPI(title="LoquiLex API", version="0.1.0")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
@@ -43,7 +43,7 @@ app.add_middleware(
 )
 
 # Serve outputs directory for easy linking from UI (hardened)
-OUT_ROOT = Path(os.getenv("GF_OUT_DIR", "loquilex/out")).resolve()
+OUT_ROOT = Path(os.getenv("LLX_OUT_DIR", "loquilex/out")).resolve()
 OUT_ROOT.mkdir(parents=True, exist_ok=True)
 
 def _safe_session_dir(sid: str) -> Path:
@@ -103,8 +103,8 @@ class SelfTestResp(BaseModel):
     sample_rate: Optional[int] = None
 
 
-# Simple profiles CRUD on disk under greenfield/ui/profiles
-PROFILES_DIR = os.path.join("greenfield", "ui", "profiles")
+# Simple profiles CRUD on disk under loquilex/ui/profiles
+PROFILES_DIR = os.path.join("loquilex", "ui", "profiles")
 
 
 @app.get("/profiles")
@@ -206,8 +206,8 @@ async def create_session(req: CreateSessionReq) -> CreateSessionResp:
 async def post_selftest(req: SelfTestReq) -> SelfTestResp:
     # Minimal self-test: try to import WhisperEngine and warm up; capture a short mic window and compute RMS
     import numpy as np
-    from greenfield.asr.whisper_engine import WhisperEngine
-    from greenfield.audio.capture import capture_stream
+    from loquilex.asr.whisper_engine import WhisperEngine
+    from loquilex.audio.capture import capture_stream
     from .vu import rms_peak, EmaVu
 
     t0 = time.perf_counter()
@@ -243,7 +243,7 @@ async def post_selftest(req: SelfTestReq) -> SelfTestResp:
     ok = rms_avg > 1e-4
     # Effective runtime details
     try:
-        from greenfield.config.defaults import ASR as _ASR
+        from loquilex.config.defaults import ASR as _ASR
         sample_rate = _ASR.sample_rate
     except Exception:
         sample_rate = None
@@ -322,7 +322,7 @@ async def ws_events(ws: WebSocket, sid: str) -> None:
 
 
 def main() -> None:
-    # Entry point for `python -m greenfield.api.server`
+    # Entry point for `python -m loquilex.api.server`
     import uvicorn
 
     port = int(os.getenv("GF_API_PORT", "8000"))

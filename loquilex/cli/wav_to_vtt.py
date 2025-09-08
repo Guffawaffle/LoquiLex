@@ -7,8 +7,8 @@ from typing import List, Tuple
 
 import numpy as np
 
-from greenfield.output.vtt import write_vtt
-from greenfield.config.defaults import ASR, pick_device
+from loquilex.output.vtt import write_vtt
+from loquilex.config.defaults import ASR, pick_device
 
 
 def read_wav_mono_16k(path: str) -> np.ndarray:

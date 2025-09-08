@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from typing import Optional
 import contextlib
 
-from greenfield.config.defaults import MT, pick_device
+from loquilex.config.defaults import MT, pick_device
 
 try:
     import torch  # type: ignore

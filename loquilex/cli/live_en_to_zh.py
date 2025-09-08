@@ -14,16 +14,16 @@ import subprocess
 
 import numpy as np
 
-from greenfield.audio.capture import capture_stream
-from greenfield.asr.whisper_engine import WhisperEngine, Segment
-from greenfield.segmentation.aggregator import Aggregator
-from greenfield.output.vtt import write_vtt, append_vtt_cue
-from greenfield.output.srt import write_srt, append_srt_cue
-from greenfield.mt.translator import Translator
-from greenfield.post.zh_text import post_process
-from greenfield.config.defaults import RT, ASR
-from greenfield.output.text_io import RollingTextFile
-from greenfield.api.vu import rms_peak, EmaVu
+from loquilex.audio.capture import capture_stream
+from loquilex.asr.whisper_engine import WhisperEngine, Segment
+from loquilex.segmentation.aggregator import Aggregator
+from loquilex.output.vtt import write_vtt, append_vtt_cue
+from loquilex.output.srt import write_srt, append_srt_cue
+from loquilex.mt.translator import Translator
+from loquilex.post.zh_text import post_process
+from loquilex.config.defaults import RT, ASR
+from loquilex.output.text_io import RollingTextFile
+from loquilex.api.vu import rms_peak, EmaVu
 
 
 def main() -> None:

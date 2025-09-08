@@ -54,7 +54,7 @@ class Session:
         env["GF_PAUSE_FLUSH_SEC"] = str(self.cfg.pause_flush_sec)
         env["GF_SEGMENT_MAX_SEC"] = str(self.cfg.segment_max_sec)
         env["GF_PARTIAL_WORD_CAP"] = str(self.cfg.partial_word_cap)
-        env["GF_OUT_DIR"] = str(self.run_dir)
+        env["LLX_OUT_DIR"] = str(self.run_dir)
         env["GF_SAVE_AUDIO"] = self.cfg.save_audio
 
         script = [sys.executable, "-m", "loquilex.cli.live_en_to_zh", "--seconds", "-1"]

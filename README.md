@@ -10,10 +10,8 @@ source .venv/bin/activate
 pip install -U pip build
 pip install -e .
 
-# Help screens
 loquilex-wav-to-vtt --help
 loquilex-vtt-to-zh --help
-# Live (optional)
 # loquilex-live --seconds 5 --out-prefix loquilex/out/live
 ```
 
