@@ -6,7 +6,7 @@ build/
 dist/
 *.egg-info/
 .coverage
-.htmlcov/
+htmlcov/
 .pytest_cache/
 loquilex/out/
 .vscode/
