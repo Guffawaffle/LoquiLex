@@ -32,7 +32,11 @@ from .supervisor import SessionConfig, SessionManager
 from .events import EventStamper
 
 
-ALLOWED_ORIGINS = os.getenv("LLX_ALLOWED_ORIGINS", "http://localhost:5173").split(",")
+# Allow localhost and 127.0.0.1 by default for dev. Can be overridden via LLX_ALLOWED_ORIGINS.
+ALLOWED_ORIGINS = os.getenv(
+    "LLX_ALLOWED_ORIGINS",
+    "http://localhost:5173,http://127.0.0.1:5173",
+).split(",")
 app = FastAPI(title="LoquiLex API", version="0.1.0")
 app.add_middleware(
     CORSMiddleware,
