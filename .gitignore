@@ -1,7 +1,8 @@
 # Egg-info
 *.egg-info
 loquilex.egg-info/
-__pycache__/
+next-task-review.md
+next-task.md
 .venv/
 .env
 .env.*
