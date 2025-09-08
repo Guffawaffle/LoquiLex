@@ -13,6 +13,7 @@ dist/
 
 # Virtual environments / env files
 .venv/
+/.direnv/
 venv/
 env/
 .env

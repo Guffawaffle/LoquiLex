@@ -1,0 +1,11 @@
+[run]
+source = greenfield
+omit =
+    greenfield/api/server.py
+    greenfield/api/supervisor.py
+    greenfield/api/model_discovery.py
+    greenfield/cli/live_en_to_zh.py
+    greenfield/audio/capture.py
+
+[report]
+show_missing = True
