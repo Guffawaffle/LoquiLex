@@ -32,7 +32,7 @@ def parse_vtt(path: str) -> List[Tuple[float, float, str]]:
 
 
 def main() -> None:
-    path = "greenfield/out/asr_en.vtt"
+    path = "loquilex/out/asr_en.vtt"
     assert os.path.exists(path), f"missing {path}"
     cues = parse_vtt(path)
     last = 0.0

@@ -43,7 +43,7 @@ app.add_middleware(
 )
 
 # Serve outputs directory for easy linking from UI (hardened)
-OUT_ROOT = Path(os.getenv("GF_OUT_DIR", "greenfield/out")).resolve()
+OUT_ROOT = Path(os.getenv("GF_OUT_DIR", "loquilex/out")).resolve()
 OUT_ROOT.mkdir(parents=True, exist_ok=True)
 
 def _safe_session_dir(sid: str) -> Path:

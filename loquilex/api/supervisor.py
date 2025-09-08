@@ -158,7 +158,7 @@ class SessionManager:
             if running_cuda >= self._max_cuda_sessions:
                 raise RuntimeError("GPU busy: maximum concurrent CUDA sessions reached")
         sid = str(uuid.uuid4())
-        run_dir = Path("greenfield/out") / sid
+        run_dir = Path("loquilex/out") / sid
         run_dir.mkdir(parents=True, exist_ok=True)
         sess = Session(sid, cfg, run_dir)
         sess.start()

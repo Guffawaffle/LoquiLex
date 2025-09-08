@@ -8,7 +8,7 @@ def test_env_overrides(monkeypatch):
     monkeypatch.setenv("GF_MAX_LINES", "123")
     monkeypatch.setenv("GF_PARTIAL_WORD_CAP", "9")
     monkeypatch.setenv("GF_SAVE_AUDIO", "flac")
-    monkeypatch.setenv("GF_SAVE_AUDIO_PATH", "greenfield/out/session.flac")
+    monkeypatch.setenv("GF_SAVE_AUDIO_PATH", "loquilex/out/session.flac")
     # Reload module to pick env
     mod = importlib.import_module("greenfield.config.defaults")
     importlib.reload(mod)

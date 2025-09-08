@@ -27,7 +27,7 @@ Proceed with these defaults until told otherwise.
 
 ### A) Output module for robust text writing
 
-Create: `greenfield/output/text_io.py`
+Create: `loquilex/output/text_io.py`
 
 - `class RollingTextFile:`
   - `__init__(self, path: str, max_lines: Optional[int] = None, ensure_dir: bool = True)`
@@ -52,16 +52,16 @@ Modify: `greenfield/cli/live_en_to_zh.py`
 
 Add **new flags** (all optional with sensible defaults):
 ```
---partial-en      default: greenfield/out/live.partial.en.txt
---partial-zh      default: greenfield/out/live.partial.zh.txt
---final-en        default: greenfield/out/live.final.en.txt
---final-zh        default: greenfield/out/live.final.zh.txt
---final-vtt-en    default: greenfield/out/live.final.en.vtt   (toggle via --no-final-vtt-en)
---final-srt-zh    default: greenfield/out/live.final.zh.srt   (toggle via --no-final-srt-zh)
+--partial-en      default: loquilex/out/live.partial.en.txt
+--partial-zh      default: loquilex/out/live.partial.zh.txt
+--final-en        default: loquilex/out/live.final.en.txt
+--final-zh        default: loquilex/out/live.final.zh.txt
+--final-vtt-en    default: loquilex/out/live.final.en.vtt   (toggle via --no-final-vtt-en)
+--final-srt-zh    default: loquilex/out/live.final.zh.srt   (toggle via --no-final-srt-zh)
 --max-lines       default: 1000 (applies to FINAL TXT files)
 --overwrite-run   default: true  (truncate all target files at start)
 --save-audio      choices: off|wav|flac, default: off
---save-audio-path default: greenfield/out/session.wav (or .flac)
+--save-audio-path default: loquilex/out/session.wav (or .flac)
 --partial-word-cap  default: 0  (0 = disabled; if >0, the partial line is capped to N words)
 ```
 
@@ -84,7 +84,7 @@ Add **new flags** (all optional with sensible defaults):
 
 ### C) Timed writers (append mode + overwrite strategy)
 
-Modify `greenfield/output/vtt.py` and `greenfield/output/srt.py` to add **append APIs**:
+Modify `loquilex/output/vtt.py` and `loquilex/output/srt.py` to add **append APIs**:
 
 - `append_vtt_cue(path: str, start: float, end: float, text: str)`
   - If `path` doesn’t exist, create with `WEBVTT` header and two newlines (UTF‑8).
@@ -129,7 +129,7 @@ Create/Update `greenfield/README.md` to document:
   # Live 20s demo with both partial files and final outputs; keep only last 200 lines in final TXT; record WAV
   python -m greenfield.cli.live_en_to_zh --seconds 20 \
     --max-lines 200 \
-    --save-audio wav --save-audio-path greenfield/out/session.wav
+    --save-audio wav --save-audio-path loquilex/out/session.wav
   ```
 
 ### G) Tests (lightweight)
@@ -149,7 +149,7 @@ Add `greenfield/tests/test_live_outputs.py`:
 - Use **atomic writes** for every file update to avoid readers seeing partial buffers.
 - Respect existing **device/dtype** selection; don’t change ASR or MT defaults.
 - Engine remains the **sole finalizer**; Aggregator is for debounced partials only.
-- Keep everything under **`greenfield/`**. Never write files outside `greenfield/out/`.
+- Keep everything under **`greenfield/`**. Never write files outside `loquilex/out/`.
 - Logging: on each mode (partial rewrite, final append, timed cue append), log a concise line with paths.
 
 ---
