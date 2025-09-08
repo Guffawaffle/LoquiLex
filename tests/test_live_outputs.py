@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from greenfield.output.text_io import RollingTextFile
-from greenfield.output.vtt import append_vtt_cue
-from greenfield.output.srt import append_srt_cue
+from loquilex.output.text_io import RollingTextFile
+from loquilex.output.vtt import append_vtt_cue
+from loquilex.output.srt import append_srt_cue
 
 
 def test_partial_and_final_files(tmp_path: Path):

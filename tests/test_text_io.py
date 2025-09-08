@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import os
 
-from greenfield.output.text_io import RollingTextFile
+from loquilex.output.text_io import RollingTextFile
 
 
 def test_rewrite_keeps_single_last_line(tmp_path):
