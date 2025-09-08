@@ -21,13 +21,13 @@ fmt:
 	$(VENV)/bin/black .
 
 test:
-	$(PY) -m pytest -q --maxfail=1 --disable-warnings -ra --cov=greenfield --cov-report=term-missing
+	$(PY) -m pytest -q --maxfail=1 --disable-warnings -ra --cov=loquilex --cov-report=term-missing
 
 run-wav:
-	$(PY) -m greenfield.cli.wav_to_vtt --wav ../../test.wav --out loquilex/out/asr_en.vtt
+	$(PY) -m loquilex.cli.wav_to_vtt --wav ../../test.wav --out loquilex/out/asr_en.vtt
 
 run-zh:
-	$(PY) -m greenfield.cli.vtt_to_zh --vtt loquilex/out/asr_en.vtt --out-text loquilex/out/live_zh.txt --out-srt loquilex/out/live_zh.srt
+	$(PY) -m loquilex.cli.vtt_to_zh --vtt loquilex/out/asr_en.vtt --out-text loquilex/out/live_zh.txt --out-srt loquilex/out/live_zh.srt
 
 clean:
 	rm -rf .pytest_cache out .coverage
