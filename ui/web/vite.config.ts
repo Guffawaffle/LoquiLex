@@ -9,7 +9,8 @@ export default defineConfig({
     proxy: {
       '/models': 'http://localhost:8000',
       '/sessions': 'http://localhost:8000',
-      '/languages': 'http://localhost:8000'
+  '/languages': 'http://localhost:8000',
+  '/profiles': 'http://localhost:8000'
     }
   }
 })

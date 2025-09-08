@@ -23,6 +23,7 @@ from greenfield.mt.translator import Translator
 from greenfield.post.zh_text import post_process
 from greenfield.config.defaults import RT, ASR
 from greenfield.output.text_io import RollingTextFile
+from greenfield.api.vu import rms_peak, EmaVu
 
 
 def main() -> None:
@@ -100,6 +101,7 @@ def main() -> None:
     last_zh_partial_emit = 0.0
     last_en_partial_print = 0.0
     last_zh_partial_text = ""
+    last_en_partial_text = ""
     # Live word-window state
     word_window: deque[str] = deque(maxlen=max(0, args.live_window_words))
     last_live_emit = 0.0
@@ -145,7 +147,7 @@ def main() -> None:
     audio_since_reset = 0.0  # seconds fed to engine since its last reset
 
     def on_partial(txt: str) -> None:
-        nonlocal last_zh_partial_emit, last_zh_partial_text
+        nonlocal last_zh_partial_emit, last_zh_partial_text, last_en_partial_text, last_en_partial_print
         now = time.monotonic()
         def emit(s: str) -> None:
             nonlocal last_en_partial_print
@@ -155,6 +157,7 @@ def main() -> None:
         agg.on_partial(txt, emit)
         # Write partial EN line (single line)
         part = txt.strip()
+        last_en_partial_text = part
         if args.partial_word_cap and args.partial_word_cap > 0:
             words = part.split()
             part = " ".join(words[: args.partial_word_cap])
@@ -289,11 +292,27 @@ def main() -> None:
                 print(f"[cli] save-audio flac setup failed: {e}")
                 audio_mode = "off"
 
+    vu_ema = EmaVu(0.5)
+    last_vu = 0.0
+
     def feed(fr) -> None:
         nonlocal session_t0_mono, last_t1_mono, audio_since_reset
         if session_t0_mono is None:
             session_t0_mono = time.monotonic()
         frames.append(fr.data)
+        # Compute VU and emit at ~20 Hz, include clipping percentage
+        try:
+            r, p = rms_peak(fr.data)
+            # clipping: count samples within 0.001 of full-scale
+            clipped = np.count_nonzero(np.abs(fr.data) >= 0.999)
+            clip_pct = float(clipped) / float(len(fr.data) or 1)
+            r2, p2 = vu_ema.update(r, p)
+            nowm = time.monotonic()
+            if (nowm - last_vu) >= 0.05:
+                print(f"VU {r2:.4f} {p2:.4f} {clip_pct:.4f}")
+                last_vu = nowm
+        except Exception:
+            pass
         # Tap audio sink
         try:
             if audio_mode == "wav" and audio_sink_wav is not None:
@@ -380,15 +399,24 @@ def main() -> None:
 
     # Graceful shutdown handling
     shutdown = threading.Event()
+    finalize_now = threading.Event()
 
     def _on_signal(signum, frame):  # type: ignore[no-untyped-def]
         # Set shutdown flag; main loop will exit promptly
+        if signum == signal.SIGUSR1:
+            finalize_now.set()
+            print("[cli] SIGUSR1 -> finalize-now requested", file=sys.stderr)
+            return
         shutdown.set()
         print(f"\n[cli] signal={signum} -> shutting down…", file=sys.stderr)
 
     try:
         signal.signal(signal.SIGINT, _on_signal)
         signal.signal(signal.SIGTERM, _on_signal)
+        try:
+            signal.signal(signal.SIGUSR1, _on_signal)
+        except Exception:
+            pass
     except Exception:
         pass
 
@@ -397,6 +425,24 @@ def main() -> None:
             if args.seconds > 0:
                 if (time.monotonic() - ready_time_mono) >= args.seconds:
                     break
+            # finalize-now support
+            if finalize_now.is_set():
+                try:
+                    finalize_now.clear()
+                    if last_en_partial_text:
+                        # fabricate a short segment ending at last_t1_mono
+                        if session_t0_mono is not None and last_t1_mono is not None:
+                            a = max(session_t0_mono, last_t1_mono - 1.0)
+                            on_final(a, last_t1_mono, last_en_partial_text)
+                            # clear partial files
+                            try:
+                                p_en.rewrite_current_line("")
+                                p_zh.rewrite_current_line("")
+                            except Exception:
+                                pass
+                            last_en_partial_text = ""
+                except Exception:
+                    pass
             time.sleep(0.05)
     except KeyboardInterrupt:
         shutdown.set()

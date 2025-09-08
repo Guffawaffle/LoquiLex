@@ -12,16 +12,19 @@ type Session = {
   partial_zh: string
   finals_en: string[]
   finals_zh: string[]
-  vu: { rms: number; peak: number }
+  vu: { rms: number; peak: number; clip_pct?: number }
 }
 
-function VuMeter({ vu }: { vu: { rms: number; peak: number } }) {
+function VuMeter({ vu }: { vu: { rms: number; peak: number; clip_pct?: number } }) {
   const pct = Math.min(100, Math.round(vu.peak * 100))
   const rmsPct = Math.min(100, Math.round(vu.rms * 100))
   return (
     <div className="w-full h-3 bg-gray-200 rounded">
       <div className="h-3 bg-green-400 rounded" style={{ width: `${rmsPct}%` }} />
       <div className="-mt-3 h-3 bg-emerald-600/50 rounded" style={{ width: `${pct}%` }} />
+      {vu.clip_pct && vu.clip_pct > 0.02 && (
+        <div className="text-xs text-red-600 mt-1">Clipping {Math.round((vu.clip_pct||0)*100)}%</div>
+      )}
     </div>
   )
 }
@@ -46,9 +49,28 @@ function LaunchPane({ onLaunched }: { onLaunched: (sid: string, name: string) =>
     api.getMTModels().then(setMt).catch(() => setMt([]))
   }, [])
 
+  const [testing, setTesting] = useState(false)
+  const [testMsg, setTestMsg] = useState<string>('')
+  const [testInfo, setTestInfo] = useState<{ model?: string; device?: string; compute?: string; sr?: number }|null>(null)
   const start = async () => {
-    const resp = await api.createSession(form)
-    onLaunched(resp.session_id, form.name || 'Session')
+    setTesting(true)
+    setTestMsg('Running self-test…')
+    try {
+  const st = await api.selfTest(form.asr_model_id || undefined, form.device)
+      if (!st.ok) {
+        setTestMsg(`Self-test failed: ${st.message}`)
+        setTesting(false)
+        return
+      }
+  setTestInfo({ model: st.effective_asr_model, device: st.effective_device, compute: st.effective_compute, sr: st.sample_rate })
+      setTestMsg('Starting session…')
+      const resp = await api.createSession(form)
+      onLaunched(resp.session_id, form.name || 'Session')
+    } catch (e: any) {
+      setTestMsg(e?.message || 'Failed')
+    } finally {
+      setTesting(false)
+    }
   }
 
   return (
@@ -99,7 +121,13 @@ function LaunchPane({ onLaunched }: { onLaunched: (sid: string, name: string) =>
           <label htmlFor="vad">VAD</label>
         </div>
       </div>
-      <button disabled={!canStart} onClick={start} className="px-4 py-2 rounded bg-blue-600 text-white disabled:opacity-50">Start</button>
+      <div className="flex items-center gap-3">
+        <button disabled={!canStart || testing} onClick={start} className="px-4 py-2 rounded bg-blue-600 text-white disabled:opacity-50">{testing ? 'Testing…' : 'Start'}</button>
+        {testMsg && <span className="text-sm text-gray-600">{testMsg}</span>}
+        {testInfo && (
+          <span className="text-xs text-gray-500"> [model {testInfo.model} • {testInfo.device}/{testInfo.compute} • {testInfo.sr} Hz]</span>
+        )}
+      </div>
     </div>
   )
 }
@@ -109,7 +137,10 @@ function SessionTab({ s, onStop }: { s: Session; onStop: (sid: string) => void }
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div className="font-semibold">{s.name}</div>
-        <button className="text-red-600" onClick={() => onStop(s.id)}>Stop</button>
+        <div className="flex items-center gap-3">
+          <a className="text-blue-600 underline" href={`/out/${s.id}/`} target="_blank" rel="noreferrer">Open outputs</a>
+          <button className="text-red-600" onClick={() => onStop(s.id)}>Stop</button>
+        </div>
       </div>
       <VuMeter vu={s.vu} />
       <div className="grid grid-cols-2 gap-4">
@@ -137,26 +168,36 @@ function SessionTab({ s, onStop }: { s: Session; onStop: (sid: string) => void }
 export default function App() {
   const [tab, setTab] = useState<'launch' | 'sessions' | 'settings'>('launch')
   const [sessions, setSessions] = useState<Session[]>([])
+  const [profiles, setProfiles] = useState<string[]>([])
+  const [profileName, setProfileName] = useState('')
+  const [downloadJob, setDownloadJob] = useState<{ id: string, repo: string, pct: number, status: string } | null>(null)
 
   const addSession = (sid: string, name: string) => {
-    const ws = new WebSocket(`ws://localhost:8000/events/${sid}`)
-    const s: Session = { id: sid, name, ws, log: [], partial_en: '', partial_zh: '', finals_en: [], finals_zh: [], vu: { rms: 0, peak: 0 } }
-    ws.onmessage = (ev) => {
-      try {
-        const m = JSON.parse(ev.data)
-        setSessions(prev => prev.map(x => {
-          if (x.id !== sid) return x
-          const log = x.log.concat([JSON.stringify(m)])
-          if (log.length > 200) log.shift()
-          if (m.type === 'partial_en') return { ...x, partial_en: m.text, log }
-          if (m.type === 'partial_zh') return { ...x, partial_zh: m.text, log }
-          if (m.type === 'final_en') return { ...x, finals_en: x.finals_en.concat([m.text]).slice(-200), partial_en: '', log }
-          if (m.type === 'final_zh') return { ...x, finals_zh: x.finals_zh.concat([m.text]).slice(-200), partial_zh: '', log }
-          if (m.type === 'vu') return { ...x, vu: { rms: m.rms, peak: m.peak }, log }
-          return { ...x, log }
-        }))
-      } catch {}
+    let ws: WebSocket | null = null
+    let backoff = 500
+    const connect = () => {
+      ws = new WebSocket(`ws://localhost:8000/events/${sid}`)
+      ws.onopen = () => { backoff = 500 }
+      ws.onclose = () => { setTimeout(connect, Math.min(backoff *= 2, 8000)) }
+      ws.onmessage = (ev) => {
+        try {
+          const m = JSON.parse(ev.data)
+          setSessions(prev => prev.map(x => {
+            if (x.id !== sid) return x
+            const log = x.log.concat([JSON.stringify(m)])
+            if (log.length > 200) log.shift()
+            if (m.type === 'partial_en') return { ...x, partial_en: m.text, log }
+            if (m.type === 'partial_zh') return { ...x, partial_zh: m.text, log }
+            if (m.type === 'final_en') return { ...x, finals_en: x.finals_en.concat([m.text]).slice(-200), partial_en: '', log }
+            if (m.type === 'final_zh') return { ...x, finals_zh: x.finals_zh.concat([m.text]).slice(-200), partial_zh: '', log }
+            if (m.type === 'vu') return { ...x, vu: { rms: m.rms||0, peak: m.peak||0, clip_pct: m.clip_pct } as any, log }
+            return { ...x, log }
+          }))
+        } catch {}
+      }
     }
+    connect()
+    const s: Session = { id: sid, name, ws: undefined, log: [], partial_en: '', partial_zh: '', finals_en: [], finals_zh: [], vu: { rms: 0, peak: 0 } }
     setSessions(prev => prev.concat([s]))
     setTab('sessions')
   }
@@ -164,6 +205,38 @@ export default function App() {
   const stop = async (sid: string) => {
     try { await api.stopSession(sid) } catch {}
     setSessions(prev => prev.filter(s => s.id !== sid))
+  }
+
+  // Settings tab helpers
+  useEffect(() => {
+    if (tab !== 'settings') return
+    api.listProfiles().then(setProfiles).catch(() => setProfiles([]))
+  }, [tab])
+
+  const startDownload = async () => {
+    const repo = prompt('Enter HF repo id (e.g., openai/whisper-small.en)')?.trim()
+    if (!repo) return
+    try {
+      const { job_id } = await api.startDownload(repo, 'asr')
+      setDownloadJob({ id: job_id, repo, pct: 0, status: 'starting' })
+      const ws = new WebSocket(`ws://localhost:8000/events/_download/${job_id}`)
+      ws.onmessage = (ev) => {
+        try {
+          const m = JSON.parse(ev.data)
+          if (m.type === 'download_progress') setDownloadJob(d => d && { ...d, pct: m.pct, status: 'downloading' })
+          if (m.type === 'download_done') { setDownloadJob(d => d && { ...d, pct: 100, status: 'done' }); ws.close() }
+          if (m.type === 'download_error') { setDownloadJob(d => d && { ...d, status: 'error: ' + (m.message||'') }); ws.close() }
+        } catch {}
+      }
+    } catch (e) {
+      alert('Failed to start download')
+    }
+  }
+
+  const cancelDownload = async () => {
+    if (!downloadJob) return
+    try { await api.cancelDownload(downloadJob.id) } catch {}
+    setDownloadJob(null)
   }
 
   return (
@@ -183,7 +256,47 @@ export default function App() {
         </div>
       )}
       {tab === 'settings' && (
-        <div className="text-gray-600">Model management and profiles (coming next).</div>
+        <div className="space-y-6">
+          <div>
+            <div className="font-semibold mb-2">Manage models</div>
+            <div className="flex items-center gap-3">
+              <button className="px-3 py-1 rounded bg-gray-200" onClick={startDownload}>Download model…</button>
+              {downloadJob && (
+                <div className="text-sm">
+                  <span className="mr-2">{downloadJob.repo}</span>
+                  <span className="mr-2">{downloadJob.pct}%</span>
+                  <span className="mr-2">{downloadJob.status}</span>
+                  <button className="text-red-600" onClick={cancelDownload}>Cancel</button>
+                </div>
+              )}
+            </div>
+          </div>
+          <div>
+            <div className="font-semibold mb-2">Profiles</div>
+            <div className="flex items-center gap-2">
+              <select className="border p-2 rounded" value={profileName} onChange={e => setProfileName(e.target.value)}>
+                <option value="">Select…</option>
+                {profiles.map(p => <option key={p} value={p}>{p}</option>)}
+              </select>
+              <button className="px-3 py-1 rounded bg-gray-200" onClick={async () => {
+                if (!profileName) return
+                try {
+                  const data = await api.getProfile(profileName)
+                  alert('Loaded profile '+profileName+'\n'+JSON.stringify(data))
+                } catch { alert('Failed') }
+              }}>Load</button>
+              <button className="px-3 py-1 rounded bg-gray-200" onClick={async () => {
+                const name = prompt('Save profile as:')?.trim()
+                if (!name) return
+                try { await api.saveProfile(name, { savedAt: new Date().toISOString() }) ; setProfiles(p => Array.from(new Set(p.concat([name])))) } catch { alert('Failed') }
+              }}>Save As…</button>
+              <button className="px-3 py-1 rounded bg-red-100 text-red-700" onClick={async () => {
+                if (!profileName) return
+                try { await api.deleteProfile(profileName); setProfiles(p => p.filter(x => x!==profileName)); setProfileName('') } catch { alert('Failed') }
+              }}>Delete</button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-import json
 import os
 import queue
 import signal
@@ -15,6 +14,8 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 from fastapi import WebSocket
+
+from .events import EventStamper
 
 
 @dataclass
@@ -40,11 +41,11 @@ class Session:
         self.run_dir = run_dir
         self.proc: Optional[subprocess.Popen] = None
         self._stop_evt = threading.Event()
-        self.queue = queue.Queue(maxsize=1000)  # type: ignore[var-annotated]
+        self.queue: "queue.Queue[str]" = queue.Queue(maxsize=1000)
         self._reader_thread: Optional[threading.Thread] = None
+        self.stamper = EventStamper.new()
 
     def start(self) -> None:
-        # Configure env overrides for the existing pipeline
         env = os.environ.copy()
         env["GF_ASR_MODEL"] = self.cfg.asr_model_id
         env["GF_DEVICE"] = self.cfg.device
@@ -55,18 +56,17 @@ class Session:
         env["GF_PARTIAL_WORD_CAP"] = str(self.cfg.partial_word_cap)
         env["GF_OUT_DIR"] = str(self.run_dir)
         env["GF_SAVE_AUDIO"] = self.cfg.save_audio
-        # MT is controlled inside Translator via defaults; for now we don't pass mt_model_id explicitly
 
-        # Run the live CLI pipeline which writes outputs to files
         script = [sys.executable, "-m", "greenfield.cli.live_en_to_zh", "--seconds", "-1"]
         self.proc = subprocess.Popen(
             script,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             env=env,
+            start_new_session=True,
         )
-        # Start a line reader thread to avoid blocking in manager
-        def _reader():
+
+        def _reader() -> None:
             if not self.proc or not self.proc.stdout:
                 return
             f = self.proc.stdout
@@ -85,22 +85,54 @@ class Session:
                         _ = self.queue.get_nowait()
                     except Exception:
                         pass
+
         self._reader_thread = threading.Thread(target=_reader, daemon=True)
         self._reader_thread.start()
 
     def stop(self) -> None:
         if self.proc and self.proc.poll() is None:
             try:
-                self.proc.terminate()
+                try:
+                    os.killpg(self.proc.pid, signal.SIGTERM)  # type: ignore[arg-type]
+                except Exception:
+                    self.proc.terminate()
                 try:
                     self.proc.wait(timeout=3)
                 except subprocess.TimeoutExpired:
-                    self.proc.kill()
+                    try:
+                        os.killpg(self.proc.pid, signal.SIGKILL)  # type: ignore[arg-type]
+                    except Exception:
+                        self.proc.kill()
             except Exception:
                 pass
         self._stop_evt.set()
         if self._reader_thread:
-            self._reader_thread.join(timeout=1.0)
+            try:
+                self._reader_thread.join(timeout=1.0)
+            except Exception:
+                pass
+
+    def pause(self) -> None:
+        # Send SIGSTOP to process group to pause audio ingest and decoding
+        if self.proc and self.proc.poll() is None:
+            try:
+                os.killpg(self.proc.pid, signal.SIGSTOP)  # type: ignore[arg-type]
+            except Exception:
+                pass
+
+    def resume(self) -> None:
+        if self.proc and self.proc.poll() is None:
+            try:
+                os.killpg(self.proc.pid, signal.SIGCONT)  # type: ignore[arg-type]
+            except Exception:
+                pass
+
+    def finalize_now(self) -> None:
+        if self.proc and self.proc.poll() is None:
+            try:
+                os.killpg(self.proc.pid, signal.SIGUSR1)  # type: ignore[arg-type]
+            except Exception:
+                pass
 
 
 class SessionManager:
@@ -112,19 +144,14 @@ class SessionManager:
         self._downloads: Dict[str, Tuple[str, str]] = {}
         self._stop = False
         self._max_cuda_sessions = int(os.getenv("GF_MAX_CUDA_SESSIONS", "1"))
+        self._stampers: Dict[str, EventStamper] = {}
+        self._dl_procs: Dict[str, subprocess.Popen] = {}
 
-        # Start a log tailer that forwards textual logs as WS 'status' events
         t = threading.Thread(target=self._log_pump, daemon=True)
         t.start()
         self._bg_threads.append(t)
 
-        # Start a VU meter poller reading RMS/peak from saved audio if available (best effort)
-        t2 = threading.Thread(target=self._vu_pump, daemon=True)
-        t2.start()
-        self._bg_threads.append(t2)
-
     def start_session(self, cfg: SessionConfig) -> str:
-        # Simple CUDA guard
         if cfg.device == "cuda":
             with self._lock:
                 running_cuda = sum(1 for s in self._sessions.values() if s.cfg.device == "cuda")
@@ -137,7 +164,7 @@ class SessionManager:
         sess.start()
         with self._lock:
             self._sessions[sid] = sess
-        # Announce status
+            self._stampers[sid] = sess.stamper
         asyncio.create_task(self._broadcast(sid, {"type": "status", "stage": "initializing"}))
         return sid
 
@@ -154,8 +181,10 @@ class SessionManager:
         with self._lock:
             lst = self._ws.setdefault(sid, [])
             lst.append(ws)
-        # Send initial hello
-        await ws.send_json({"type": "hello", "sid": sid})
+        try:
+            await ws.send_json(self._stamp({"type": "hello", "sid": sid}, sid))
+        except Exception:
+            pass
 
     async def unregister_ws(self, sid: str, ws: WebSocket) -> None:
         with self._lock:
@@ -163,35 +192,40 @@ class SessionManager:
             if ws in lst:
                 lst.remove(ws)
 
+    def _stamp(self, payload: Dict[str, Any], sid: str) -> Dict[str, Any]:
+        with self._lock:
+            stamper = self._stampers.get(sid)
+            if not stamper:
+                stamper = EventStamper.new()
+                self._stampers[sid] = stamper
+        return stamper.stamp(payload)
+
     async def _broadcast(self, sid: str, payload: Dict[str, Any]) -> None:
-        conns: List[WebSocket]
         with self._lock:
             conns = list(self._ws.get(sid, []))
         for ws in conns:
             try:
-                await ws.send_json(payload)
+                await ws.send_json(self._stamp(payload, sid))
             except Exception:
                 pass
 
     def _log_pump(self) -> None:
-        # Tail each session's process stdout and emit status and partial/final lines heuristically
         while not self._stop:
             time.sleep(0.2)
             with self._lock:
                 items = list(self._sessions.items())
             for sid, sess in items:
-                # Drain a few lines from the session queue
                 drained = 0
-                while drained < 20:
+                while drained < 50:
                     try:
                         line = sess.queue.get_nowait()
                     except queue.Empty:
                         break
                     drained += 1
-                    text = line.strip()
+                    text = (line or "").strip()
                     if not text:
                         continue
-                    payload: Optional[Dict[str, Any]] = None
+                    payload: Dict[str, Any]
                     if text.startswith("EN ≫ "):
                         payload = {"type": "partial_en", "text": text[len("EN ≫ "):].strip()}
                     elif text.startswith("ZH* ≫ "):
@@ -200,34 +234,25 @@ class SessionManager:
                         payload = {"type": "final_en", "text": text.split(":", 1)[1].strip()}
                     elif text.startswith("ZH:"):
                         payload = {"type": "final_zh", "text": text.split(":", 1)[1].strip()}
+                    elif text.startswith("VU "):
+                        parts = text.split()
+                        payload = {"type": "vu"}
+                        try:
+                            if len(parts) >= 3:
+                                payload.update({"rms": float(parts[1]), "peak": float(parts[2])})
+                            if len(parts) >= 4:
+                                payload.update({"clip_pct": float(parts[3])})
+                        except Exception:
+                            pass
                     elif "Ready — start speaking now" in text:
                         payload = {"type": "status", "stage": "operational", "log": text}
                     else:
                         payload = {"type": "status", "log": text}
-                    # Fire and forget
                     try:
                         asyncio.run(self._broadcast(sid, payload))
                     except RuntimeError:
-                        # If already in an event loop, schedule a task via loop
                         loop = asyncio.get_event_loop()
                         loop.create_task(self._broadcast(sid, payload))
-
-    def _vu_pump(self) -> None:
-        # Best-effort VU meter: if session configured to save audio as WAV/FLAC, we can't tail easily.
-        # Instead, estimate from recent partial/final print cadence — as a placeholder, emit random-like levels.
-        import random
-
-        while not self._stop:
-            time.sleep(0.5)
-            with self._lock:
-                sids = list(self._sessions.keys())
-            for sid in sids:
-                vu = {"type": "vu", "rms": random.uniform(0.05, 0.35), "peak": random.uniform(0.2, 0.8)}
-                try:
-                    asyncio.run(self._broadcast(sid, vu))
-                except RuntimeError:
-                    loop = asyncio.get_event_loop()
-                    loop.create_task(self._broadcast(sid, vu))
 
     # Download management
     def start_download_job(self, job_id: str, repo_id: str, typ: str) -> None:
@@ -236,29 +261,87 @@ class SessionManager:
         self._bg_threads.append(t)
 
     def _download_worker(self, job_id: str, repo_id: str, typ: str) -> None:
-        # Lazy import to keep server fast
+        chan = f"_download/{job_id}"
         try:
-            from huggingface_hub import snapshot_download  # type: ignore
-        except Exception:
-            # Emit error
-            asyncio.run(self._broadcast("_download", {"type": "error", "job_id": job_id, "error": "huggingface_hub not installed"}))
-            return
+            asyncio.run(self._broadcast(chan, {"type": "download_progress", "job_id": job_id, "repo_id": repo_id, "pct": 0}))
+        except RuntimeError:
+            loop = asyncio.get_event_loop()
+            loop.create_task(self._broadcast(chan, {"type": "download_progress", "job_id": job_id, "repo_id": repo_id, "pct": 0}))
 
-        def cb(prog: int, total: int) -> None:
-            pct = int(100 * (prog / max(1, total)))
-            try:
-                asyncio.run(self._broadcast("_download", {"type": "download_progress", "job_id": job_id, "repo_id": repo_id, "progress": pct}))
-            except RuntimeError:
-                loop = asyncio.get_event_loop()
-                loop.create_task(self._broadcast("_download", {"type": "download_progress", "job_id": job_id, "repo_id": repo_id, "progress": pct}))
-
+        code = (
+            "from huggingface_hub import snapshot_download;"
+            f"p=snapshot_download('{repo_id}', local_dir=None);"
+            "print(p)"
+        )
         try:
-            # Some versions of huggingface_hub accept a progress callback via hooks.
-            snapshot_download(repo_id, local_dir=None)
-            cb(1, 1)
+            proc = subprocess.Popen([sys.executable, "-c", code], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, start_new_session=True)
         except Exception as e:
             try:
-                asyncio.run(self._broadcast("_download", {"type": "error", "job_id": job_id, "error": str(e)}))
+                asyncio.run(self._broadcast(chan, {"type": "download_error", "job_id": job_id, "message": str(e)}))
             except RuntimeError:
                 loop = asyncio.get_event_loop()
-                loop.create_task(self._broadcast("_download", {"type": "error", "job_id": job_id, "error": str(e)}))
+                loop.create_task(self._broadcast(chan, {"type": "download_error", "job_id": job_id, "message": str(e)}))
+            return
+
+        with self._lock:
+            self._dl_procs[job_id] = proc
+            if chan not in self._stampers:
+                self._stampers[chan] = EventStamper.new()
+
+        def heartbeats() -> None:
+            pct = 0
+            while proc.poll() is None and not self._stop:
+                try:
+                    asyncio.run(self._broadcast(chan, {"type": "download_progress", "job_id": job_id, "repo_id": repo_id, "pct": pct}))
+                except RuntimeError:
+                    loop = asyncio.get_event_loop()
+                    loop.create_task(self._broadcast(chan, {"type": "download_progress", "job_id": job_id, "repo_id": repo_id, "pct": pct}))
+                pct = min(99, pct + 1)
+                time.sleep(1.0)
+
+        hb = threading.Thread(target=heartbeats, daemon=True)
+        hb.start()
+
+        out = ""
+        try:
+            if proc.stdout:
+                try:
+                    out = proc.stdout.read().decode("utf-8", errors="ignore").strip()
+                except Exception:
+                    out = ""
+            ret = proc.wait()
+        finally:
+            with self._lock:
+                self._dl_procs.pop(job_id, None)
+
+        if ret == 0:
+            try:
+                asyncio.run(self._broadcast(chan, {"type": "download_done", "job_id": job_id, "local_path": out}))
+            except RuntimeError:
+                loop = asyncio.get_event_loop()
+                loop.create_task(self._broadcast(chan, {"type": "download_done", "job_id": job_id, "local_path": out}))
+        else:
+            try:
+                asyncio.run(self._broadcast(chan, {"type": "download_error", "job_id": job_id, "message": out or f'rc={ret}'}))
+            except RuntimeError:
+                loop = asyncio.get_event_loop()
+                loop.create_task(self._broadcast(chan, {"type": "download_error", "job_id": job_id, "message": out or f'rc={ret}'}))
+
+    def cancel_download(self, job_id: str) -> bool:
+        with self._lock:
+            proc = self._dl_procs.get(job_id)
+        if not proc or proc.poll() is not None:
+            return False
+        try:
+            os.killpg(proc.pid, signal.SIGTERM)  # type: ignore[arg-type]
+            try:
+                proc.wait(timeout=3)
+            except subprocess.TimeoutExpired:
+                os.killpg(proc.pid, signal.SIGKILL)  # type: ignore[arg-type]
+            return True
+        except Exception:
+            try:
+                proc.terminate()
+                return True
+            except Exception:
+                return False
