@@ -1,76 +1,14 @@
-# Python / packaging
 __pycache__/
-*.py[cod]
-*.pyo
-*.pyd
-*$py.class
-*.so
-build/
-dist/
-.eggs/
-*.egg
-*.egg-info/
-
-# Virtual environments / env files
 .venv/
-/.direnv/
-venv/
-env/
 .env
 .env.*
-!.env.example
-
-# Editors / OS files
-.DS_Store
-.idea/
-.vscode/
-*.code-workspace
-*.swp
-
-# Caches / tooling
+build/
+dist/
+*.egg-info/
+.coverage
+.htmlcov/
 .pytest_cache/
-.mypy_cache/
-.ruff_cache/
-.ipynb_checkpoints/
-.cache/
-
-# Runtime outputs
-out/
-logs/
-reports/
-artifacts/
-tmp/
-*.log
-
-# Project-specific outputs
-models/
-run/output/*.vtt
-run/output/logs/
-
-# Media captures
-*.wav
-*.mp3
-*.flac
-*.ogg
-
-# Model blobs / tokenizer files
-**/pytorch_model.bin
-**/*.safetensors
-**/tf_model.h5
-**/model.safetensors
-**/tokenizer.json
-**/tokenizer.model
-**/spiece.model
-**/merges.txt
-**/vocab.json
-**/special_tokens_map.json
-**/generation_config.json
-huggingface/
-hf_cache/
-datasets/
-
-# Submodules / native build artifacts
-third_party/whisper.cpp/build/
-
-# Docs / reviews generated in repo
-GPT5_REVIEW.md
+loquilex/out/
+.vscode/
+*.swp
+.DS_Store

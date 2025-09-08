@@ -1,8 +1,32 @@
-[tool.black]
-line-length = 100
-target-version = ["py310"]
+[build-system]
+requires = ["setuptools>=68", "wheel", "build"]
+build-backend = "setuptools.build_meta"
 
-[tool.ruff]
-line-length = 100
-target-version = "py310"
-select = ["E", "F", "I"]
+[project]
+name = "loquilex"
+version = "0.1.0"
+description = "LoquiLex — low-latency live EN→VTT→ZH with VAD, timestamped cues, and NLLB/M2M fallback."
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [{ name = "LoquiLex Team" }]
+dependencies = [
+  "faster-whisper",
+  "transformers",
+  "sentencepiece",
+  "torch",
+  "sounddevice",
+  "numpy",
+  "accelerate",
+  "webvtt-py",
+  "fastapi",
+  "uvicorn[standard]",
+  "rich",
+]
+
+[project.scripts]
+loquilex-live = "loquilex.cli.live_en_to_zh:main"
+loquilex-wav-to-vtt = "loquilex.cli.wav_to_vtt:main"
+loquilex-vtt-to-zh = "loquilex.cli.vtt_to_zh:main"
+
+[tool.setuptools]
+packages = { find = { where = ["."], include = ["loquilex*"], exclude = ["tests*", "ui*", "scripts*", "*__pycache__*"] } }
