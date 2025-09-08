@@ -3,6 +3,8 @@
 loquilex.egg-info/
 next-task-review.md
 next-task.md
+.github/
+.direnv/
 .venv/
 .env
 .env.*
@@ -16,3 +18,8 @@ loquilex/out/
 .vscode/
 *.swp
 .DS_Store
+__pycache__/
+*.py[cod]
+*$py.class
+AGENTS.old.md
+agent/
