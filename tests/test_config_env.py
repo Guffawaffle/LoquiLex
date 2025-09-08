@@ -10,7 +10,7 @@ def test_env_overrides(monkeypatch):
     monkeypatch.setenv("GF_SAVE_AUDIO", "flac")
     monkeypatch.setenv("GF_SAVE_AUDIO_PATH", "loquilex/out/session.flac")
     # Reload module to pick env
-    mod = importlib.import_module("greenfield.config.defaults")
+    from loquilex.config import defaults as mod
     importlib.reload(mod)
     assert mod.RT.max_lines == 123
     assert mod.RT.partial_word_cap == 9

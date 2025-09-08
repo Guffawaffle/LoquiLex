@@ -6,8 +6,11 @@ import numpy as np
 
 
 def test_cli_runs_with_fake_capture_and_translator(monkeypatch, tmp_path: Path):
+    import loquilex.mt.translator as tr
+    import loquilex.cli.live_en_to_zh as cli
     # Patch capture_stream to emit a few silent frames then stop
-    import greenfield.audio.capture as cap
+    import loquilex.audio.capture as cap
+    import numpy as np
 
     def fake_capture_stream(cb):
         frames = 6
@@ -26,7 +29,7 @@ def test_cli_runs_with_fake_capture_and_translator(monkeypatch, tmp_path: Path):
     monkeypatch.setattr(cap, "capture_stream", fake_capture_stream)
 
     # Patch translator to echo quickly
-    import greenfield.mt.translator as tr
+    from loquilex.mt.translator import Translator, TranslationResult
     class Echo:
         def __init__(self):
             pass
@@ -38,7 +41,7 @@ def test_cli_runs_with_fake_capture_and_translator(monkeypatch, tmp_path: Path):
     monkeypatch.setattr(tr, "Translator", Echo)
 
     # Run CLI main with short seconds and custom output dir
-    from greenfield.cli import live_en_to_zh as cli
+    from loquilex.cli.live_en_to_zh import main as cli_main
     outdir = tmp_path / "out"
     args = [
         "--seconds", "1",

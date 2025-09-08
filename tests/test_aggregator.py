@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import time
 
-from greenfield.segmentation.aggregator import Aggregator
+from loquilex.segmentation.aggregator import Aggregator
 
 
 def test_aggregator_partial_debounce():

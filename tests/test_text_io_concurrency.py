@@ -3,7 +3,7 @@ from __future__ import annotations
 import threading
 from pathlib import Path
 
-from greenfield.output.text_io import RollingTextFile
+from loquilex.output.text_io import RollingTextFile
 
 
 def test_rolling_text_concurrent_appends_and_rewrites(tmp_path: Path):

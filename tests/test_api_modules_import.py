@@ -2,18 +2,18 @@ from __future__ import annotations
 
 def test_import_api_modules_for_coverage():
     # Import FastAPI modules if available; otherwise skip gracefully
+
     try:
         __import__("fastapi")
-        __import__("greenfield.api.server")
-        __import__("greenfield.api.supervisor")
+        import loquilex.api.server
+        import loquilex.api.supervisor
+        import loquilex.api.model_discovery
     except Exception:
         pass
-    # model_discovery should be importable
-    __import__("greenfield.api.model_discovery")
 
     # Exercise events and vu helpers
-    from greenfield.api.events import EventStamper
-    from greenfield.api.vu import rms_peak, EmaVu
+    from loquilex.api.events import EventStamper
+    from loquilex.api.vu import rms_peak, EmaVu
     import numpy as np
 
     st = EventStamper.new()

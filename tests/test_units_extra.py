@@ -3,12 +3,12 @@ from __future__ import annotations
 import importlib
 import types
 
-from greenfield.output.vtt import _ts as _vtt_ts
-from greenfield.output.srt import _ts as _srt_ts
-from greenfield.mt.translator import _dtype_kwargs, Translator
-from greenfield.config import defaults as cfg_defaults
-from greenfield.config.defaults import pick_device
-from greenfield.post.zh_text import normalize_punctuation, post_process
+from loquilex.output.vtt import _ts as _vtt_ts
+from loquilex.output.srt import _ts as _srt_ts
+from loquilex.mt.translator import _dtype_kwargs, Translator
+from loquilex.config import defaults as cfg_defaults
+from loquilex.config.defaults import pick_device
+from loquilex.post.zh_text import normalize_punctuation, post_process
 
 
 def test_timestamp_formatting_helpers():

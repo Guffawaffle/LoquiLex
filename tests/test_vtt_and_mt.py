@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from greenfield.output.vtt import write_vtt
-from greenfield.mt.translator import Translator
+from loquilex.output.vtt import write_vtt
+from loquilex.mt.translator import Translator
 import os
 
 

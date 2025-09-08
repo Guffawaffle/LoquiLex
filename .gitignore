@@ -1,3 +1,6 @@
+# Egg-info
+*.egg-info
+loquilex.egg-info/
 __pycache__/
 .venv/
 .env
