@@ -30,3 +30,15 @@ loquilex-vtt-to-zh = "loquilex.cli.vtt_to_zh:main"
 
 [tool.setuptools]
 packages = { find = { where = ["."], include = ["loquilex*"], exclude = ["tests*", "ui*", "scripts*", "*__pycache__*"] } }
+
+[project.optional-dependencies]
+dev = [
+  "pytest",
+  "pytest-cov",
+  "pytest-timeout",
+  "pytest-mock",
+  "freezegun",
+  "numpy",
+  "black",
+  "ruff",
+]
