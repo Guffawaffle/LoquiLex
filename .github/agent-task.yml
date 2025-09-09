@@ -1,0 +1,20 @@
+name: Agent Task
+description: Delegate a coding task to Copilot
+title: "[Agent] <short title>"
+labels: ["agent", "automated"]
+body:
+  - type: textarea
+    id: goal
+    attributes:
+      label: Goal
+      description: What should be built/fixed? One paragraph max.
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance Criteria
+      description: Bullet points the PR must satisfy.
+  - type: textarea
+    id: constraints
+    attributes:
+      label: Constraints & Risks
+      description: Boundaries, risky areas, or files to avoid.
