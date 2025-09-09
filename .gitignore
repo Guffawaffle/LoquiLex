@@ -1,10 +1,6 @@
 # Egg-info
 *.egg-info
 loquilex.egg-info/
-next-task-review.md
-next-task.md
-.github/copilot/new-task-deliverables.md
-.github/
 .direnv/
 .venv/
 .env
@@ -22,14 +18,9 @@ loquilex/out/
 __pycache__/
 *.py[cod]
 *$py.class
-AGENTS.old.md
-agent/
 
 # Server logs
 .uvicorn.log
 
 # Output directory
 out/
-
-# Temporary agent files
-xxAGENTS.md
