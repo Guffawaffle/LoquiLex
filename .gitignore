@@ -25,3 +25,8 @@ __pycache__/
 
 # Output directory
 out/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+htmlcov/
