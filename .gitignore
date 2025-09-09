@@ -4,7 +4,7 @@ loquilex.egg-info/
 next-task-review.md
 next-task.md
 .github/copilot/new-task-deliverables.md
-.github/
+.github/copilot/
 .direnv/
 .venv/
 .env
