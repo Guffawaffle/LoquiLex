@@ -1,8 +1,6 @@
 from __future__ import annotations
 
-import types
 from pathlib import Path
-import numpy as np
 
 
 def test_cli_runs_with_fake_capture_and_translator(monkeypatch, tmp_path: Path):
@@ -16,6 +14,7 @@ def test_cli_runs_with_fake_capture_and_translator(monkeypatch, tmp_path: Path):
         frames = 6
         sr = 16000
         chunk = np.zeros(sr // 5, dtype=np.float32)  # 200ms per frame
+
         class Stopper:
             def __call__(self):
                 pass
@@ -29,19 +28,21 @@ def test_cli_runs_with_fake_capture_and_translator(monkeypatch, tmp_path: Path):
     monkeypatch.setattr(cap, "capture_stream", fake_capture_stream)
 
     # Patch translator to echo quickly
-    from loquilex.mt.translator import Translator, TranslationResult
+
     class Echo:
+
         def __init__(self):
             pass
+
         def translate_en_to_zh(self, text):
             return tr.TranslationResult(text, "echo")
+
         def translate_en_to_zh_draft(self, text):
             return tr.TranslationResult(text, "echo:draft")
 
     monkeypatch.setattr(tr, "Translator", Echo)
 
     # Run CLI main with short seconds and custom output dir
-    from loquilex.cli.live_en_to_zh import main as cli_main
     outdir = tmp_path / "out"
     args = [
         "--seconds", "1",
@@ -56,6 +57,7 @@ def test_cli_runs_with_fake_capture_and_translator(monkeypatch, tmp_path: Path):
     monkeypatch.setenv("PYTHONUNBUFFERED", "1")
 
     # Wrap main to parse our args
+
     def run_with_args():
         import sys
         old = sys.argv

@@ -10,9 +10,8 @@ We scan common cache locations:
 
 import os
 import re
-from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List
 
 
 def _env_paths() -> List[Path]:

@@ -18,7 +18,7 @@ from loquilex.audio.capture import capture_stream
 from loquilex.asr.whisper_engine import WhisperEngine, Segment
 from loquilex.segmentation.aggregator import Aggregator
 from loquilex.output.vtt import write_vtt, append_vtt_cue
-from loquilex.output.srt import write_srt, append_srt_cue
+from loquilex.output.srt import append_srt_cue
 from loquilex.mt.translator import Translator
 from loquilex.post.zh_text import post_process
 from loquilex.config.defaults import RT, ASR
@@ -58,10 +58,6 @@ def main() -> None:
     args = ap.parse_args()
 
     out_vtt = args.out_prefix + ".vtt"  # legacy combined if used
-    out_txt = args.out_prefix + "_zh.txt"  # legacy
-    out_srt = args.out_prefix + "_zh.srt"  # legacy
-    out_vtt_en = args.out_prefix + "_en.vtt"  # legacy
-    out_vtt_zh = args.out_prefix + "_zh.vtt"  # legacy
     out_live_en = args.out_prefix + "_live_en.txt"  # legacy
     out_live_zh = args.out_prefix + "_live_zh.txt"  # legacy
     os.makedirs(os.path.dirname(args.partial_en), exist_ok=True)
@@ -147,8 +143,9 @@ def main() -> None:
     audio_since_reset = 0.0  # seconds fed to engine since its last reset
 
     def on_partial(txt: str) -> None:
-        nonlocal last_zh_partial_emit, last_zh_partial_text, last_en_partial_text, last_en_partial_print
+        nonlocal last_zh_partial_emit, last_zh_partial_text, last_en_partial_text
         now = time.monotonic()
+
         def emit(s: str) -> None:
             nonlocal last_en_partial_print
             if now - last_en_partial_print >= RT.partial_debounce_sec:
@@ -258,7 +255,6 @@ def main() -> None:
     # Proper capture loop; start capture and set start time on first frame
     frames: List[np.ndarray] = []
     mt_dropped = 0
-    pre_capture_mono = time.monotonic()
 
     # Optional audio recording sinks
     audio_mode = args.save_audio
@@ -296,7 +292,7 @@ def main() -> None:
     last_vu = 0.0
 
     def feed(fr) -> None:
-        nonlocal session_t0_mono, last_t1_mono, audio_since_reset
+        nonlocal session_t0_mono, last_t1_mono, audio_since_reset, last_vu
         if session_t0_mono is None:
             session_t0_mono = time.monotonic()
         frames.append(fr.data)

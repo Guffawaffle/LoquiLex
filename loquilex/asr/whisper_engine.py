@@ -6,7 +6,7 @@ Emits partial text quickly and final segments on end-of-speech or max length.
 """
 
 from dataclasses import dataclass
-from typing import Callable, Iterable, Iterator, Optional, List
+from typing import Callable, Iterable, Optional, List
 import time
 
 import numpy as np
@@ -99,7 +99,7 @@ class WhisperEngine:
         samples_iter: Iterable[np.ndarray],
         on_partial: Callable[[str], None],
         on_segment: Callable[[Segment], None],
-    on_words: Optional[Callable[[List[Word]], None]] = None,
+        on_words: Optional[Callable[[List[Word]], None]] = None,
     ) -> None:
         """Stateful streaming with ring buffer, debounced partials, and EoS heuristic.
 
@@ -152,7 +152,7 @@ class WhisperEngine:
                             a, b = 0.0, 0.0
                         flat_words.append(Word(a, b, (txt or "").strip()))
                 if self._words_emitted < len(flat_words):
-                    new_ws = flat_words[self._words_emitted :]
+                    new_ws = flat_words[self._words_emitted:]
                     # update before callback to avoid reentrancy issues
                     self._words_emitted = len(flat_words)
                     # filter empty

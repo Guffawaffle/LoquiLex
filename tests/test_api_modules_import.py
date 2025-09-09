@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+
 def test_import_api_modules_for_coverage():
     # Import FastAPI modules if available; otherwise skip gracefully
 
@@ -8,6 +9,8 @@ def test_import_api_modules_for_coverage():
         import loquilex.api.server
         import loquilex.api.supervisor
         import loquilex.api.model_discovery
+        # Access the modules to avoid unused import warnings
+        _ = loquilex.api.server, loquilex.api.supervisor, loquilex.api.model_discovery
     except Exception:
         pass
 

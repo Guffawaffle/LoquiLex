@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import os
 import warnings
-from functools import lru_cache
 from typing import Callable, TypeVar
 from dataclasses import dataclass
 
@@ -16,6 +15,7 @@ T = TypeVar("T")
 
 # Module-level deprecation guard
 _WARNED_GF = set()
+
 
 def _warn_once(name_gf: str) -> None:
     if name_gf not in _WARNED_GF:
@@ -26,8 +26,10 @@ def _warn_once(name_gf: str) -> None:
         )
         _WARNED_GF.add(name_gf)
 
+
 def _coerce(val: str, caster: Callable[[str], T]) -> T:
     return caster(val)
+
 
 def _env_lx_or_gf(name_lx: str, name_gf: str, default: str) -> str:
     if (v := os.getenv(name_lx)) is not None:
@@ -37,9 +39,13 @@ def _env_lx_or_gf(name_lx: str, name_gf: str, default: str) -> str:
         return v
     return default
 
+    return default
+
+
 def _env_bool(name_lx: str, name_gf: str, default: bool) -> bool:
     raw = _env_lx_or_gf(name_lx, name_gf, str(default))
     return raw.lower() in {"1", "true", "yes", "on"}
+
 
 def _env_int(name_lx: str, name_gf: str, default: int) -> int:
     raw = _env_lx_or_gf(name_lx, name_gf, str(default))
@@ -48,13 +54,13 @@ def _env_int(name_lx: str, name_gf: str, default: int) -> int:
     except Exception:
         return default
 
+
 def _env_float(name_lx: str, name_gf: str, default: float) -> float:
     raw = _env_lx_or_gf(name_lx, name_gf, str(default))
     try:
         return float(raw)
     except Exception:
         return default
-
 
 
 _DEFAULT_SAVE_AUDIO = _env_lx_or_gf("LX_SAVE_AUDIO", "GF_SAVE_AUDIO", "off")

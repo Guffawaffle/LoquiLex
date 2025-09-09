@@ -29,7 +29,6 @@ from pydantic import BaseModel, Field
 
 from .model_discovery import list_asr_models, list_mt_models, mt_supported_languages
 from .supervisor import SessionConfig, SessionManager
-from .events import EventStamper
 
 
 # Allow localhost and 127.0.0.1 by default for dev. Can be overridden via LLX_ALLOWED_ORIGINS.
@@ -50,6 +49,7 @@ app.add_middleware(
 OUT_ROOT = Path(os.getenv("LLX_OUT_DIR", "loquilex/out")).resolve()
 OUT_ROOT.mkdir(parents=True, exist_ok=True)
 
+
 def _safe_session_dir(sid: str) -> Path:
     if not re.fullmatch(r"[A-Za-z0-9_-]{6,64}", sid):
         raise HTTPException(status_code=400, detail="bad sid")
@@ -58,10 +58,12 @@ def _safe_session_dir(sid: str) -> Path:
         raise HTTPException(status_code=400, detail="invalid path")
     return p
 
+
 app.mount("/out", StaticFiles(directory=str(OUT_ROOT), html=False), name="out")
 
 # Global manager instance
 MANAGER = SessionManager()
+
 
 class CreateSessionReq(BaseModel):
     name: Optional[str] = Field(default=None)
@@ -77,10 +79,12 @@ class CreateSessionReq(BaseModel):
     partial_word_cap: int = Field(default=10)
     save_audio: str = Field(default="off")  # off|wav|flac
 
+
 class CreateSessionResp(BaseModel):
     session_id: str
 
 # (Mounted above)
+
 
 class DownloadReq(BaseModel):
     repo_id: str
@@ -95,6 +99,7 @@ class SelfTestReq(BaseModel):
     asr_model_id: str | None = None
     device: str = Field(default="auto")
     seconds: float = Field(default=1.5)
+
 
 class SelfTestResp(BaseModel):
     ok: bool
@@ -270,6 +275,7 @@ async def stop_session(sid: str) -> Dict[str, Any]:
         raise HTTPException(status_code=404, detail="session not found")
     return {"stopped": True}
 
+
 @app.post("/sessions/{sid}/pause")
 async def pause_session(sid: str) -> Dict[str, Any]:
     sess = MANAGER._sessions.get(sid)
@@ -277,6 +283,7 @@ async def pause_session(sid: str) -> Dict[str, Any]:
         raise HTTPException(status_code=404, detail="session not found")
     sess.pause()
     return {"ok": True}
+
 
 @app.post("/sessions/{sid}/resume")
 async def resume_session(sid: str) -> Dict[str, Any]:
@@ -286,6 +293,7 @@ async def resume_session(sid: str) -> Dict[str, Any]:
     sess.resume()
     return {"ok": True}
 
+
 @app.post("/sessions/{sid}/finalize")
 async def finalize_session(sid: str) -> Dict[str, Any]:
     sess = MANAGER._sessions.get(sid)
@@ -293,6 +301,7 @@ async def finalize_session(sid: str) -> Dict[str, Any]:
         raise HTTPException(status_code=404, detail="session not found")
     sess.finalize_now()
     return {"ok": True}
+
 
 @app.get("/sessions/{sid}/snapshot")
 async def get_snapshot(sid: str) -> Dict[str, Any]:

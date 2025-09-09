@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from loquilex.output.vtt import write_vtt
 from loquilex.mt.translator import Translator
-import os
 
 
 def test_vtt_monotonic(tmp_path):

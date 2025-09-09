@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional
 import contextlib
 
 from loquilex.config.defaults import MT, pick_device

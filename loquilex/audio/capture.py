@@ -8,11 +8,10 @@ Produces 16 kHz mono float32 frames. Never writes files. No side effects on impo
 import queue
 import shutil
 import subprocess
-import sys
 import threading
 import time
 from dataclasses import dataclass
-from typing import Callable, Iterable, Optional
+from typing import Callable
 
 import numpy as np
 
