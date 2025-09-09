@@ -23,3 +23,12 @@ __pycache__/
 *$py.class
 AGENTS.old.md
 agent/
+
+# Server logs
+.uvicorn.log
+
+# Output directory
+out/
+
+# Temporary agent files
+xxAGENTS.md
