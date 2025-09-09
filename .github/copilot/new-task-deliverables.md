@@ -1,26 +1,6 @@
-# New Task (Starter Ticket)
+# LoquiLex — Goals & Scope (Updated, Authoritative)
+**Mission:** A smooth, self‑hosted, near‑real‑time EN↔ZH caption/translation pipeline for power users. Private, low‑latency, reliable.
 
-## 1) Model Header
-Model: GPT-5 mini (free)
-Fallbacks: o4-mini (0.33×) → GPT-5 (1×)
-
-## 2) Context Recap
-Project bootstrap scaffolding: Copilot/Agents integration, prompt rotation, and task flow.
-
-## 3) Goals
-- Define/modify tasks with the 7-section structure.
-- Provide Copilot with clear deliverables.
-
-## 4) Changes to Implement
-- Fill this section when defining a new task.
-
-## 5) Deliverables
-- Place outputs into the copilot folder (new/current/next-task-deliverables.md).
-
-## 6) Acceptance Criteria / Test Checklist
-- Explicit steps and expected outcomes.
-
-## 7) Notes / Caveats
-- Keep prompts concise and Markdown fences closed.
-
-_Created: 2025-09-08_
+# Grok Code Fast 1 — Hardening & Future‑Proofing Prompt (LoquiLex)
+## Role & Objective
+Act as a **cooperative test lead and systems hardener**. Ensure LoquiLex’s **server↔client communication** (REST + WebSockets + worker supervision) is functionally correct, robust under stress, and future‑proof for scaling beyond a single host.
