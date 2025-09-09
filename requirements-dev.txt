@@ -2,7 +2,10 @@ pytest
 pytest-cov
 pytest-timeout
 pytest-mock
+pytest-asyncio
 freezegun
 numpy
 black
 ruff
+websockets
+httpx
