@@ -60,32 +60,41 @@ def list_asr_models() -> List[Dict]:
                 seen.add(rec["id"])
 
     # faster-whisper by model id (names only) — we don't enumerate CT2 dirs reliably
-    # Provide a minimal list of common models as present if HF cache has them
-    common = [
-        "tiny.en",
-        "base.en",
-        "small.en",
-        "medium.en",
-        "large-v3",
-    ]
+    # Check for actual downloaded models in HF cache
+    model_mappings = {
+        "tiny.en": ["models--Systran--faster-whisper-tiny.en", "models--*--tiny*"],
+        "base.en": ["models--Systran--faster-whisper-base.en", "models--*--base*"],
+        "small.en": ["models--Systran--faster-whisper-small.en", "models--*--small*"],
+        "medium.en": ["models--Systran--faster-whisper-medium.en", "models--*--medium*"],
+        "large-v3": ["models--Systran--faster-whisper-large-v2", "models--*--large*"],
+    }
+
     caches = _env_paths()
-    for mid in common:
+    for mid, patterns in model_mappings.items():
         for c in caches:
-            # Transformers cache layout varies; attempt a heuristic presence check
-            hits = list(c.rglob(f"**/{mid}*"))
-            if hits:
-                rec = {
-                    "id": mid,
-                    "name": mid,
-                    "source": "hf",
-                    "quant": None,
-                    "path": str(hits[0].parent),
-                    "size_bytes": 0,
-                    "language": "en",
-                }
-                if rec["id"] not in seen:
-                    out.append(rec)
-                    seen.add(rec["id"])
+            hub_dir = c / "hub"
+            if not hub_dir.exists():
+                continue
+
+            found = False
+            for pattern in patterns:
+                hits = list(hub_dir.glob(pattern))
+                if hits:
+                    rec = {
+                        "id": mid,
+                        "name": mid,
+                        "source": "hf",
+                        "quant": None,
+                        "path": str(hits[0]),
+                        "size_bytes": 0,
+                        "language": "en",
+                    }
+                    if rec["id"] not in seen:
+                        out.append(rec)
+                        seen.add(rec["id"])
+                    found = True
+                    break
+            if found:
                 break
 
     return out
@@ -104,10 +113,11 @@ def list_mt_models() -> List[Dict]:
         leaf = parts[-1]
         present = False
         for c in caches:
-            hits = list(c.rglob(f"**/{leaf}*"))
+            # Check both direct glob and recursive rglob for model directories
+            hits = list(c.glob(f"**/models--*--{leaf}*")) + list(c.rglob(f"**/{leaf}*"))
             if hits:
                 present = True
-                path = str(hits[0].parent)
+                path = str(hits[0].parent if hits[0].parent.name.startswith('models--') else hits[0].parent.parent)
                 break
         if present:
             rec = {"id": cid, "name": leaf, "langs": ["zho_Hans"], "path": path}
