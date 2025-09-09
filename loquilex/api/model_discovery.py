@@ -10,9 +10,9 @@ We scan common cache locations:
 
 import os
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass  # noqa: F401
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List
 
 
 def _env_paths() -> List[Path]:
@@ -117,7 +117,7 @@ def list_mt_models() -> List[Dict]:
             hits = list(c.glob(f"**/models--*--{leaf}*")) + list(c.rglob(f"**/{leaf}*"))
             if hits:
                 present = True
-                path = str(hits[0].parent if hits[0].parent.name.startswith('models--') else hits[0].parent.parent)
+                path = str(hits[0].parent if hits[0].parent.name.startswith("models--") else hits[0].parent.parent)
                 break
         if present:
             rec = {"id": cid, "name": leaf, "langs": ["zho_Hans"], "path": path}

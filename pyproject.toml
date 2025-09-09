@@ -42,3 +42,6 @@ dev = [
   "black",
   "ruff",
 ]
+
+[tool.black]
+line-length = 196

@@ -27,8 +27,10 @@ def test_rolling_text_concurrent_appends_and_rewrites(tmp_path: Path):
 
     t1 = threading.Thread(target=appender)
     t2 = threading.Thread(target=rewriter)
-    t1.start(); t2.start()
-    t1.join(); t2.join()
+    t1.start()
+    t2.start()
+    t1.join()
+    t2.join()
     stop.set()
 
     content = p.read_text(encoding="utf-8")
