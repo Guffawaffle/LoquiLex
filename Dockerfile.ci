@@ -1,36 +1,29 @@
-# Dockerfile.ci - Exact CI environment replication
-FROM ubuntu:latest
+FROM python:3.12-slim AS base
 
-# Same base as GitHub Actions ubuntu-latest
-RUN apt-get update && apt-get install -y \
-    python3.12 \
-    python3.12-venv \
-    python3-pip \
-    git \
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    VENV=/opt/venv \
+    PATH="/opt/venv/bin:$PATH" \
+    HF_HUB_OFFLINE=1 \
+    TRANSFORMERS_OFFLINE=1 \
+    HF_HUB_DISABLE_TELEMETRY=1 \
+    LOQUILEX_OFFLINE=1
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        git build-essential \
     && rm -rf /var/lib/apt/lists/*
 
-# Create symlink for python
-RUN ln -s /usr/bin/python3.12 /usr/bin/python
+RUN python -m venv $VENV
 
-# Set working directory
-WORKDIR /workspace
+WORKDIR /app
 
-# Copy project files
+COPY requirements.txt ./
+RUN if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+RUN pip install --upgrade pip && \
+    pip install ruff black mypy pytest
+
 COPY . .
 
-# Set exact CI environment variables
-ENV HF_HUB_OFFLINE=1
-ENV TRANSFORMERS_OFFLINE=1
-ENV HF_HUB_DISABLE_TELEMETRY=1
-ENV LOQUILEX_OFFLINE=1
-
-# Install dependencies exactly like CI
-RUN python -m pip install -U pip && \
-    ([ -f requirements.txt ] && pip install -r requirements.txt || true) && \
-    ([ -f requirements-dev.txt ] && pip install -r requirements-dev.txt || pip install httpx)
-
-# Install CI tools
-RUN pip install ruff black mypy
-
-# Default command runs all CI checks
-CMD ["bash", "-c", "ruff check . && black --check . && (mypy loquilex || true) && pytest -m 'not e2e' -vv -rA --maxfail=1 --disable-warnings && pytest -q --maxfail=1 -m e2e --disable-warnings --no-header --no-summary"]
+ENTRYPOINT ["/bin/bash"]

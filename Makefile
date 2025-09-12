@@ -46,3 +46,9 @@ run-zh:
 
 clean:
 	rm -rf .pytest_cache out .coverage
+
+.PHONY: docker-ci
+docker-ci:
+	@echo "=== Running CI in Docker (Dockerfile.ci) ==="
+	docker build -f Dockerfile.ci -t loquilex-ci .
+	docker run --rm -v $(PWD):/app loquilex-ci ./scripts/ci-entrypoint.sh
