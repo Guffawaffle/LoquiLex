@@ -71,8 +71,10 @@ def _patch_translator() -> None:
 @pytest.fixture(autouse=True)
 def forbid_network(monkeypatch):
     """Network guard to block external connections during tests."""
+
     def _blocked(*a, **k):
         raise RuntimeError("Network disabled in tests")
+
     monkeypatch.setattr(socket, "create_connection", _blocked)
 
 
