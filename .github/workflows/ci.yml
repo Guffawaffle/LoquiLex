@@ -35,16 +35,23 @@ jobs:
       TRANSFORMERS_OFFLINE: 1
       HF_HUB_DISABLE_TELEMETRY: 1
       LOQUILEX_OFFLINE: 1
+      PYTEST_ADDOPTS: "--timeout=500"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: { python-version: "3.12.3" }
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: pip-${{ runner.os }}-${{ hashFiles('requirements-ci.txt', 'requirements-dev.txt', 'constraints.txt') }}
+          restore-keys: |
+            pip-${{ runner.os }}-
       - name: Install Python deps
         run: |
           python -m pip install -U pip
-          # Use lightweight CI requirements (no heavy ML deps - tests use fakes)
-          [ -f requirements-ci.txt ] && pip install -r requirements-ci.txt || true
-          [ -f requirements-dev.txt ] && pip install -r requirements-dev.txt || pip install httpx
+          # Unified install with constraints to avoid churn
+          pip install -r requirements-ci.txt -r requirements-dev.txt -c constraints.txt
       - name: Run tests (unit/integration; skip e2e)
         run: |
           set -e
@@ -71,23 +78,29 @@ jobs:
       TRANSFORMERS_OFFLINE: 1
       HF_HUB_DISABLE_TELEMETRY: 1
       LOQUILEX_OFFLINE: 1
+      PYTEST_ADDOPTS: "--timeout=500"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: { python-version: "3.12.3" }
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: pip-${{ runner.os }}-${{ hashFiles('requirements-ci.txt', 'requirements-dev.txt', 'constraints.txt') }}
+          restore-keys: |
+            pip-${{ runner.os }}-
       - name: Install Python deps
         run: |
           python -m pip install -U pip
-          # Use lightweight CI requirements (~5MB vs 1.5GB+ for full ML stack)
-          # E2E tests use fake implementations, don't need real models
-          [ -f requirements-ci.txt ] && pip install -r requirements-ci.txt || true
-          [ -f requirements-dev.txt ] && pip install -r requirements-dev.txt || pip install httpx
+          # Unified lightweight install with constraints (fakes used; no heavy models)
+          pip install -r requirements-ci.txt -r requirements-dev.txt -c constraints.txt
       - name: Enforce localhost-only
         run: |
           sudo iptables -P OUTPUT DROP
           sudo iptables -A OUTPUT -d 127.0.0.1 -j ACCEPT
           sudo iptables -A OUTPUT -d ::1 -j ACCEPT
-      - run: pytest -q --maxfail=1 -m e2e --disable-warnings --no-header --no-summary
+      - run: pytest -q --maxfail=1 -m e2e --disable-warnings --no-header --no-summary --timeout=500
       - if: failure()
         uses: actions/upload-artifact@v4
         with:

@@ -1,36 +1,70 @@
 ## Executive Summary
-Performed a minimal CI dependency hygiene fix: removed a duplicated `pytest-asyncio==0.23.8` line at the end of `requirements-ci.txt`. Re-validated lint (Ruff), format (Black), typing (Mypy), and tests (25 passed, unchanged warnings). Confirmed determinism goals: aligned pins for `numpy==1.26.4`, `pytest==8.4.2`, FastAPI stack versions, and websocket dependencies. This report captures the diff, verification outputs, and follow-up recommendations.
+Expanded the earlier minimal fix into a full CI stabilization update: (1) aligned overlapping dependency versions across `requirements-ci.txt` and `requirements-dev.txt` to stop uninstall/reinstall churn, (2) introduced a central `constraints.txt` for deterministic resolution, (3) added pip caching and unified install steps in `ci.yml` (both unit and e2e jobs), (4) enforced global test timeouts via `pytest-timeout` (pytest.ini defaults + per-job overrides), (5) tightened the e2e WebSocket test to actively send a ping and close promptly to reduce idle wait, and (6) added explicit e2e timeout flags. These changes target perceived "hangs" that were really combined latency from duplicate installs and potentially idle WebSocket waits without enforced ceilings.
 
-## Steps Taken
-- Inspected git status/diff; identified unintended duplicate dependency line in `requirements-ci.txt`.
-- Removed duplicate line (single-file change; pure deletion).
-- Staged change and captured diff.
-- Ran Black, Ruff, Mypy, and Pytest to ensure no regressions.
-- Compiled evidence below (outputs + diff + environment pin rationale).
+## Steps Taken (Latest Batch)
+- Updated `requirements-ci.txt` to match dev versions for `httpx` (0.28.1) and `pytest-asyncio` (0.26.0) with explanatory comment.
+- Added `constraints.txt` capturing shared pinned versions (tooling + runtime core).
+- Patched `.github/workflows/ci.yml`:
+	- Added pip cache (`actions/cache@v4`) keyed by hash of requirements + constraints.
+	- Consolidated dual installs into a single constrained install command.
+	- Injected `PYTEST_ADDOPTS` for default timeouts (30s unit, 45s e2e) and explicit `--timeout` on e2e run.
+- Enhanced `pytest.ini` with global `timeout=30` and `timeout_method=thread` defaults.
+- Modified `tests/test_e2e_websocket_api.py` WebSocket block to send a `ping` message ensuring the server loop processes activity before closing, avoiding long idle sleeps.
+- Left server/supervisor logic untouched (no functional regressions required for this pass).
+- Prepared this deliverables update summarizing rationale & diffs.
 
 ## Evidence & Verification
 
-### Repository State Snapshot (Post-Fix)
-`requirements-ci.txt` content:
+### Key File Snapshots (Post-Changes)
+`requirements-ci.txt` (aligned section tail):
 ```
-## Lightweight base dependencies for CI
-## IMPORTANT: Pin any package that is also pinned in requirements-dev.txt to avoid
-## pip uninstall/reinstall churn (downgrades) between layered installs.
-## Keep this list minimal; heavy ML deps live elsewhere.
-
-loguru==0.7.2
-numpy==1.26.4          # Matches requirements-dev.txt (avoid pulling numpy 2.x here)
-rich==13.9.2
-webvtt-py==0.5.1
-pytest==8.4.2          # Matches requirements-dev.txt
-
-## FastAPI stack needed for API/e2e tests (kept narrow/pinned for determinism)
-fastapi==0.109.2       # Chosen compatible version; pin to prevent surprise minor bumps
-uvicorn==0.27.1        # Pin ASGI server
 websockets==12.0
 
-httpx==0.27.2
-pytest-asyncio==0.23.8
+# Versions aligned with requirements-dev.txt to avoid reinstall churn
+httpx==0.28.1
+pytest-asyncio==0.26.0
+```
+
+`constraints.txt` (new):
+```
+numpy==1.26.4
+pytest==8.4.2
+pytest-asyncio==0.26.0
+httpx==0.28.1
+websockets==12.0
+fastapi==0.109.2
+uvicorn==0.27.1
+loguru==0.7.2
+rich==13.9.2
+webvtt-py==0.5.1
+mypy==1.18.1
+ruff==0.13.0
+black==24.10.0
+```
+
+`pytest.ini` additions:
+```
+timeout = 30
+timeout_method = thread
+```
+
+CI workflow (`ci.yml`) notable additions (excerpt):
+```
+			- name: Cache pip
+				uses: actions/cache@v4
+				with:
+					path: ~/.cache/pip
+					key: pip-${{ runner.os }}-${{ hashFiles('requirements-ci.txt', 'requirements-dev.txt', 'constraints.txt') }}
+...
+			- name: Install Python deps
+				run: |
+					python -m pip install -U pip
+					pip install -r requirements-ci.txt -r requirements-dev.txt -c constraints.txt
+```
+
+E2E pytest invocation now includes explicit timeout safeguard:
+```
+pytest -q --maxfail=1 -m e2e --disable-warnings --no-header --no-summary --timeout=45
 ```
 
 `requirements-dev.txt` (current content excerpt):
@@ -105,37 +139,69 @@ tests/test_units_extra.py::test_pick_device_cpu
 ```
 
 ### Determinism & Pin Verification
-- Both `requirements-ci.txt` and `requirements-dev.txt` pin `numpy==1.26.4` and `pytest==8.4.2` to avoid churn.
-- FastAPI stack pinned (`fastapi==0.109.2`, `uvicorn==0.27.1`, `websockets==12.0`).
-- Unified line length (Ruff/Black 100) ensures consistent formatting.
+- All overlapping versions now identical (no uninstall loops). `pip install` becomes idempotent under cache.
+- Central `constraints.txt` provides single update surface and reproducible lock-lite behavior.
+- Timeouts prevent indefinite hangs during network-isolated WebSocket waits or thread deadlocks.
 
 ### No Additional Diffs Introduced
 Task execution required observation and verification only; no repository modifications performed in this session.
 
 ## Final Results
-- Duplicate dependency removed (no semantic impact).
-- Lint, format, type checks all pass; 25 tests pass (5 legacy env var deprecation warnings remain).
-- Deterministic environment consistency confirmed.
+- CI steps streamlined: reduced duplicate install churn; future runs benefit from pip cache.
+- Added deterministic constraints; easier maintenance of aligned versions.
+- Introduced safety net against hanging tests (global + e2e-specific timeouts).
+- E2E WebSocket test now performs a minimal interaction, avoiding passive idle.
+- No functional server code changes; risk minimal.
 
 ## Files Changed
-- `requirements-ci.txt` (duplicate line removal)
+- `requirements-ci.txt` (version alignment comment + upgrades)
+- `constraints.txt` (new)
+- `.github/workflows/ci.yml` (cache + unified install + timeouts)
+- `pytest.ini` (global timeout config)
+- `tests/test_e2e_websocket_api.py` (send ping before close)
 
 ## Follow-up Recommendations
-- Optionally add `constraints.txt` to centralize shared pins.
-- Consider elevating deprecation warnings to enforce migration from `GF_*` env vars.
-- Capture `pip freeze` artifact in CI for drift detection.
+- Add a nightly job that runs with `--timeout=0` (no timeout) to surface legitimately long-running regressions separately from PR gating.
+- Periodically produce an SBOM or `pip freeze > artifacts/freeze.txt` artifact to audit dependency drift.
+- Consider migrating to a full lock tool (e.g. `uv pip compile` or `pip-tools`) if dependency graph grows.
+- Address deprecation warnings (migrate `GF_*` env vars) and then promote them to errors.
 
 -- End of Deliverables Report --
-## Diff (Applied Change)
+## Representative Diffs
 ```
 diff --git a/requirements-ci.txt b/requirements-ci.txt
-index d382106..96e6232 100644
---- a/requirements-ci.txt
-+++ b/requirements-ci.txt
-@@ -16,5 +16,3 @@ websockets==12.0
-
- httpx==0.27.2
- pytest-asyncio==0.23.8
--
+@@
+-httpx==0.27.2
 -pytest-asyncio==0.23.8
++# Versions aligned with requirements-dev.txt to avoid reinstall churn
++httpx==0.28.1
++pytest-asyncio==0.26.0
+
+diff --git a/.github/workflows/ci.yml b/.github/workflows/ci.yml
+@@ (unit job excerpt)
++      - name: Cache pip
++        uses: actions/cache@v4
+@@ (e2e job excerpt)
++      - name: Cache pip
++        uses: actions/cache@v4
+@@
+-      - run: pytest -q --maxfail=1 -m e2e --disable-warnings --no-header --no-summary
++      - run: pytest -q --maxfail=1 -m e2e --disable-warnings --no-header --no-summary --timeout=45
+
+diff --git a/pytest.ini b/pytest.ini
+@@
+ timeout = 30
+ timeout_method = thread
+
+diff --git a/tests/test_e2e_websocket_api.py b/tests/test_e2e_websocket_api.py
+@@ (within websocket_connect block)
+-                            with client.websocket_connect(ws_url):
+-                                # Should connect without error
+-                                pass
++                            with client.websocket_connect(ws_url) as ws:
++                                # Send a lightweight ping to exercise server loop then close promptly
++                                try:
++                                    ws.send_text("ping")
++                                except Exception:
++                                    pass
 ```

@@ -135,9 +135,12 @@ async def test_e2e_websocket_live_session():
                         # Test that the WebSocket endpoint exists and accepts connections
                         # Note: TestClient WebSocket support is basic but we can verify the endpoint
                         try:
-                            with client.websocket_connect(ws_url):
-                                # Should connect without error
-                                pass
+                            with client.websocket_connect(ws_url) as ws:
+                                # Send a lightweight ping to exercise server loop then close promptly
+                                try:
+                                    ws.send_text("ping")
+                                except Exception:
+                                    pass
                         except Exception as e:
                             # Some connection errors are expected in test environment
                             # The important thing is that the endpoint exists
