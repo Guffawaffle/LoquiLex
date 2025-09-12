@@ -39,9 +39,17 @@ if [[ "${USE_CUDA:-}" != "1" ]]; then
   export PIP_EXTRA_INDEX_URL="https://download.pytorch.org/whl/cpu"
 fi
 
-# Install base + dev; if dev file absent, minimally ensure httpx for e2e gating
-if [[ -f requirements.txt ]]; then
-  python -m pip install -r requirements.txt
+# Install base + dev; use CI mode if requested to avoid heavy ML deps
+if [[ "${CI_MODE:-local}" == "ci" ]]; then
+  echo "CI mode: Using lightweight requirements (no heavy ML packages)"
+  if [[ -f requirements-ci.txt ]]; then
+    python -m pip install -r requirements-ci.txt
+  fi
+else
+  echo "Local mode: Using full requirements including ML packages"
+  if [[ -f requirements.txt ]]; then
+    python -m pip install -r requirements.txt
+  fi
 fi
 if [[ -f requirements-dev.txt ]]; then
   python -m pip install -r requirements-dev.txt

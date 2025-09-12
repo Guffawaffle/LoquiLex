@@ -27,6 +27,26 @@ GF_* envs will be removed in v0.3. Use LX_* going forward. If only GF_* is set, 
 - LX_OUT_DIR, LX_DEVICE, LX_DECODE_INTERVAL_SEC, LX_PARTIAL_DEBOUNCE_SEC, LX_MAX_BUFFER_SEC, LX_MAX_LINES, LX_PARTIAL_WORD_CAP, LX_SAVE_AUDIO, LX_SAVE_AUDIO_PATH
 
 ### Legacy GF_ → LX_ mapping
+## Development
+
+### Quick CI Testing
+
+For fast local testing without heavy ML dependencies (saves 1.5GB+ bandwidth):
+
+```bash
+make run-ci-mode  # Uses lightweight deps, same as GitHub Actions
+```
+
+For full local development with all ML packages:
+
+```bash
+make run-local-ci  # Full dependencies for local development
+```
+
+See [CI-TESTING.md](CI-TESTING.md) for detailed testing documentation.
+
+### Environment Variable Migration
+
 | GF_*                | LX_*                 |
 GF_ is deprecated; use LX_ going forward. If only GF_ is set, a one-time DeprecationWarning will be issued.
 

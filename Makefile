@@ -2,7 +2,7 @@ VENV?=.venv
 PY=$(VENV)/bin/python
 PIP=$(VENV)/bin/pip
 
-.PHONY: venv install dev lint fmt test run-local-ci test-ci run-wav run-zh clean
+.PHONY: venv install dev lint fmt test run-local-ci run-ci-mode test-ci run-wav run-zh clean
 
 venv:
 	python3 -m venv $(VENV)
@@ -24,20 +24,18 @@ test:
 	$(PY) -m pytest -q --maxfail=1 --disable-warnings -ra --cov=loquilex --cov-report=term-missing
 
 # --- CI-identical local run (canonical) ---
-.PHONY: run-local-ci test-ci
+.PHONY: run-local-ci run-ci-mode test-ci
 OFFLINE_ENV = HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 HF_HUB_DISABLE_TELEMETRY=1 LOQUILEX_OFFLINE=1
 
 run-local-ci:
-	@echo "=== Running ALL CI checks locally (ruff, black, mypy*, unit, e2e) ==="
-	@export $(OFFLINE_ENV) && \
-	env | grep -E '^(HF_HUB_OFFLINE|TRANSFORMERS_OFFLINE|HF_HUB_DISABLE_TELEMETRY|LOQUILEX_OFFLINE)=' && \
-	$(VENV)/bin/ruff check . && \
-	$(VENV)/bin/black --check . && \
-	( $(VENV)/bin/mypy loquilex || true ) && \
-	$(VENV)/bin/pytest -m "not e2e" -vv -rA --maxfail=1 --disable-warnings && \
-	$(VENV)/bin/pytest -q --maxfail=1 -m e2e --disable-warnings --no-header --no-summary
+	@echo "=== Running ALL CI checks locally with full ML dependencies ==="
+	@CI_MODE=local scripts/run-local-ci.sh
 
-# Back-compat alias (preferred name if you want to keep it around)
+run-ci-mode:
+	@echo "=== Running CI checks with lightweight dependencies (CI simulation) ==="
+	@CI_MODE=ci scripts/run-local-ci.sh
+
+# Back-compat alias (uses full local mode by default)
 test-ci: run-local-ci
 
 run-wav:

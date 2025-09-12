@@ -4,31 +4,54 @@ This document explains how to test LoquiLex in the exact same environment as the
 
 ## Quick Start
 
-The easiest way is to use the Make target:
-
+### Full Local Testing (Recommended for Development)
 ```bash
 make run-local-ci
 ```
 
-This runs all CI checks locally with identical environment variables and commands.
+### Lightweight CI Simulation (Matches GitHub Actions)
+```bash
+make run-ci-mode
+```
+
+The lightweight mode skips heavy ML dependencies (torch, transformers, etc.) that consume 1.5GB+ bandwidth, using only the core packages needed for testing since all tests use fake implementations.
+
+## Dependency Management
+
+The project uses split requirements to optimize CI bandwidth:
+
+- **`requirements-ci.txt`** - Core lightweight dependencies (5MB total)
+  - `loguru`, `numpy`, `rich`, `webvtt-py`, `pytest`
+- **`requirements-ml.txt`** - Heavy ML packages (1.5GB+ total)
+  - `torch`, `transformers`, `faster-whisper`, `accelerate`, `sounddevice`
+- **`requirements.txt`** - References both files for full installation
+- **`requirements-dev.txt`** - Development tools (ruff, black, mypy, etc.)
+
+Tests work with lightweight dependencies because they use fake implementations for all ML components.
 
 ## Available Methods
 
 ### 1. Make Targets (Recommended)
 
 ```bash
-# Run all CI checks locally (lint, typecheck, tests)
+# Run all CI checks locally with full ML dependencies
 make run-local-ci
 
-# Run just the tests with CI environment (backward-compatible alias)
+# Run CI checks with lightweight dependencies (CI simulation)
+make run-ci-mode
+
+# Backward-compatible alias (uses full local mode)
 make test-ci
 ```
 
 ### 2. Bash Script
 
 ```bash
-# Run the comprehensive CI replication script
-./scripts/run-local-ci.sh
+# Run with full dependencies
+CI_MODE=local ./scripts/run-local-ci.sh
+
+# Run with lightweight dependencies (CI simulation)
+CI_MODE=ci ./scripts/run-local-ci.sh
 ```
 
 ### 3. Docker Container (Most Exact)

@@ -1,11 +1,6 @@
-accelerate
-faster-whisper
-loguru
-numpy
-rich
-sentencepiece
-sounddevice
-torch
-transformers
-webvtt-py
-pytest
+# Core lightweight dependencies (always install)
+-r requirements-ci.txt
+
+# Heavy ML dependencies (install for production/local dev)
+# Skip in CI to save bandwidth - tests use fake implementations
+-r requirements-ml.txt

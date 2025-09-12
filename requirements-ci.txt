@@ -1,0 +1,5 @@
+loguru
+numpy
+rich
+webvtt-py
+pytest
