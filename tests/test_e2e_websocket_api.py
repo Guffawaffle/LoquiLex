@@ -6,20 +6,26 @@ and asserts we receive status/partial/final events in the expected order.
 
 from __future__ import annotations
 
-import asyncio
-import json
-import os
-import time
-from typing import Any, Dict, List
-from unittest.mock import patch
-
 import pytest
-import websockets
-from fastapi.testclient import TestClient
-
-from loquilex.api.server import app
 
 pytestmark = pytest.mark.e2e
+pytest.importorskip("fastapi", reason="fastapi not installed; e2e disabled by default")
+
+import asyncio  # noqa: E402
+import json  # noqa: E402
+import os  # noqa: E402
+import time  # noqa: E402
+from typing import Any, Dict, List  # noqa: E402
+from unittest.mock import patch  # noqa: E402
+
+# Mark the whole module as e2e and skip cleanly if FastAPI isn't installed.
+pytestmark = pytest.mark.e2e
+pytest.importorskip("fastapi", reason="fastapi not installed; e2e disabled by default")
+
+import websockets  # noqa: E402
+from fastapi.testclient import TestClient  # noqa: E402
+
+from loquilex.api.server import app  # noqa: E402
 
 
 class MockWebSocketSession:
