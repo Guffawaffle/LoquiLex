@@ -28,6 +28,7 @@ def test_cli_runs_with_fake_capture_and_translator(monkeypatch, tmp_path: Path):
         return stopper
 
     monkeypatch.setattr(cap, "capture_stream", fake_capture_stream)
+    monkeypatch.setattr(cli, "capture_stream", fake_capture_stream)
 
     # Patch translator to echo quickly
 

@@ -463,6 +463,16 @@ All original objectives accomplished with comprehensive enhancements:
 
 The codebase now has a production-ready testing infrastructure that supports robust CI/CD pipelines, local development convenience, and maintains strict offline testing principles while handling optional dependencies gracefully.
 
+### Phase 4: Critical CI Bug Fix (Post-Optimization)
+After implementing the lightweight CI optimization, discovered that `test_cli_runs_with_fake_capture_and_translator` was failing in CI environments due to improper mocking. The test was patching `capture_stream` on the module object, but the CLI imported it directly.
+
+- **Issue**: Test failure with `RuntimeError: ffmpeg not available, cannot capture audio` 
+- **Root Cause**: `monkeypatch.setattr(cap, "capture_stream", fake_capture_stream)` wasn't effective because `loquilex.cli.live_en_to_zh` imports `capture_stream` directly
+- **Solution**: Added additional patch: `monkeypatch.setattr(cli, "capture_stream", fake_capture_stream)`
+- **Verification**: All 25 tests now pass in both CI and local modes
+
+This fix ensures our lightweight CI optimization works perfectly without any test failures.
+
 ## Compliance with AGENTS.md
 
 This deliverables file complies with the `AGENTS.md` policy requirements:
