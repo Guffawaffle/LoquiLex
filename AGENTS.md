@@ -41,12 +41,16 @@ echo "No build step"
 ---
 
 ## PR Rules
-- **Commit style**: imperative mood (`Add…`, `Fix…`, `Update…`).
-- **PR description**: must include WHAT changed and WHY, and reference the task issue.
+- **Commit style**: Use imperative mood (`Add…`, `Fix…`, `Update…`).
+- **PR description**: Must include WHAT changed, WHY it changed, and reference the related task issue.
 - **No secrets/CI/deploy edits** unless explicitly instructed.
-- **Task Source of Truth**:
-  - If `.github/copilot/current-task-deliverables.md` exists → follow it.
-  - Otherwise, follow acceptance criteria from the assigned issue.
+
+- **Task Source of Truth**
+  - If `.github/copilot/current-task.md` exists, treat it as the authoritative task description.
+  - Otherwise, follow the acceptance criteria in the assigned issue.
+
+- **Task Results**
+  - Record a detailed review and output in `.github/copilot/current-task-deliverables.md`.
 
 ---
 

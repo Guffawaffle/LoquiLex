@@ -65,6 +65,7 @@ class MockWebSocketSession:
             await self.websocket.close()
 
 
+@pytest.mark.e2e
 @pytest.mark.asyncio
 async def test_e2e_websocket_live_session():
     """Test end-to-end WebSocket live session with mock ASR engine."""
@@ -140,6 +141,7 @@ async def test_e2e_websocket_live_session():
                         assert response.status_code in [200, 404]
 
 
+@pytest.mark.e2e
 def test_e2e_session_event_structure():
     """Test that session events have the expected structure with stamping."""
     from loquilex.api.events import EventStamper

@@ -13,7 +13,8 @@ dist/
 htmlcov/
 .pytest_cache/
 loquilex/out/
-.vscode/
+.vscode/*
+!.vscode/settings.json
 *.swp
 .DS_Store
 __pycache__/
