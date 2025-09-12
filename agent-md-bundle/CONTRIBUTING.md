@@ -17,4 +17,4 @@ Thanks for helping! This project is **local-first** and must build/test **offlin
 - [ ] Docs updated (README/CHANGELOG) if behavior changes
 - [ ] Dev deps pinned
 
-See **AGENTS.md** and `.github/copilot-instructions.md` for agent-aware guidance.
+See **AGENTS.md** and `../.github/copilot/copilot-instructions.md` for agent-aware guidance.
