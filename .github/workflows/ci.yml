@@ -78,7 +78,8 @@ jobs:
       - name: Install Python deps
         run: |
           python -m pip install -U pip
-          # Use lightweight CI requirements (no heavy ML deps - tests use fakes)
+          # Use lightweight CI requirements (~5MB vs 1.5GB+ for full ML stack)
+          # E2E tests use fake implementations, don't need real models
           [ -f requirements-ci.txt ] && pip install -r requirements-ci.txt || true
           [ -f requirements-dev.txt ] && pip install -r requirements-dev.txt || pip install httpx
       - name: Enforce localhost-only

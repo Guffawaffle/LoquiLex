@@ -1,5 +1,10 @@
+# Core lightweight dependencies (always install)
 loguru
 numpy
 rich
 webvtt-py
 pytest
+
+# FastAPI for e2e tests (lightweight, no heavy ML deps)
+fastapi>=0.104,<1
+uvicorn>=0.24,<1
