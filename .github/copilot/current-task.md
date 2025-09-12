@@ -1,41 +1,42 @@
 #task
-Investigate and fix failing tests in the LoquiLex repository.
+Fix remaining mypy type errors in LoquiLex repository, focusing on three modules: `audio/capture.py`, `cli/live_en_to_zh.py`, and `api/server.py`.
 
 #context
 - Repo: LoquiLex (Python 3.12, FastAPI, WebSockets, Whisper/NLLB offline pipeline).
-- CI currently shows failing tests. We need to identify root causes and resolve them without breaking our **local-first / offline** guarantees.
+- Mypy has already been integrated in warn-only mode, with `model_discovery.py` type issues resolved.
+- Current status: 4 errors remain across 3 files (`audio/capture.py`, `cli/live_en_to_zh.py`, `api/server.py`).
 
 #instructions
-- Run the full pytest suite (`pytest -q --maxfail=1 --disable-warnings`).
-- Collect failing tests, stack traces, and error messages.
-- Diagnose whether each failure is due to:
-  1. Incorrect test expectations.
-  2. Missing mocks for network/model calls (must be offline-safe).
-  3. Code regressions introduced in recent commits.
-- Propose minimal diffs to fix tests:
-  - Adjust code if behavior is wrong.
-  - Adjust test if the assertion is outdated.
-  - Add fakes/mocks to replace external calls (no HuggingFace/remote fetches).
-- Re-run tests to confirm all pass locally.
+1. Run mypy on the entire repo to confirm exact errors:
+   ```bash
+   mypy loquilex
+   ```
+2. For each failing file:
+   - Identify the exact lines and error messages.
+   - Add or refine type hints (`Callable`, `List`, `Dict[str, Any]`, `Optional`, etc.).
+   - Use `from typing import Any` when necessary, but prefer precise types where feasible.
+   - Refactor logic if a type mismatch is genuine (e.g., string vs. int).
+3. Ensure all fixes maintain **offline-first** behavior (no new deps, no network code).
+4. Re-run mypy to confirm those modules pass with **0 errors**.
+5. Leave other modules as-is (they may still have warnings, but focus only on these 3 files for now).
+6. Update docstrings and function signatures to reflect new type hints.
 
 #plan
-1. Enumerate all failing tests with context.
-2. Categorize root cause per test.
-3. Suggest targeted code/test changes.
-4. Verify CI passes offline (network blocked).
-5. Summarize in a PR comment:
-   - Failing test names & causes.
-   - Fixes applied.
-   - Confirmation of green CI.
+- Investigate mypy output for the 3 target files.
+- Apply type fixes iteratively, preferring precise annotations.
+- Use `typing.Any` only as a last resort.
+- Verify fixes by re-running mypy locally on just the target modules and then the entire repo.
 
 #constraints
-- Must remain fully offline-capable.
-- No adding `# noqa` or disabling tests.
-- Keep changes minimal and scoped to making tests pass.
-- Maintain coding style (Black/Ruff).
-- Include/adjust mocks where external network or model calls are made.
+- Do not silence errors with `# type: ignore` unless absolutely unavoidable.
+- Do not add new dependencies beyond `typing` or `collections.abc` imports.
+- Keep changes minimal but correct, no major rewrites.
 
 #deliverables
-- Passing pytest suite (unit + e2e).
-- Concise PR diff with test/code fixes.
-- PR comment with summary of what was fixed and why.
+- Clean `mypy` run for:
+  - `loquilex/audio/capture.py`
+  - `loquilex/cli/live_en_to_zh.py`
+  - `loquilex/api/server.py`
+- Updated function/type annotations in those modules.
+- A PR commit with message:
+  `fix(types): resolve mypy errors in capture, live CLI, and server modules`

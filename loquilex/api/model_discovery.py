@@ -3,7 +3,7 @@ from __future__ import annotations
 import os
 import re
 from pathlib import Path
-from typing import Dict, List, Any
+from typing import Any, Dict, List
 
 """Local model discovery for ASR (whisper) and MT (NLLB/M2M).
 

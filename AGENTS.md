@@ -54,6 +54,41 @@ echo "No build step"
 
 ---
 
+## Deliverables Policy
+
+- After executing a task, always produce `.github/copilot/current-task-deliverables.md` as a detailed running log for the PR.
+- Never omit or over-summarize: include full logs, diffs, error messages, and verification steps.
+
+### Deliverables Report Format
+
+Each deliverables file must include:
+
+1. **Executive Summary**
+   Concise overview of what was attempted, what changed, and the outcome.
+
+2. **Steps Taken**
+   Bullet-point log of how the task was executed (commands, diffs, edits, config changes).
+
+3. **Evidence & Verification**
+   - Full command outputs (`pytest`, `mypy`, `ruff`, etc.).
+   - Before/after diffs or code snippets.
+   - Logs and stack traces where relevant.
+   - Do not truncate — include the complete context needed for analysis.
+
+4. **Final Results**
+   Whether the goals were met, remaining issues, and follow-up recommendations.
+
+5. **Files Changed**
+   List all modified files and the type of change.
+
+### Logging Policy
+
+- `.github/copilot/current-task-deliverables.md` acts as the **running log** for the PR.
+- Overwrite or extend this file as needed, but never remove historical context unless instructed.
+- This file is part of the review record — keep it detailed and unabridged.
+
+---
+
 ## Guardrails
 - Never run destructive commands.
 - Never delete or edit out-of-scope files.
