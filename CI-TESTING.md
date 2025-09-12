@@ -7,7 +7,7 @@ This document explains how to test LoquiLex in the exact same environment as the
 The easiest way is to use the Make target:
 
 ```bash
-make ci-local
+make run-local-ci
 ```
 
 This runs all CI checks locally with identical environment variables and commands.
@@ -18,9 +18,9 @@ This runs all CI checks locally with identical environment variables and command
 
 ```bash
 # Run all CI checks locally (lint, typecheck, tests)
-make ci-local
+make run-local-ci
 
-# Run just the tests with CI environment
+# Run just the tests with CI environment (backward-compatible alias)
 make test-ci
 ```
 
@@ -28,7 +28,7 @@ make test-ci
 
 ```bash
 # Run the comprehensive CI replication script
-./scripts/ci-local.sh
+./scripts/run-local-ci.sh
 ```
 
 ### 3. Docker Container (Most Exact)
@@ -123,9 +123,10 @@ pip install -r requirements-dev.txt  # Dev dependencies (includes httpx for e2e)
 
 ## Files Created
 
-- `scripts/ci-local.sh` - Comprehensive CI replication script
+- `scripts/run-local-ci.sh` - Comprehensive CI replication script
+- `scripts/ci-local.sh` - Hardened CI script (legacy)
 - `scripts/run-with-act.sh` - GitHub Actions local runner
 - `Dockerfile.ci` - Exact CI environment container
-- `Makefile` (updated) - Added `ci-local` and `test-ci` targets
+- `Makefile` (updated) - Added `run-local-ci` and `test-ci` targets
 
 All methods should produce identical results to the CI pipeline.

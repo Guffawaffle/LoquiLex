@@ -36,8 +36,8 @@ All tests continue to pass with full offline functionality preserved, and Ruff n
   - Added comprehensive dependency installation including dev requirements
 
 - **Step 5**: Created local CI testing infrastructure
-  - Implemented `make ci-local` target for exact CI environment replication
-  - Added `scripts/ci-local.sh` with environment validation and step-by-step CI execution
+  - Implemented `make run-local-ci` target for exact CI environment replication
+  - Added `scripts/run-local-ci.sh` with environment validation and step-by-step CI execution
   - Created `Dockerfile.ci` for containerized CI environment matching
   - Added multiple testing methods: direct Make targets, shell script, and Docker container
 
@@ -370,7 +370,7 @@ $ pytest -m "not e2e" -q
 $ pytest -m e2e -v
 4 passed, 21 deselected in 0.69s
 
-$ make ci-local
+$ make run-local-ci
 All checks passed! (ruff, black, mypy, pytest)
 21 passed, 4 deselected, 5 warnings in 2.28s
 4 passed, 21 deselected in 0.60s
@@ -385,14 +385,14 @@ All checks passed!
 ### Infrastructure Files Created
 
 1. **CI Testing Infrastructure**
-   - `scripts/ci-local.sh` - Environment validation and step-by-step CI execution
+   - `scripts/run-local-ci.sh` - Environment validation and step-by-step CI execution
    - `Dockerfile.ci` - Containerized CI environment for exact matching
    - `CI-TESTING.md` - Comprehensive documentation for local CI testing
 
 2. **Enhanced Configuration**
    - Updated `.github/workflows/ci.yml` with verbose output and failure re-runs
    - Enhanced `pytest.ini` with proper e2e marker definitions
-   - Updated `Makefile` with `ci-local` and `test-ci` targets
+   - Updated `Makefile` with `run-local-ci` and `test-ci` targets
 
 ### Architecture Improvements
 
