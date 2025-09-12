@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import os
+import socket
 import sys
 import types
 import pytest
@@ -65,6 +66,14 @@ def _patch_translator() -> None:
     import loquilex.mt.translator as mt  # noqa: WPS433 (allowed here intentionally)
 
     mt.Translator = fake_mt.Translator
+
+
+@pytest.fixture(autouse=True)
+def forbid_network(monkeypatch):
+    """Network guard to block external connections during tests."""
+    def _blocked(*a, **k):
+        raise RuntimeError("Network disabled in tests")
+    monkeypatch.setattr(socket, "create_connection", _blocked)
 
 
 def pytest_sessionstart(session: pytest.Session) -> None:

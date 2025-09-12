@@ -19,6 +19,8 @@ from fastapi.testclient import TestClient
 
 from loquilex.api.server import app
 
+pytestmark = pytest.mark.e2e
+
 
 class MockWebSocketSession:
     """Mock WebSocket client for testing the live session API."""

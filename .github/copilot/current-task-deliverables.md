@@ -301,4 +301,61 @@ index 4b2c256..f867dc9 100644
 
 ---
 
-This file now complies with the `AGENTS.md` deliverables policy: it contains an Executive Summary, Steps Taken, Evidence & Verification (full outputs), Final Results, and Files Changed. I will now stage and commit this updated deliverables file.
+## Additional Improvements (Pipeline Hardening)
+
+Based on user feedback to improve CI pipeline robustness and test organization:
+
+### Additional Steps Taken
+
+- **Step 5**: Implemented e2e test opt-out by default
+  - Added `pytestmark = pytest.mark.e2e` to `tests/test_e2e_websocket_api.py`
+  - Updated `pytest.ini` to change `addopts` from `-q --strict-markers` to `-ra` for better test output
+  - Updated e2e marker description to "end-to-end tests that may need extra deps or services"
+
+- **Step 6**: Improved dependency management
+  - Moved `httpx>=0.27,<1` from `requirements.txt` to `requirements-dev.txt`
+  - Updated CI workflow to install dev requirements with fallback: `[ -f requirements-dev.txt ] && pip install -r requirements-dev.txt || pip install httpx`
+
+- **Step 7**: Enhanced CI visibility and reliability
+  - Updated Python version to exact match: `python-version: "3.12.3"`
+  - Replaced quiet test runs with verbose output and failure re-runs
+  - Added environment variable display for offline verification
+  - Implemented "verbose on fail" pattern with `--lf` re-runs for better debugging
+
+- **Step 8**: Added network guard for acceptance proof
+  - Added `forbid_network` fixture with `socket.create_connection` blocking
+  - Provides runtime assertion that no external connections are made during tests
+
+### Additional Evidence & Verification
+
+Test separation working correctly:
+
+```bash
+$ pytest -m "not e2e" -v
+collected 25 items / 4 deselected / 21 selected
+...
+==================== 21 passed, 4 deselected, 5 warnings in 2.25s ===================
+
+$ pytest -m e2e -v
+collected 25 items / 21 deselected / 4 selected
+...
+======================== 4 passed, 21 deselected in 0.48s ========================
+```
+
+Final ruff compliance:
+
+```bash
+$ ruff check .
+All checks passed!
+```
+
+### Additional Files Changed
+
+- `tests/test_e2e_websocket_api.py` — added pytestmark for opt-out behavior
+- `pytest.ini` — updated addopts and marker description
+- `requirements.txt` — removed httpx (moved to dev deps)
+- `requirements-dev.txt` — added httpx>=0.27,<1
+- `.github/workflows/ci.yml` — enhanced install process and test visibility
+- `tests/conftest.py` — added network guard fixture
+
+This file now complies with the `AGENTS.md` deliverables policy: it contains an Executive Summary, Steps Taken, Evidence & Verification (full outputs), Final Results, and Files Changed. The additional improvements ensure robust CI pipeline execution and better test organization.
