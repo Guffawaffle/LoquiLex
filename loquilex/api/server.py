@@ -83,6 +83,7 @@ class CreateSessionReq(BaseModel):
 class CreateSessionResp(BaseModel):
     session_id: str
 
+
 # (Mounted above)
 
 
@@ -120,7 +121,7 @@ PROFILES_DIR = os.path.join("loquilex", "ui", "profiles")
 def get_profiles() -> List[str]:
     if not os.path.isdir(PROFILES_DIR):
         return []
-    return sorted([p[:-5] for p in os.listdir(PROFILES_DIR) if p.endswith('.json')])
+    return sorted([p[:-5] for p in os.listdir(PROFILES_DIR) if p.endswith(".json")])
 
 
 @app.get("/profiles/{name}")
@@ -130,6 +131,7 @@ def get_profile(name: str) -> Dict[str, Any]:
     if not os.path.isfile(path):
         raise HTTPException(status_code=404, detail="not found")
     import json as _json
+
     with open(path, "r", encoding="utf-8") as f:
         return _json.load(f)
 
@@ -140,6 +142,7 @@ def save_profile(name: str, body: Dict[str, Any]) -> Dict[str, Any]:
     safe = "".join(c for c in name if c.isalnum() or c in ("-", "_"))
     path = os.path.join(PROFILES_DIR, f"{safe}.json")
     import json as _json
+
     tmp = path + ".tmp"
     with open(tmp, "w", encoding="utf-8") as f:
         _json.dump(body, f, ensure_ascii=False, indent=2)
@@ -233,10 +236,12 @@ async def post_selftest(req: SelfTestReq) -> SelfTestResp:
     levels: list[float] = []
     stop_fn = None
     try:
+
         def cb(fr) -> None:
             r, p = rms_peak(fr.data)
             r2, _ = ema.update(r, p)
             levels.append(r2)
+
         stop_fn = capture_stream(cb)
         await asyncio.sleep(min(3.0, max(0.2, req.seconds)))
     except Exception as e:
@@ -253,6 +258,7 @@ async def post_selftest(req: SelfTestReq) -> SelfTestResp:
     # Effective runtime details
     try:
         from loquilex.config.defaults import ASR as _ASR
+
         sample_rate = _ASR.sample_rate
     except Exception:
         sample_rate = None

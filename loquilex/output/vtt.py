@@ -24,7 +24,7 @@ def write_vtt(cues: List[Tuple[float, float, str]], path: str) -> None:
         os.makedirs(d, exist_ok=True)
     clean: List[Tuple[float, float, str]] = []
     last_end = 0.0
-    for (a, b, t) in cues:
+    for a, b, t in cues:
         t = t.strip()
         if not t:
             continue

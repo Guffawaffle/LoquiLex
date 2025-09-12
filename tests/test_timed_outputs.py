@@ -23,4 +23,6 @@ def test_vtt_srt_append_order(tmp_path: Path):
     idx = append_srt_cue(str(srt), None, 0.6, 0.6, "c")
     assert idx == 3
     blocks = [b for b in srt.read_text(encoding="utf-8").strip().split("\n\n") if b]
-    assert blocks[0].startswith("1\n") and blocks[1].startswith("2\n") and blocks[2].startswith("3\n")
+    assert (
+        blocks[0].startswith("1\n") and blocks[1].startswith("2\n") and blocks[2].startswith("3\n")
+    )

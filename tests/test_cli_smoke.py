@@ -6,6 +6,7 @@ from pathlib import Path
 def test_cli_runs_with_fake_capture_and_translator(monkeypatch, tmp_path: Path):
     import loquilex.mt.translator as tr
     import loquilex.cli.live_en_to_zh as cli
+
     # Patch capture_stream to emit a few silent frames then stop
     import loquilex.audio.capture as cap
     import numpy as np
@@ -18,6 +19,7 @@ def test_cli_runs_with_fake_capture_and_translator(monkeypatch, tmp_path: Path):
         class Stopper:
             def __call__(self):
                 pass
+
         stopper = Stopper()
         for _ in range(frames):
             t1 = cap.time.monotonic()
@@ -45,13 +47,20 @@ def test_cli_runs_with_fake_capture_and_translator(monkeypatch, tmp_path: Path):
     # Run CLI main with short seconds and custom output dir
     outdir = tmp_path / "out"
     args = [
-        "--seconds", "1",
-        "--partial-en", str(outdir / "live.partial.en.txt"),
-        "--partial-zh", str(outdir / "live.partial.zh.txt"),
-        "--final-en", str(outdir / "live.final.en.txt"),
-        "--final-zh", str(outdir / "live.final.zh.txt"),
-        "--final-vtt-en", str(outdir / "live.final.en.vtt"),
-        "--final-srt-zh", str(outdir / "live.final.zh.srt"),
+        "--seconds",
+        "1",
+        "--partial-en",
+        str(outdir / "live.partial.en.txt"),
+        "--partial-zh",
+        str(outdir / "live.partial.zh.txt"),
+        "--final-en",
+        str(outdir / "live.final.en.txt"),
+        "--final-zh",
+        str(outdir / "live.final.zh.txt"),
+        "--final-vtt-en",
+        str(outdir / "live.final.en.vtt"),
+        "--final-srt-zh",
+        str(outdir / "live.final.zh.srt"),
         "--overwrite-run",
     ]
     monkeypatch.setenv("PYTHONUNBUFFERED", "1")
@@ -60,6 +69,7 @@ def test_cli_runs_with_fake_capture_and_translator(monkeypatch, tmp_path: Path):
 
     def run_with_args():
         import sys
+
         old = sys.argv
         try:
             sys.argv = [old[0]] + args

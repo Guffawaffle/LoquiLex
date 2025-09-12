@@ -146,7 +146,9 @@ class Translator:
         try:
             tok, model = self._load_m2m()
             tok.src_lang = "en"
-            inputs = tok(text, return_tensors="pt", truncation=True, max_length=min(64, MT.max_input_tokens))
+            inputs = tok(
+                text, return_tensors="pt", truncation=True, max_length=min(64, MT.max_input_tokens)
+            )
             inputs = {k: v.to(self.torch_device) for k, v in inputs.items()}
             cm = torch.no_grad() if torch is not None else contextlib.nullcontext()
             with cm:
@@ -166,7 +168,9 @@ class Translator:
         try:
             tok, model = self._load_nllb()
             tok.src_lang = "eng_Latn"
-            inputs = tok(text, return_tensors="pt", truncation=True, max_length=min(64, MT.max_input_tokens))
+            inputs = tok(
+                text, return_tensors="pt", truncation=True, max_length=min(64, MT.max_input_tokens)
+            )
             inputs = {k: v.to(self.torch_device) for k, v in inputs.items()}
             cm = torch.no_grad() if torch is not None else contextlib.nullcontext()
             with cm:

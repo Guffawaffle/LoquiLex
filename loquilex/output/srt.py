@@ -22,7 +22,7 @@ def write_srt(cues: List[Tuple[float, float, str]], path: str) -> None:
     os.makedirs(os.path.dirname(path), exist_ok=True)
     clean: List[Tuple[float, float, str]] = []
     last_end = 0.0
-    for (a, b, t) in cues:
+    for a, b, t in cues:
         if not t.strip():
             continue
         a = max(a, last_end)

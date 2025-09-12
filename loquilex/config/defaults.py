@@ -2,6 +2,7 @@
 
 No side effects on import. Values can be overridden via env/.env.
 """
+
 from __future__ import annotations
 
 
@@ -65,9 +66,7 @@ def _env_float(name_lx: str, name_gf: str, default: float) -> float:
 
 _DEFAULT_SAVE_AUDIO = _env_lx_or_gf("LX_SAVE_AUDIO", "GF_SAVE_AUDIO", "off")
 _DEFAULT_SAVE_AUDIO_PATH = _env_lx_or_gf(
-    "LX_SAVE_AUDIO_PATH",
-    "GF_SAVE_AUDIO_PATH",
-    "loquilex/out/session.wav"  # fallback default
+    "LX_SAVE_AUDIO_PATH", "GF_SAVE_AUDIO_PATH", "loquilex/out/session.wav"  # fallback default
 )
 
 
@@ -82,7 +81,9 @@ class ASRDefaults:
     log_prob_threshold: float = _env_float("LX_ASR_LOGPROB", "GF_ASR_LOGPROB", -1.0)
     condition_on_previous_text: bool = _env_bool("LX_ASR_COND_PREV", "GF_ASR_COND_PREV", False)
     sample_rate: int = _env_int("LX_ASR_SAMPLE_RATE", "GF_ASR_SAMPLE_RATE", 16000)
-    cpu_threads: int = _env_int("LX_ASR_CPU_THREADS", "GF_ASR_CPU_THREADS", max(1, (os.cpu_count() or 2) - 1))
+    cpu_threads: int = _env_int(
+        "LX_ASR_CPU_THREADS", "GF_ASR_CPU_THREADS", max(1, (os.cpu_count() or 2) - 1)
+    )
     word_timestamps: bool = _env_bool("LX_ASR_WORD_TS", "GF_ASR_WORD_TS", False)
 
 
@@ -95,7 +96,9 @@ class SegmentationDefaults:
 
 @dataclass(frozen=True)
 class MTDefaults:
-    nllb_model: str = _env_lx_or_gf("LX_NLLB_MODEL", "GF_NLLB_MODEL", "facebook/nllb-200-distilled-600M")
+    nllb_model: str = _env_lx_or_gf(
+        "LX_NLLB_MODEL", "GF_NLLB_MODEL", "facebook/nllb-200-distilled-600M"
+    )
     m2m_model: str = _env_lx_or_gf("LX_M2M_MODEL", "GF_M2M_MODEL", "facebook/m2m100_418M")
     num_beams: int = _env_int("LX_MT_BEAMS", "GF_MT_BEAMS", 1)
     no_repeat_ngram_size: int = _env_int("LX_MT_NO_REPEAT", "GF_MT_NO_REPEAT", 2)
@@ -110,8 +113,12 @@ class RuntimeDefaults:
     device_preference: str = _env_lx_or_gf("LX_DEVICE", "GF_DEVICE", "auto")  # auto|cuda|cpu
     # streaming controls
     pause_flush_sec: float = _env_float("LX_PAUSE_FLUSH_SEC", "GF_PAUSE_FLUSH_SEC", 0.7)
-    decode_interval_sec: float = _env_float("LX_DECODE_INTERVAL_SEC", "GF_DECODE_INTERVAL_SEC", 0.25)
-    partial_debounce_sec: float = _env_float("LX_PARTIAL_DEBOUNCE_SEC", "GF_PARTIAL_DEBOUNCE_SEC", 0.25)
+    decode_interval_sec: float = _env_float(
+        "LX_DECODE_INTERVAL_SEC", "GF_DECODE_INTERVAL_SEC", 0.25
+    )
+    partial_debounce_sec: float = _env_float(
+        "LX_PARTIAL_DEBOUNCE_SEC", "GF_PARTIAL_DEBOUNCE_SEC", 0.25
+    )
     max_buffer_sec: float = _env_float("LX_MAX_BUFFER_SEC", "GF_MAX_BUFFER_SEC", 8.0)
     # new IO options
     max_lines: int = _env_int("LX_MAX_LINES", "GF_MAX_LINES", 1000)
@@ -134,6 +141,7 @@ def pick_device() -> tuple[str, str]:
     pref = RT.device_preference
     try:
         import torch  # type: ignore
+
         has_cuda = torch.cuda.is_available()
     except Exception:
         has_cuda = False

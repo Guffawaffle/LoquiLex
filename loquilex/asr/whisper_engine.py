@@ -132,7 +132,9 @@ class WhisperEngine:
                 word_timestamps=ASR.word_timestamps,
             )
             segs = list(segments)
-            partial_text = " ".join((s.text or "").strip() for s in segs if (s.text or "").strip()).strip()
+            partial_text = " ".join(
+                (s.text or "").strip() for s in segs if (s.text or "").strip()
+            ).strip()
 
             # Optional word-level callbacks (rolling window support)
             if ASR.word_timestamps and on_words is not None:
@@ -152,7 +154,7 @@ class WhisperEngine:
                             a, b = 0.0, 0.0
                         flat_words.append(Word(a, b, (txt or "").strip()))
                 if self._words_emitted < len(flat_words):
-                    new_ws = flat_words[self._words_emitted:]
+                    new_ws = flat_words[self._words_emitted :]
                     # update before callback to avoid reentrancy issues
                     self._words_emitted = len(flat_words)
                     # filter empty
@@ -180,7 +182,9 @@ class WhisperEngine:
             end_t = float(segs[-1].end or 0.0) if segs else 0.0
             if segs and (end_t - start_t) >= SEG.segment_max_sec:
                 max_len_hit = True
-            if partial_text and ((now - self._last_seg_end_wall) >= RT.pause_flush_sec or max_len_hit):
+            if partial_text and (
+                (now - self._last_seg_end_wall) >= RT.pause_flush_sec or max_len_hit
+            ):
                 on_segment(Segment(start_t, end_t, partial_text, True))
                 # reset buffer/state for next clause
                 self.buf = np.zeros(0, dtype=np.float32)

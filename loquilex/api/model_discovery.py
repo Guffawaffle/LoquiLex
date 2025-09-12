@@ -116,7 +116,11 @@ def list_mt_models() -> List[Dict]:
             hits = list(c.glob(f"**/models--*--{leaf}*")) + list(c.rglob(f"**/{leaf}*"))
             if hits:
                 present = True
-                path = str(hits[0].parent if hits[0].parent.name.startswith('models--') else hits[0].parent.parent)
+                path = str(
+                    hits[0].parent
+                    if hits[0].parent.name.startswith("models--")
+                    else hits[0].parent.parent
+                )
                 break
         if present:
             rec = {"id": cid, "name": leaf, "langs": ["zho_Hans"], "path": path}

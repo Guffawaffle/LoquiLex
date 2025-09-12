@@ -48,10 +48,7 @@ class MockWebSocketSession:
                 self.messages.append(message)
 
                 # Check for completion conditions
-                if (
-                    message.get("type") == "status"
-                    and message.get("stage") == "stopped"
-                ):
+                if message.get("type") == "status" and message.get("stage") == "stopped":
                     break
 
             except asyncio.TimeoutError:
@@ -186,9 +183,7 @@ def test_session_config_validation():
             "device": "invalid_device",
         }
 
-        with patch(
-            "loquilex.api.supervisor.SessionManager.start_session"
-        ) as mock_start:
+        with patch("loquilex.api.supervisor.SessionManager.start_session") as mock_start:
             mock_start.side_effect = RuntimeError("Invalid configuration")
 
             response = client.post("/sessions", json=invalid_payload)

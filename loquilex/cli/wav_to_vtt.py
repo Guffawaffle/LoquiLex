@@ -35,6 +35,7 @@ def main() -> None:
 
     # Offline path: use faster-whisper directly for stability
     from faster_whisper import WhisperModel  # type: ignore
+
     device, _ = pick_device()
     # Prefer int8_float32 on CPU for better quality; fallback handled by faster-whisper if unsupported
     compute_type = ASR.compute_type if device == "cuda" else "int8_float32"

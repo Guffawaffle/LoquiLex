@@ -21,9 +21,11 @@ class EventStamper:
         now = time.time()
         now_mono = time.monotonic()
         stamped = dict(payload)
-        stamped.update({
-            "seq": self.seq,
-            "ts_server": now,
-            "ts_session": max(0.0, now_mono - self.t0_mono),
-        })
+        stamped.update(
+            {
+                "seq": self.seq,
+                "ts_server": now,
+                "ts_session": max(0.0, now_mono - self.t0_mono),
+            }
+        )
         return stamped

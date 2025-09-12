@@ -59,7 +59,15 @@ def test_vtt_to_zh_offline_with_fake_mt(tmp_path: Path, monkeypatch):
 
     old = sys.argv
     try:
-        sys.argv = [old[0], "--vtt", str(vtt), "--out-text", str(out_txt), "--out-srt", str(out_srt)]
+        sys.argv = [
+            old[0],
+            "--vtt",
+            str(vtt),
+            "--out-text",
+            str(out_txt),
+            "--out-srt",
+            str(out_srt),
+        ]
         cli.main()
     finally:
         sys.argv = old
