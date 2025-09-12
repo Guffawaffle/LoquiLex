@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from loquilex.output.vtt import append_vtt_cue
 from loquilex.output.srt import append_srt_cue
+from loquilex.output.vtt import append_vtt_cue
 
 
 def test_vtt_srt_append_order(tmp_path: Path):

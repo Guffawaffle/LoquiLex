@@ -6,9 +6,9 @@ def test_import_api_modules_for_coverage():
 
     try:
         __import__("fastapi")
+        import loquilex.api.model_discovery
         import loquilex.api.server
         import loquilex.api.supervisor
-        import loquilex.api.model_discovery
 
         # Access the modules to avoid unused import warnings
         _ = loquilex.api.server, loquilex.api.supervisor, loquilex.api.model_discovery
@@ -16,9 +16,10 @@ def test_import_api_modules_for_coverage():
         pass
 
     # Exercise events and vu helpers
-    from loquilex.api.events import EventStamper
-    from loquilex.api.vu import rms_peak, EmaVu
     import numpy as np
+
+    from loquilex.api.events import EventStamper
+    from loquilex.api.vu import EmaVu, rms_peak
 
     st = EventStamper.new()
     out = st.stamp({"type": "x"})

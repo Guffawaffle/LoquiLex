@@ -2,28 +2,28 @@ from __future__ import annotations
 
 import argparse
 import os
-import threading
 import queue
-import time
 import signal
-import sys
-from typing import List, Tuple
-from collections import deque
-import wave
 import subprocess
+import sys
+import threading
+import time
+import wave
+from collections import deque
+from typing import List, Tuple
 
 import numpy as np
 
+from loquilex.api.vu import EmaVu, rms_peak
+from loquilex.asr.whisper_engine import Segment, WhisperEngine
 from loquilex.audio.capture import capture_stream
-from loquilex.asr.whisper_engine import WhisperEngine, Segment
-from loquilex.segmentation.aggregator import Aggregator
-from loquilex.output.vtt import write_vtt, append_vtt_cue
-from loquilex.output.srt import append_srt_cue
+from loquilex.config.defaults import ASR, RT
 from loquilex.mt.translator import Translator
-from loquilex.post.zh_text import post_process
-from loquilex.config.defaults import RT, ASR
+from loquilex.output.srt import append_srt_cue
 from loquilex.output.text_io import RollingTextFile
-from loquilex.api.vu import rms_peak, EmaVu
+from loquilex.output.vtt import append_vtt_cue, write_vtt
+from loquilex.post.zh_text import post_process
+from loquilex.segmentation.aggregator import Aggregator
 
 
 def main() -> None:

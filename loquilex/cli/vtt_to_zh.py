@@ -5,8 +5,8 @@ import os
 from typing import List, Tuple
 
 from loquilex.mt.translator import Translator
-from loquilex.post.zh_text import post_process
 from loquilex.output.srt import write_srt
+from loquilex.post.zh_text import post_process
 
 
 def parse_vtt(path: str) -> List[Tuple[float, float, str]]:

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 import contextlib
+from dataclasses import dataclass
 
 from loquilex.config.defaults import MT, pick_device
 
@@ -57,7 +57,7 @@ class Translator:
 
     def _load_nllb(self):
         if self._nllb is None:
-            from transformers import AutoTokenizer, AutoModelForSeq2SeqLM  # type: ignore
+            from transformers import AutoModelForSeq2SeqLM, AutoTokenizer  # type: ignore
 
             tok = AutoTokenizer.from_pretrained(MT.nllb_model, use_safetensors=True)
             model = AutoModelForSeq2SeqLM.from_pretrained(
@@ -72,7 +72,7 @@ class Translator:
 
     def _load_m2m(self):
         if self._m2m is None:
-            from transformers import M2M100Tokenizer, M2M100ForConditionalGeneration  # type: ignore
+            from transformers import M2M100ForConditionalGeneration, M2M100Tokenizer  # type: ignore
 
             tok = M2M100Tokenizer.from_pretrained(MT.m2m_model, use_safetensors=True)
             model = M2M100ForConditionalGeneration.from_pretrained(

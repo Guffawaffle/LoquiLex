@@ -1,4 +1,4 @@
-#!/home/guff/LoquiLex/.direnv/python-3.12.3/bin/python3
+#!/home/guff/LoquiLex/.direnv/python-3.12.3/bin/python
 # -*- coding: utf-8 -*-
 import re
 import sys

@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-"""Event stamping helpers: add seq, ts_server, ts_session to outbound WS messages."""
-
 import time
 from dataclasses import dataclass
 from typing import Any, Dict
+
+"""Event stamping helpers: add seq, ts_server, ts_session to outbound WS messages."""
 
 
 @dataclass

@@ -1,8 +1,7 @@
 from __future__ import annotations
 
-from typing import List, Tuple
 import os
-
+from typing import List, Tuple
 
 EPS = 0.001
 

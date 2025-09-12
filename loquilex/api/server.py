@@ -1,5 +1,21 @@
 from __future__ import annotations
 
+import asyncio
+import os
+import re
+import time
+import uuid
+from pathlib import Path
+from typing import Any, Dict, List, Optional
+
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel, Field
+
+from .model_discovery import list_asr_models, list_mt_models, mt_supported_languages
+from .supervisor import SessionConfig, SessionManager
+
 """LoquiLex control-plane API (FastAPI) with WebSocket events.
 
 Endpoints:
@@ -13,23 +29,6 @@ Endpoints:
 
 All new code intentionally lives under loquilex/api/.
 """
-
-import asyncio
-import time
-import os
-import uuid
-import re
-from pathlib import Path
-from typing import Any, Dict, List, Optional
-
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, Field
-
-from .model_discovery import list_asr_models, list_mt_models, mt_supported_languages
-from .supervisor import SessionConfig, SessionManager
-
 
 # Allow localhost and 127.0.0.1 by default for dev. Can be overridden via LLX_ALLOWED_ORIGINS.
 ALLOWED_ORIGINS = os.getenv(
@@ -218,9 +217,11 @@ async def create_session(req: CreateSessionReq) -> CreateSessionResp:
 async def post_selftest(req: SelfTestReq) -> SelfTestResp:
     # Minimal self-test: try to import WhisperEngine and warm up; capture a short mic window and compute RMS
     import numpy as np
+
     from loquilex.asr.whisper_engine import WhisperEngine
     from loquilex.audio.capture import capture_stream
-    from .vu import rms_peak, EmaVu
+
+    from .vu import EmaVu, rms_peak
 
     t0 = time.perf_counter()
     try:

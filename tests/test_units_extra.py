@@ -3,10 +3,10 @@ from __future__ import annotations
 import importlib
 import types
 
-from loquilex.output.vtt import _ts as _vtt_ts
-from loquilex.output.srt import _ts as _srt_ts
-from loquilex.mt.translator import _dtype_kwargs
 from loquilex.config import defaults as cfg_defaults
+from loquilex.mt.translator import _dtype_kwargs
+from loquilex.output.srt import _ts as _srt_ts
+from loquilex.output.vtt import _ts as _vtt_ts
 from loquilex.post.zh_text import normalize_punctuation, post_process
 
 

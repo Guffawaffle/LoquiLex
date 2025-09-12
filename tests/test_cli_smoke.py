@@ -4,12 +4,12 @@ from pathlib import Path
 
 
 def test_cli_runs_with_fake_capture_and_translator(monkeypatch, tmp_path: Path):
-    import loquilex.mt.translator as tr
-    import loquilex.cli.live_en_to_zh as cli
+    import numpy as np
 
     # Patch capture_stream to emit a few silent frames then stop
     import loquilex.audio.capture as cap
-    import numpy as np
+    import loquilex.cli.live_en_to_zh as cli
+    import loquilex.mt.translator as tr
 
     def fake_capture_stream(cb):
         frames = 6

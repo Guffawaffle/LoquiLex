@@ -6,7 +6,6 @@ from typing import List, Tuple
 
 def parse_vtt(path: str) -> List[Tuple[float, float, str]]:
     cues: List[Tuple[float, float, str]] = []
-    import re
 
     def ts(s: str) -> float:
         h, m, rest = s.split(":")

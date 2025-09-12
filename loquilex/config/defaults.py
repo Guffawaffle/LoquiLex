@@ -5,11 +5,10 @@ No side effects on import. Values can be overridden via env/.env.
 
 from __future__ import annotations
 
-
 import os
 import warnings
-from typing import Callable, TypeVar
 from dataclasses import dataclass
+from typing import Callable, TypeVar
 
 T = TypeVar("T")
 

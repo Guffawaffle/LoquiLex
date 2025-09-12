@@ -17,7 +17,7 @@ def _install_fake_faster_whisper():
 
 def _install_fake_mt():
     fake_mt = types.ModuleType("greenfield.mt.translator")
-    from tests.fakes.fake_mt import Translator, TranslationResult
+    from tests.fakes.fake_mt import TranslationResult, Translator
 
     fake_mt.Translator = Translator
     fake_mt.TranslationResult = TranslationResult

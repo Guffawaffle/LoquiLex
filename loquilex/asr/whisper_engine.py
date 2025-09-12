@@ -1,17 +1,17 @@
 from __future__ import annotations
 
-"""faster-whisper runner with VAD and segmentation.
-
-Emits partial text quickly and final segments on end-of-speech or max length.
-"""
-
-from dataclasses import dataclass
-from typing import Callable, Iterable, Optional, List
 import time
+from dataclasses import dataclass
+from typing import Callable, Iterable, List, Optional
 
 import numpy as np
 
 from loquilex.config.defaults import ASR, RT, SEG, pick_device
+
+"""faster-whisper runner with VAD and segmentation.
+
+Emits partial text quickly and final segments on end-of-speech or max length.
+"""
 
 
 @dataclass

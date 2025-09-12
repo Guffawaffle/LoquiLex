@@ -1,5 +1,10 @@
 from __future__ import annotations
 
+import os
+import re
+from pathlib import Path
+from typing import Dict, List
+
 """Local model discovery for ASR (whisper) and MT (NLLB/M2M).
 
 We scan common cache locations:
@@ -7,11 +12,6 @@ We scan common cache locations:
 - whisper.cpp GGUF files under third_party/whisper.cpp/models and repo root models/
 - CTranslate2 directories (faster-whisper converted) under ~/.cache/ or project models/
 """
-
-import os
-import re
-from pathlib import Path
-from typing import Dict, List
 
 
 def _env_paths() -> List[Path]:

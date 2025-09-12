@@ -1,10 +1,5 @@
 from __future__ import annotations
 
-"""Microphone capture with sounddevice; ffmpeg pulse/alsa fallback.
-
-Produces 16 kHz mono float32 frames. Never writes files. No side effects on import.
-"""
-
 import queue
 import shutil
 import subprocess
@@ -15,6 +10,10 @@ from typing import Callable
 
 import numpy as np
 
+"""Microphone capture with sounddevice; ffmpeg pulse/alsa fallback.
+
+Produces 16 kHz mono float32 frames. Never writes files. No side effects on import.
+"""
 
 SAMPLE_RATE = 16000
 CHANNELS = 1
