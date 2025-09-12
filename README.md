@@ -55,3 +55,29 @@ Supported environment variables (prefix LX_):
 - LX_PAUSE_FLUSH_SEC, LX_SEGMENT_MAX_SEC, LX_PARTIAL_DEBOUNCE_MS
 - LX_NLLB_MODEL, LX_M2M_MODEL, LX_MT_BEAMS, LX_MT_NO_REPEAT, LX_MT_MAX_INPUT, LX_MT_MAX_NEW
 - LX_OUT_DIR, LX_DEVICE, LX_DECODE_INTERVAL_SEC, LX_PARTIAL_DEBOUNCE_SEC, LX_MAX_BUFFER_SEC, LX_MAX_LINES, LX_PARTIAL_WORD_CAP, LX_SAVE_AUDIO, LX_SAVE_AUDIO_PATH
+
+### CI / Docker Parity
+
+The repository includes a minimal, cache-friendly CI image definition in `Dockerfile.ci` for reproducing GitHub Actions locally without copying the full source into the image.
+
+Build the CI image (expect a very small build context thanks to `.dockerignore`):
+
+```bash
+DOCKER_BUILDKIT=1 docker build -f Dockerfile.ci -t loquilex-ci . --progress=plain
+```
+
+Run the full CI parity sequence (lint, format check, type check, unit/integration, e2e):
+
+```bash
+docker run --rm -v "$(pwd)":/app loquilex-ci ./scripts/ci-gh-parity.sh
+```
+
+If you need an interactive shell inside the container:
+
+```bash
+docker run --rm -it -v "$(pwd)":/app loquilex-ci bash
+```
+
+The container sets offline-friendly environment flags (`HF_HUB_OFFLINE`, `TRANSFORMERS_OFFLINE`, etc.) to avoid unintended network access during tests.
+
+Tooling (ruff, black, mypy, pytest) is always installed even if not explicitly pinned in requirements files.

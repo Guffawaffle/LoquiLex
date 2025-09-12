@@ -2,7 +2,6 @@
     "python.pythonPath": "${workspaceFolder}/.venv/bin/python",
     "python.formatting.provider": "black",
     "python.linting.enabled": true,
-    "python.linting.flake8Enabled": false,
     "python.linting.pylintEnabled": false,
     "ruff.lint.enabled": true,
     "ruff.lint.args": ["--line-length=100"],

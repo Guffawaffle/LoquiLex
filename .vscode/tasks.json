@@ -155,8 +155,7 @@
       "command": "make test-ci",
       "options": { "cwd": "${workspaceFolder}" },
       "problemMatcher": []
-    }
-    ,
+    },
     {
       "label": "Docker CI (CI-identical container run)",
       "type": "shell",
@@ -164,6 +163,13 @@
       "options": { "cwd": "${workspaceFolder}" },
       "group": "test",
       "problemMatcher": []
+    },
+    {
+        "label": "Docker CI Test (GH parity)",
+        "type": "shell",
+        "command": "make docker-ci-test",
+        "group": "test",
+        "problemMatcher": []
     }
   ]
 }
