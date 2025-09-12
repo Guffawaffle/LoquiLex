@@ -27,14 +27,17 @@ def _install_fakes() -> None:
         def __init__(self, *args, **kwargs) -> None: ...
         def to(self, *args, **kwargs):
             return self
+
         def eval(self):
             return self
+
         def generate(self, *args, **kwargs):
             # Return deterministic token ids
             return [[1, 2, 3]]
 
     class DummyTokenizer:
         src_lang = "eng_Latn"
+
         def __init__(self, *args, **kwargs) -> None: ...
         def __call__(self, text, **kwargs):
             return {"input_ids": [[1, 2, 3]], "attention_mask": [[1, 1, 1]]}
@@ -60,6 +63,7 @@ def _patch_translator() -> None:
     """Patch our Translator to the fake implementation after fakes are installed."""
     # Import after fakes are installed so downstream imports see our stubs.
     import loquilex.mt.translator as mt  # noqa: WPS433 (allowed here intentionally)
+
     mt.Translator = fake_mt.Translator
 
 
