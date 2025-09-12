@@ -6,7 +6,7 @@ import re
 import time
 import uuid
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
@@ -225,7 +225,7 @@ async def post_selftest(req: SelfTestReq) -> SelfTestResp:
 
     t0 = time.perf_counter()
     try:
-        os.environ["GF_ASR_MODEL"] = req.asr_model_id or os.getenv("GF_ASR_MODEL", "small.en")
+        os.environ["GF_ASR_MODEL"] = req.asr_model_id or os.getenv("GF_ASR_MODEL") or "small.en"
         os.environ["GF_DEVICE"] = req.device
         eng = WhisperEngine()
         eng.warmup()
@@ -235,7 +235,7 @@ async def post_selftest(req: SelfTestReq) -> SelfTestResp:
 
     ema = EmaVu(0.4)
     levels: list[float] = []
-    stop_fn = None
+    stop_fn: Optional[Callable[[], None]] = None
     try:
 
         def cb(fr) -> None:
@@ -248,7 +248,7 @@ async def post_selftest(req: SelfTestReq) -> SelfTestResp:
     except Exception as e:
         return SelfTestResp(ok=False, asr_load_ms=asr_ms, rms_avg=0.0, message=f"mic failed: {e}")
     finally:
-        if stop_fn:
+        if stop_fn is not None:
             try:
                 stop_fn()
             except Exception:

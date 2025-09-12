@@ -158,6 +158,7 @@ def main() -> None:
     session_t0_mono = None  # will set once first audio frame arrives (monotonic)
     last_t1_mono = None  # monotonic time of latest captured audio end
     audio_since_reset = 0.0  # seconds fed to engine since its last reset
+    mt_dropped = 0  # Count of dropped translation requests due to backlog
 
     def on_partial(txt: str) -> None:
         nonlocal last_zh_partial_emit, last_zh_partial_text, last_en_partial_text
@@ -278,7 +279,6 @@ def main() -> None:
 
     # Proper capture loop; start capture and set start time on first frame
     frames: List[np.ndarray] = []
-    mt_dropped = 0
 
     # Optional audio recording sinks
     audio_mode = args.save_audio

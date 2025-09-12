@@ -127,6 +127,7 @@ def capture_stream(callback: Callable[[AudioFrame], None]) -> Callable[[], None]
         def reader() -> None:
             bufsize = FRAME_SAMPLES * 4  # float32 bytes
             while not stop_flag.is_set():
+                assert proc.stdout is not None  # Already checked above
                 chunk = proc.stdout.read(bufsize)
                 if not chunk:
                     break
