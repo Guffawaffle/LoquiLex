@@ -1,0 +1,35 @@
+---
+extends: default
+
+# Only lint our GitHub Actions
+yaml-files:
+  - ".github/workflows/*.yml"
+  - ".github/workflows/*.yaml"
+
+# Keep the linter out of virtualenvs, vendor dirs, etc.
+ignore: |
+  .git/**
+  .venv/**
+  .direnv/**
+  node_modules/**
+  **/site-packages/**
+  vendor/**
+  agent-md-bundle/**
+
+rules:
+  # GH Actions often use long commands; keep noise down.
+  line-length:
+    max: 160
+    allow-non-breakable-words: true
+    allow-non-breakable-inline-mappings: true
+
+  # "on:" key in Actions triggers truthy rule; don't check keys.
+  truthy:
+    check-keys: false
+
+  # GH expressions like ${{ matrix.language }} look like braces/brackets to yamllint
+  braces: disable
+  brackets: disable
+
+  # Actions don't need '---' at top
+  document-start: disable
