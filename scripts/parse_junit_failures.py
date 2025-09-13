@@ -12,6 +12,7 @@ for dirpath, _dirnames, filenames in os.walk(root_dir):
         if fn.lower().endswith(".xml") and ("junit" in fn.lower() or "e2e" in fn.lower()):
             junit_paths.append(os.path.join(dirpath, fn))
 
+
 def print_failure(case, kind, msg, text):
     classname = case.get("classname", "")
     name = case.get("name", "")
@@ -23,6 +24,7 @@ def print_failure(case, kind, msg, text):
         for ln in lines[:20]:
             print(f"  {ln}")
     print()
+
 
 any_found = False
 for p in junit_paths:
