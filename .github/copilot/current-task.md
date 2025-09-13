@@ -1,196 +1,89 @@
+# Task: Scripts de-dupe — centralize model prefetch & env detection; delete dead scripts (Epic #3 — Step 5)
 
-# Task: Docs refresh — default to `make dev-minimal` and add `LX_SKIP_MODEL_PREFETCH` (Epic)
-
-**Source:** Epic “Dedupe tooling, remove dead code, and harden test infra.”
-Focus on Epic checklist item **2)** (Docs/book: switch dev setup to `make dev-minimal`; add opt-ins & `LX_SKIP_MODEL_PREFETCH`).
+**Epic:** Dedupe tooling, remove dead code, and harden test infra.
+**Focus item:** 5) Scripts de-dupe: centralize model prefetch/env detection; delete dead scripts.
+**Branch:** `epic3/scripts-dedupe`
 
 ---
 
 ## Objective
-
-Make the lightweight, offline-first developer workflow the primary path. Update docs to default to `make dev-minimal`, provide optional ML paths, and introduce an explicit environment flag `LX_SKIP_MODEL_PREFETCH` that prevents any model downloads during setup. Ensure the Makefile and helper script(s) honor the flag.
-
-One PR = One Chat. Keep scope tight to **docs + minimal glue**. No CI changes in this PR.
+Create a single, reusable source of truth for environment handling and model prefetch gating, then migrate script call-sites to it and remove obsolete scripts. Preserve offline-first behavior: **no prefetch unless explicitly invoked**, and fully honor `LX_SKIP_MODEL_PREFETCH` (with legacy `GF_*` deprecation warnings).
 
 ---
 
 ## Acceptance Criteria
-
-- **README.md**
-  - Quickstart shows `make dev-minimal` as the default path.
-  - Clearly documents optional ML paths (brief mention) and defers details to `CI-TESTING.md`.
-  - Adds a short “Offline-first” note and documents `LX_SKIP_MODEL_PREFETCH=1`.
-
-- **CI-TESTING.md**
-  - Mentions `make run-ci-mode` (lightweight) and `make run-local-ci` (full), and how `LX_SKIP_MODEL_PREFETCH` interacts with local dev.
-  - States that model prefetch is **opt-in** and should be skipped when the flag is set.
-
-- **Makefile**
-  - If `dev-minimal` target is missing, add it. It must:
-    - Create/activate venv.
-    - Install **non-ML** base + dev dependencies.
-    - **Not** prefetch models.
-  - Ensure any dev setup that runs a prefetch script only does so when `LX_SKIP_MODEL_PREFETCH` is **unset** (or explicitly `0/false`).
-
-- **scripts/**
-  - If a model prefetch script exists (e.g., `scripts/dev_fetch_models.py`), gate it behind `LX_SKIP_MODEL_PREFETCH`. If it does not exist, create a tiny, offline-safe guard that bails when the flag is set.
-  - The guard should treat the following as “true”: `1`, `true`, `yes`, `on` (case-insensitive). Anything else is false.
-
-- **No code path should hard-fail** if the flag is set; prefetch is simply skipped with a clear log line.
-
-- **Docs & Makefile tested locally** via the verification steps below.
-
----
-
-## Constraints & Conventions
-
-- Commit messages: **imperative mood** (e.g., “Update README to default to make dev-minimal”).
-- Do **not** edit CI workflows in this PR.
-- Offline-first: Assume no network access during `make dev-minimal`.
-- Keep diffs tight; prefer surgical edits over rewrites.
+- **New shared helpers (Python):**
+  - `scripts/env.py` exposes:
+    - `is_truthy(str|None) -> bool` (1/true/yes/on, case-insensitive)
+    - `getenv(name, default=None, aliases=())` that prefers `LX_*`, then checks legacy `GF_*`, emitting a one-time `DeprecationWarning` when a legacy var is used.
+    - `getenv_bool(name, default=False, aliases=())` built atop `getenv` + `is_truthy`.
+  - `scripts/models.py` exposes:
+    - `should_skip_prefetch() -> bool` (reads `LX_SKIP_MODEL_PREFETCH` via `getenv_bool`)
+    - `prefetch_asr(model: str, download_root: Path) -> None` stub that **bails fast** if `should_skip_prefetch()`.
+    - A tiny `main()` so `python -m scripts.models prefetch-asr` works (no-ops when skipping).
+- **Migrations:**
+  - `scripts/dev_fetch_models.py` imports from `scripts.env`/`scripts.models` and defers skip logic to the shared helpers.
+  - Makefile targets that call prefetch scripts remain functionally identical; when the skip flag is set, they log and return success.
+- **Dead code removed:** Any duplicate env/prefetch helpers or unused scripts are deleted.
+- **Docs:** `CI-TESTING.md` gains a 2–3 line note that env/prefetch logic is centralized in `scripts/env.py` and `scripts/models.py`.
+- **Tests:** At least unit tests for `is_truthy` and `getenv*_` mapping (GF_* → LX_* deprecation).
+- **Verification:** Commands below complete successfully (including offline paths).
 
 ---
 
 ## Planned Changes
 
-### 1) README.md (Quickstart & Env)
+1) **Add shared helpers**
+   - `scripts/env.py` and `scripts/models.py` per above.
+   - `scripts/__init__.py` (empty) to allow `python -m scripts.models`.
 
-- Replace the current Quickstart section with a minimal path:
+2) **Migrate current scripts**
+   - Update `scripts/dev_fetch_models.py` to:
+     - import `should_skip_prefetch` from `scripts.models`,
+     - exit 0 early if skipping,
+     - otherwise call `prefetch_asr(...)` (stub remains a no-op for now).
 
-```md
-## Quickstart (lightweight, offline-first)
+3) **Audit & delete dead scripts**
+   - Run `git ls-files scripts/` and classify:
+     - **Keep & migrate** to shared helpers.
+     - **Delete** (old sh/py fetchers, obsolete env toggles, etc.).
+   - Remove deleted scripts from Makefile and docs.
+
+4) **Docs & tests**
+   - `CI-TESTING.md` short note about the new central helpers.
+   - Add `tests/test_env_helpers.py` for `is_truthy`, `getenv`, `getenv_bool` with GF_* → LX_* fallback + deprecation.
+
+---
+
+## Verification Steps
 
 ```bash
-# Minimal dev (no ML downloads, fastest path)
+# 0) Safety: fresh venv and offline path
 make dev-minimal
 
-# Run the fast, lightweight checks (matches CI's lightweight mode)
-make run-ci-mode
-```
+# 1) Unit tests for env helpers (add under tests/)
+pytest -q tests/test_env_helpers.py
 
-### Optional (full local CI with ML deps)
-```bash
-# Brings in ML dependencies and runs the full stack locally
-make run-local-ci
-```
+# 2) Skip behavior (offline)
+LX_SKIP_MODEL_PREFETCH=1 python -m scripts.models prefetch-asr --model tiny.en
+LX_SKIP_MODEL_PREFETCH=1 python scripts/dev_fetch_models.py
 
-**Offline-first:** Set `LX_SKIP_MODEL_PREFETCH=1` to prevent any model downloads that helper scripts might attempt.
-```
+# 3) Non-skip path (online optional; should no-op safely if not implemented)
+python -m scripts.models prefetch-asr --model tiny.en || true
 
-- Add a short table listing relevant env flags (keep it brief, link longer details to CI-TESTING.md):
-
-```md
-| Variable                | Purpose                                   | Default |
-|-------------------------|-------------------------------------------|---------|
-| LX_SKIP_MODEL_PREFETCH  | Skip any model prefetch during dev setup  | unset   |
-```
-
-- Keep the existing `LX_*` vs `GF_*` migration note intact.
-
-### 2) CI-TESTING.md
-
-Add/adjust sections to describe:
-
-- `make run-ci-mode` vs `make run-local-ci` and when to use each.
-- How `LX_SKIP_MODEL_PREFETCH=1` interacts with helper scripts (no model downloads).
-- A short “Verification” recipe (see below).
-
-### 3) Makefile
-
-- Add a `dev-minimal` target if missing. Pseudocode:
-
-```make
-.PHONY: dev-minimal
-dev-minimal:
-	python -m venv .venv
-	. .venv/bin/activate; pip install -U pip
-	# Install base + dev deps only (no ML)
-	. .venv/bin/activate; pip install -r requirements-dev.txt -c constraints.txt
-	@echo "Dev (minimal) ready. Models will NOT be prefetched. Use LX_SKIP_MODEL_PREFETCH=1 to enforce."
-```
-
-- Wherever model prefetch might be called (e.g., `dev` or `dev-ml` targets), ensure it is gated, for example:
-
-```make
-ifneq ($(shell echo $${LX_SKIP_MODEL_PREFETCH:-0} | tr '[:upper:]' '[:lower:]'),1)
-# or equivalent case-insensitive check executed in the shell
-	. .venv/bin/activate; python scripts/dev_fetch_models.py || true
-else
-	@echo "LX_SKIP_MODEL_PREFETCH set — skipping model prefetch."
-endif
-```
-
-### 4) scripts/dev_fetch_models.py (or new guard script)
-
-Implement a tiny guard at the top:
-
-```python
-import os, sys
-
-def _istrue(v: str | None) -> bool:
-    if v is None:
-        return False
-    return v.strip().lower() in {"1", "true", "yes", "on"}
-
-if _istrue(os.getenv("LX_SKIP_MODEL_PREFETCH")):
-    print("LX_SKIP_MODEL_PREFETCH set — skipping model prefetch.")
-    sys.exit(0)
-
-# existing (or placeholder) logic continues here...
-```
-
-If there is no existing script, create this file with only the guard plus a friendly message like “No prefetch actions defined; nothing to do.” so calls are idempotent and harmless.
-
----
-
-## Verification Steps (local)
-
-```bash
-# 1) Fresh clone, no network (simulate) — ensure minimal dev works
-make dev-minimal
-
-# 2) Ensure fast checks pass
-make run-ci-mode
-
-# 3) Confirm flag behavior
-LX_SKIP_MODEL_PREFETCH=1 make dev           # Should not attempt any downloads
-LX_SKIP_MODEL_PREFETCH=1 python scripts/dev_fetch_models.py  # Script should exit 0 with a skip message
-
-# 4) Full stack (optional, with network)
-make run-local-ci
+# 4) Makefile call sites still succeed (no downloads when flag set)
+LX_SKIP_MODEL_PREFETCH=1 make dev
 ```
 
 ---
 
-## Deliverables
-
-- `README.md` and `CI-TESTING.md` updated.
-- `Makefile` updated to include (or preserve) `dev-minimal` without model prefetch.
-- `scripts/dev_fetch_models.py` (existing or new) honors `LX_SKIP_MODEL_PREFETCH` flag.
-- A concise CHANGELOG entry under “Unreleased → Added/Changed”.
-
----
-
-## PR Title (example)
+## Commit message (example)
 
 ```
-docs(dev): default to `make dev-minimal`; add `LX_SKIP_MODEL_PREFETCH` flag
+chore(scripts): centralize env + prefetch logic; migrate dev_fetch_models; remove dead helpers
 ```
 
-## PR Description (example)
-
-- Make `dev-minimal` the primary Quickstart path (offline-first).
-- Document `LX_SKIP_MODEL_PREFETCH` to disable model prefetch during setup.
-- Gate any prefetch script behind the flag.
-- CI remains unchanged. Tight diffs; no behavior change for existing users unless they opt into the flag.
-
-**Verification:** See steps in this task. All checks should pass locally in lightweight mode.
-
----
-
-## Out of Scope (explicitly)
-
-- Dependency pruning/renames (tracked separately in Epic items 4 & 7).
-- VS Code tasks consolidation (Epic item 3).
-- GPU enablement toggles and profiles.
-```
+## Out of Scope
+- Changing actual model download implementation (stub stays minimal for now).
+- GPU enablement toggles or ML dependency changes (tracked elsewhere in Epic #3).
+- CI workflow edits (beyond doc note and unit tests).
