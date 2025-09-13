@@ -1,8 +1,12 @@
+### Makefile is the canonical interface for local, CI, and IDE tasks.
+### Update commands ONLY here (do not hand-edit CI workflow or VS Code tasks).
+### Targets: fmt, lint, typecheck, unit, e2e, ci (aggregates), plus legacy/util extras.
+
 VENV?=.venv
 PY=$(VENV)/bin/python
 PIP=$(VENV)/bin/pip
 
-.PHONY: venv install dev lint fmt test run-local-ci run-ci-mode test-ci run-wav run-zh clean
+.PHONY: venv install dev fmt lint typecheck unit e2e ci test run-local-ci run-ci-mode test-ci run-wav run-zh clean docker-ci docker-ci-test docker-ci-build docker-ci-run docker-ci-shell
 
 venv:
 	python3 -m venv $(VENV)
@@ -14,14 +18,25 @@ install: venv
 dev: install
 	$(PIP) install -r requirements-dev.txt
 
-lint:
-	$(VENV)/bin/ruff check .
-
 fmt:
-	$(VENV)/bin/black .
+	$(VENV)/bin/black loquilex tests
 
-test:
-	$(PY) -m pytest -q --maxfail=1 --disable-warnings -ra --cov=loquilex --cov-report=term-missing
+lint:
+	$(VENV)/bin/ruff check loquilex tests
+
+typecheck:
+	$(VENV)/bin/mypy loquilex
+
+# Unit tests (non-e2e) quick mode; add extra flags via PYTEST_ADDOPTS if needed
+unit:
+	$(PY) -m pytest -q -m "not e2e"
+
+# E2E tests (verbose). Timeout override applied by invoking: make e2e PYTEST_ADDOPTS=--timeout=45
+e2e:
+	$(PY) -m pytest -m e2e -vv -rA
+
+# Aggregate CI-style sequence
+ci: fmt lint typecheck unit e2e
 
 # --- CI-identical local run (canonical) ---
 .PHONY: run-local-ci run-ci-mode test-ci
