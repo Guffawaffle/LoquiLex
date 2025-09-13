@@ -117,6 +117,15 @@ mypy loquilex || true  # Type checking (allowed to fail)
 3. **Verbose Output**: CI uses different pytest flags for better CI logging
 4. **Dependency Management**: Uses both `requirements.txt` and `requirements-dev.txt`
 
+## Offline-first Development
+
+Set `LX_SKIP_MODEL_PREFETCH=1` to prevent any model downloads during setup. This flag ensures that no prefetching occurs, making the environment fully offline-friendly.
+
+### Interaction with Make Targets
+
+- `make run-ci-mode`: Lightweight CI simulation. Respects `LX_SKIP_MODEL_PREFETCH` to skip model downloads.
+- `make run-local-ci`: Full local development. If `LX_SKIP_MODEL_PREFETCH=1`, model prefetching is skipped.
+
 ## Troubleshooting
 
 ### Python Version Mismatch
