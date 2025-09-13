@@ -167,4 +167,4 @@ docker-ci-shell: docker-ci-build
 
 # Secret scanning using Gitleaks
 sec-scan:
-	@docker run --rm -v "$(pwd)":/repo zricethezav/gitleaks:latest detect -s /repo --no-git --redact
+	@docker run --rm -v "$(PWD)":/repo zricethezav/gitleaks:latest detect -s /repo --no-git --redact
