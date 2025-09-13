@@ -11,6 +11,7 @@ This script is safe to run repeatedly; it only ensures the local cache exists.
 """
 from __future__ import annotations
 import os
+import sys
 from pathlib import Path
 
 ASR_MODEL = os.getenv("GF_ASR_MODEL", "tiny.en")
@@ -18,6 +19,15 @@ DOWNLOAD_ROOT = Path(os.getenv("LLX_MODEL_DIR", ".models")).resolve()
 DOWNLOAD_ROOT.mkdir(parents=True, exist_ok=True)
 
 print(f"[dev] Prefetching ASR model: {ASR_MODEL} -> {DOWNLOAD_ROOT}")
+
+def is_truthy(value: str | None) -> bool:
+    if value is None:
+        return False
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
+if is_truthy(os.getenv("LX_SKIP_MODEL_PREFETCH")):
+    print("[dev] LX_SKIP_MODEL_PREFETCH set — skipping model prefetch.")
+    sys.exit(0)
 
 try:
     # Force online just for this fetch (call-site can also set envs)
