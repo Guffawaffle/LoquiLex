@@ -93,8 +93,14 @@ models-tiny:
 ## Dev presets
 
 # Lightweight developer setup (safe for Codespaces)
-dev-minimal: install-base install-ml-minimal models-tiny
-	@echo "✅ dev-minimal ready (ASR_MODEL=$(ASR_MODEL)); heavy CUDA/Torch not installed."
+dev-minimal: install-base
+	@if [ -f "requirements-dev.txt" ]; then \
+		. .venv/bin/activate; pip install -r requirements-dev.txt -c constraints.txt; \
+	else \
+		echo "[dev-minimal] requirements-dev.txt not found; skipping dev deps."; \
+	fi
+	@echo "[dev-minimal] Skipping model prefetch (offline-first)."
+	@echo "[dev-minimal] Development environment ready."
 
 # Keep `dev` as the default developer entrypoint
 dev: dev-minimal
