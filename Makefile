@@ -4,19 +4,22 @@
 # Vars
 VENV ?= .venv
 PY   ?= $(VENV)/bin/python
-PIP  ?= $(VENV)/bin/pip
+PIP := .venv/bin/python -m pip
 
-.PHONY: venv install-base install-ml-cpu models-tiny dev dev-ml-cpu dev-ml-gpu fmt fmt-check lint typecheck unit e2e ci test run-local-ci run-ci-mode test-ci run-wav run-zh clean docker-ci docker-ci-test docker-ci-build docker-ci-run docker-ci-shell
+# ---------------------------------------------------------------------------
+# Bootstrap / installs
+.PHONY: install-venv install-base
 
-# Allow CI to inject extra flags (e.g., --junit-xml)
-PYTEST_FLAGS ?=
+# Create venv if missing; idempotent
+install-venv:
+	@echo ">> Ensuring .venv exists"
+	@test -x $(PY) || python3 -m venv .venv
+	@$(PY) -m pip install -U pip setuptools wheel
 
-venv:
-	python3 -m venv $(VENV)
-	$(PIP) install -U pip
-
-install-base:
-	$(PIP) install -r requirements-ci.txt -r requirements-dev.txt -c constraints.txt
+# Install dev/test deps used by lint/format/typecheck/test
+install-base: install-venv
+	@echo ">> Installing base dev/test dependencies"
+	@$(PIP) install -r requirements-ci.txt -r requirements-dev.txt -c constraints.txt
 
 install-ml-cpu:
 	$(PIP) install -r requirements-ml-cpu.txt -c constraints.txt
