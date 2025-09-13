@@ -70,19 +70,19 @@ test-e2e: install-base
 
 .PHONY: lint
 lint: install-base
-	.venv/bin/ruff check loquilex tests
+	$(PY) -m ruff check loquilex tests
 
 .PHONY: fmt
 fmt: install-base
-	.venv/bin/black loquilex tests
+	$(PY) -m black loquilex tests
 
 .PHONY: fmt-check
 fmt-check: install-base
-	.venv/bin/black --check --diff loquilex tests
+	$(PY) -m black --check --diff loquilex tests
 
 .PHONY: typecheck
 typecheck: install-base
-	.venv/bin/mypy loquilex
+	$(PY) -m mypy loquilex
 
 .PHONY: ci
 ci: lint typecheck test
