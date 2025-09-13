@@ -43,5 +43,8 @@ jobs:
           else
             echo "No 'run-ci-mode' target; running minimal pytest fallback"
             python -m pip install pytest >/dev/null
-            pytest -q
-          fi
+            if find . -type f \( -name "test_*.py" -o -name "*_test.py" \) | grep -q .; then
+              pytest -q
+            else
+              echo "No test files found; skipping pytest."
+            fi
