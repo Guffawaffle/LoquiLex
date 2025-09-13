@@ -50,4 +50,4 @@ loquilex/segmentation/aggregator.py      36      1    97%   49
 -------------------------------------------------------------------
 TOTAL                                   723    161    78%
 Coverage HTML written to dir htmlcov
-26 passed, 8 warnings in 3.52s
+26 passed, 8 warnings in 3.50s

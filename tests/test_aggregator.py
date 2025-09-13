@@ -30,7 +30,7 @@ def test_aggregator_force_finalize():
 
     agg = Aggregator(now=now)
     finals: list[tuple[float, float, str]] = []
-    agg.on_partial("partial", lambda s: None)
+    agg.on_partial("partial", lambda _s: None)
     t[0] += 1.0
     agg.force_finalize(lambda a, b, s: finals.append((a, b, s)))
     assert len(finals) == 1
