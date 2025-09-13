@@ -70,15 +70,15 @@ install-ml-cpu: install-venv
 
 # Prefetch a specific ASR model (default tiny.en) to avoid on-demand downloads
 prefetch-asr:
-	@echo "[prefetch-asr] Downloading ASR model: $(ASR_MODEL)"
-	@ASR_MODEL="$(ASR_MODEL)" $(PY) - <<-'PY'
-	import os
-	from faster_whisper import WhisperModel
-	model = os.environ.get("ASR_MODEL") or os.environ.get("GF_ASR_MODEL") or "tiny.en"
-	print(f"Downloading {model}...")
-	WhisperModel(model, device="cpu", compute_type="int8")
-	print(f"[prefetch-asr] downloaded/prepared: {model}")
-	PY
+    @echo "[prefetch-asr] Downloading ASR model: $(ASR_MODEL)"
+    @ASR_MODEL="$(ASR_MODEL)" $(PY) -c ' \
+import os; \
+from faster_whisper import WhisperModel; \
+model = os.environ.get("ASR_MODEL") or os.environ.get("GF_ASR_MODEL") or "tiny.en"; \
+print(f"Downloading {model}..."); \
+WhisperModel(model, device="cpu", compute_type="int8"); \
+print(f"[prefetch-asr] downloaded/prepared: {model}")'
+
 
 # Prefetch only the tiny model unless explicitly skipped
 models-tiny:
