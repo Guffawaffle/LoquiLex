@@ -43,28 +43,42 @@ dev-ml-gpu: dev
 	@echo ">>> Skipping GPU install by default. Edit requirements-ml-gpu.txt and run:"
 	@echo "    pip install -r requirements-ml-gpu.txt -c constraints.txt"
 
-fmt:
-	$(VENV)/bin/black loquilex tests
+.PHONY: test unit
+test: install-base
+	$(PY) -m pytest -q
+unit: test
 
-fmt-check:
-	$(VENV)/bin/black --check loquilex tests
+.PHONY: test-e2e
+test-e2e: install-base
+	$(PY) -m pytest -m e2e -q
 
-lint:
-	$(VENV)/bin/ruff check loquilex tests
+.PHONY: lint
+lint: install-base
+	.venv/bin/ruff check loquilex tests
 
-typecheck:
-	$(VENV)/bin/mypy loquilex
+.PHONY: fmt
+fmt: install-base
+	.venv/bin/black loquilex tests
+
+.PHONY: fmt-check
+fmt-check: install-base
+	.venv/bin/black --check --diff loquilex tests
+
+.PHONY: typecheck
+typecheck: install-base
+	.venv/bin/mypy loquilex
+
+.PHONY: ci
+ci: lint typecheck test
+	@echo "✓ CI checks passed locally"
 
 # Unit tests (non-e2e) quick mode; add extra flags via PYTEST_FLAGS if needed
-unit:
-	$(PY) -m pytest -q -m "not e2e" $(PYTEST_FLAGS)
 
 # E2E tests (verbose). Timeout override applied by invoking: make e2e PYTEST_ADDOPTS=--timeout=45
 e2e:
 	$(PY) -m pytest -m e2e -vv -rA $(PYTEST_FLAGS)
 
 # Aggregate CI-style sequence
-ci: fmt-check lint typecheck unit e2e
 
 # --- CI-identical local run (canonical) ---
 .PHONY: run-local-ci run-ci-mode test-ci
