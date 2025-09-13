@@ -92,3 +92,13 @@ docker run --rm -it -v "$(pwd)":/app loquilex-ci bash
 The container sets offline-friendly environment flags (`HF_HUB_OFFLINE`, `TRANSFORMERS_OFFLINE`, etc.) to avoid unintended network access during tests.
 
 Tooling (ruff, black, mypy, pytest) is always installed even if not explicitly pinned in requirements files.
+
+## Security
+
+LoquiLex is maintained with an automated security posture:
+- **CodeQL** (advanced workflow) for static analysis
+- **Dependabot** + **Dependency Review** for supply-chain changes
+- **gitleaks** for CI secret sweeps (with Push Protection enabled in GitHub)
+- **OpenSSF Scorecards** for repo hygiene and best practices
+
+See [SECURITY.md](./SECURITY.md) for how to report vulnerabilities.
