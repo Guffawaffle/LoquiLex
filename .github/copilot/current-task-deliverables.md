@@ -1,194 +1,54 @@
-## Executive Summary
-Expanded the earlier minimal fix into a full CI stabilization update: (1) aligned overlapping dependency versions across `requirements-ci.txt` and `requirements-dev.txt` to stop uninstall/reinstall churn, (2) introduced a central `constraints.txt` for deterministic resolution, (3) added pip caching and unified install steps in `ci.yml` (both unit and e2e jobs), (4) enforced global test timeouts via `pytest-timeout` (pytest.ini defaults + per-job overrides), (5) tightened the e2e WebSocket test to actively send a ping and close promptly to reduce idle wait, and (6) added explicit e2e timeout flags. These changes target perceived "hangs" that were really combined latency from duplicate installs and potentially idle WebSocket waits without enforced ceilings.
+# Task Deliverables: Epic #16 — Part 1: CodeQL + Dependency Review
+_Prepared by **Lex** — 2025-09-13 08:02:52_
 
-## Steps Taken (Latest Batch)
-- Updated `requirements-ci.txt` to match dev versions for `httpx` (0.28.1) and `pytest-asyncio` (0.26.0) with explanatory comment.
-- Added `constraints.txt` capturing shared pinned versions (tooling + runtime core).
-- Patched `.github/workflows/ci.yml`:
-	- Added pip cache (`actions/cache@v4`) keyed by hash of requirements + constraints.
-	- Consolidated dual installs into a single constrained install command.
-	- Injected `PYTEST_ADDOPTS` for default timeouts (30s unit, 45s e2e) and explicit `--timeout` on e2e run.
-- Enhanced `pytest.ini` with global `timeout=30` and `timeout_method=thread` defaults.
-- Modified `tests/test_e2e_websocket_api.py` WebSocket block to send a `ping` message ensuring the server loop processes activity before closing, avoiding long idle sleeps.
-- Left server/supervisor logic untouched (no functional regressions required for this pass).
-- Prepared this deliverables update summarizing rationale & diffs.
+## Executive Summary
+> Replace this block **after CI runs** with a 3–5 sentence summary:
+> - What was attempted
+> - What changed (files/workflows)
+> - Outcome (green/red), with links to workflow runs
+
+## Steps Taken
+- [ ] Create CodeQL workflow: `.github/workflows/codeql.yml` (Python + JavaScript; PRs to `main`, pushes to `main`, weekly cron).
+- [ ] Create Dependency Review workflow: `.github/workflows/dependency-review.yml` (block ≥ **high** severity; summary comment on PR).
+- [ ] Commit using imperative style and push to trigger CI.
+- [ ] Open/confirm a PR to observe Dependency Review behavior.
+- [ ] Record run links and results below.
+
+### Commands (example)
+```bash
+git add .github/workflows/codeql.yml .github/workflows/dependency-review.yml
+git commit -m "chore(security): add CodeQL and Dependency Review workflows (Epic #16, Part 1)"
+git push
+```
 
 ## Evidence & Verification
+### Workflow Runs
+- CodeQL: <paste link to run #1> — status: ☐ success ☐ failure
+- Dependency Review: <paste link to run #2> — status: ☐ success ☐ failure
 
-### Key File Snapshots (Post-Changes)
-`requirements-ci.txt` (aligned section tail):
-```
-websockets==12.0
+### Logs & Notes
+> Paste relevant excerpts (errors, warnings). If Dependency Review blocked a PR due to ≥ high severity, include the PR URL and action comment snapshot.
 
-# Versions aligned with requirements-dev.txt to avoid reinstall churn
-httpx==0.28.1
-pytest-asyncio==0.26.0
-```
+### Security Tab
+- CodeQL appears in **Security → Code scanning alerts**: ☐ yes ☐ no
 
-`constraints.txt` (new):
-```
-numpy==1.26.4
-pytest==8.4.2
-pytest-asyncio==0.26.0
-httpx==0.28.1
-websockets==12.0
-fastapi==0.109.2
-uvicorn==0.27.1
-loguru==0.7.2
-rich==13.9.2
-webvtt-py==0.5.1
-mypy==1.18.1
-ruff==0.13.0
-black==24.10.0
-```
-
-`pytest.ini` additions:
-```
-timeout = 30
-timeout_method = thread
-```
-
-CI workflow (`ci.yml`) notable additions (excerpt):
-```
-			- name: Cache pip
-				uses: actions/cache@v4
-				with:
-					path: ~/.cache/pip
-					key: pip-${{ runner.os }}-${{ hashFiles('requirements-ci.txt', 'requirements-dev.txt', 'constraints.txt') }}
-...
-			- name: Install Python deps
-				run: |
-					python -m pip install -U pip
-					pip install -r requirements-ci.txt -r requirements-dev.txt -c constraints.txt
-```
-
-E2E pytest invocation now includes explicit timeout safeguard:
-```
-pytest -q --maxfail=1 -m e2e --disable-warnings --no-header --no-summary --timeout=45
-```
-
-`requirements-dev.txt` (current content excerpt):
-```
-pytest==8.4.2
-pytest-cov==7.0.0
-pytest-timeout==2.4.0
-pytest-mock==3.15.0
-pytest-asyncio==0.26.0
-freezegun>=1.5,<2
-httpx==0.28.1
-websockets==12.0
-mypy==1.18.1
-ruff==0.13.0
-black==24.10.0
-numpy==1.26.4
-```
-
-`pyproject.toml` (lint-related excerpt):
-```
-[tool.ruff]
-line-length = 100
-
-[tool.black]
-line-length = 100
-```
-
-`tests/conftest.py` (hash / key features):
-- Centralized imports at top
-- Helper functions `_install_fakes`, `_set_offline_env`, `_patch_translator`
-- `pytest_sessionstart` hook ensures offline environment & fakes before test collection
-- Ensures deterministic, network-free test environment.
-
-### Linting Outputs
-Ruff output:
-```
-$ ruff check loquilex tests
-All checks passed!
-```
-
-Black output:
-```
-All done! ✨ 🍰 ✨
-42 files left unchanged.
-```
-
-Mypy output:
-```
-$ mypy loquilex
-```
-$ pytest -q
-	/home/guff/LoquiLex/loquilex/config/defaults.py:38: DeprecationWarning: [LoquiLex] Using legacy env var GF_SAVE_AUDIO_PATH. Please migrate to LX_*.
-tests/test_config_env.py::test_env_overrides
-	/home/guff/LoquiLex/loquilex/config/defaults.py:38: DeprecationWarning: [LoquiLex] Using legacy env var GF_DEVICE. Please migrate to LX_*.
-
--- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
-25 passed, 5 warnings in 2.11s
-```
-
-### Determinism & Pin Verification
-- Timeouts prevent indefinite hangs during network-isolated WebSocket waits or thread deadlocks.
+### Sample PR Demonstration
+- PR URL (to show Dependency Review comment/gating): <paste link>
 
 ## Final Results
-- CI steps streamlined: reduced duplicate install churn; future runs benefit from pip cache.
-- Added deterministic constraints; easier maintenance of aligned versions.
-- Introduced safety net against hanging tests (global + e2e-specific timeouts).
-- No functional server code changes; risk minimal.
+- [ ] Both workflows pass on this PR (or are verified functional).
+- [ ] Security tab shows CodeQL scanning enabled.
+- [ ] A sample PR demonstrates Dependency Review’s summary and gating.
+- Outcome: ☐ met ☐ partially met ☐ not met
+- Notes / follow-ups: <list any follow-up tickets or deferrals>
+
 ## Files Changed
-- `requirements-ci.txt` (version alignment comment + upgrades)
-- `constraints.txt` (new)
-- `.github/workflows/ci.yml` (cache + unified install + timeouts)
-- `pytest.ini` (global timeout config)
-- `tests/test_e2e_websocket_api.py` (send ping before close)
+- Added: `.github/workflows/codeql.yml`
+- Added: `.github/workflows/dependency-review.yml`
 
-## Follow-up Recommendations
-- Add a nightly job that runs with `--timeout=0` (no timeout) to surface legitimately long-running regressions separately from PR gating.
-- Periodically produce an SBOM or `pip freeze > artifacts/freeze.txt` artifact to audit dependency drift.
-- Consider migrating to a full lock tool (e.g. `uv pip compile` or `pip-tools`) if dependency graph grows.
-- Address deprecation warnings (migrate `GF_*` env vars) and then promote them to errors.
+---
 
-### Addendum: Runner Communication Failure Mitigation
-Observed GitHub Actions runner losing communication likely due to aggressive iptables OUTPUT policy (dropping all non-local traffic including control plane heartbeats). Remediation steps applied:
-1. Removed iptables DROP rules from `ci.yml` e2e job and replaced with explanatory echo.
-2. Implemented test-level outbound network guard in `tests/conftest.py` that blocks `socket.create_connection` to non-local hosts while permitting localhost usage required for in-process FastAPI server.
-3. Retained offline env var enforcement ensuring no external model downloads.
-
-This shifts isolation from OS firewall (risking runner health checks) to Python-layer control, preserving CI stability.
-
--- End of Deliverables Report --
-## Representative Diffs
-```
-diff --git a/requirements-ci.txt b/requirements-ci.txt
-@@
--httpx==0.27.2
--pytest-asyncio==0.23.8
-+# Versions aligned with requirements-dev.txt to avoid reinstall churn
-+httpx==0.28.1
-+pytest-asyncio==0.26.0
-
-diff --git a/.github/workflows/ci.yml b/.github/workflows/ci.yml
-@@ (unit job excerpt)
-+      - name: Cache pip
-+        uses: actions/cache@v4
-@@ (e2e job excerpt)
-+      - name: Cache pip
-+        uses: actions/cache@v4
-@@
--      - run: pytest -q --maxfail=1 -m e2e --disable-warnings --no-header --no-summary
-+      - run: pytest -q --maxfail=1 -m e2e --disable-warnings --no-header --no-summary --timeout=45
-
-diff --git a/pytest.ini b/pytest.ini
-@@
- timeout = 30
- timeout_method = thread
-
-diff --git a/tests/test_e2e_websocket_api.py b/tests/test_e2e_websocket_api.py
-@@ (within websocket_connect block)
--                            with client.websocket_connect(ws_url):
--                                # Should connect without error
--                                pass
-+                            with client.websocket_connect(ws_url) as ws:
-+                                # Send a lightweight ping to exercise server loop then close promptly
-+                                try:
-+                                    ws.send_text("ping")
-+                                except Exception:
-+                                    pass
+### Appendix: Command History (optional)
+```bash
+# add more exact commands you used here
 ```
