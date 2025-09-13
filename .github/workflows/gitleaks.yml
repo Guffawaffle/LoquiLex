@@ -9,6 +9,7 @@ on:
 
 permissions:
   contents: read
+  pull-requests: write     # enable PR comments from the action
   security-events: write
 
 jobs:
@@ -17,9 +18,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # repo history for broader detection
+          fetch-depth: 0
+
       - name: Gitleaks scan
         uses: gitleaks/gitleaks-action@v2
-        with:
-          config-path: .gitleaks.toml
-          args: --redact
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}      # REQUIRED for PR scans
+          # Only needed for org accounts:
+          # GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
+          # Optional: explicitly point to your config (auto-detected if at repo root)
+          GITLEAKS_CONFIG: .gitleaks.toml
+          # Optional toggles (defaults shown in README):
+          # GITLEAKS_ENABLE_SUMMARY: "true"
+          # GITLEAKS_ENABLE_UPLOAD_ARTIFACT: "true"
+          # Pin a specific CLI version or use 'latest'
+          # GITLEAKS_VERSION: "8.24.3"
