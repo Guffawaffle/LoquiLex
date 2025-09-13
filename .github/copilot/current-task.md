@@ -1,230 +1,196 @@
-# Epic #16 — Align LoquiLex with GitHub Security Scanning (CodeQL, Dependabot, Secret Scanning)
 
-## Title
-Epic #16 — Align LoquiLex with GitHub Security Scanning (CodeQL, Dependabot, Secret Scanning)
+# Task: Docs refresh — default to `make dev-minimal` and add `LX_SKIP_MODEL_PREFETCH` (Epic)
 
-## Background
-Issue #16 requires aligning the repo with GitHub’s security surfaces (code scanning, dependency scanning, secret scanning) and documenting a disclosure path. Current repo state shows no SECURITY.md present.
-
-## Goals (Acceptance Criteria)
-- **Code scanning:** CodeQL workflow runs on PRs to `main`, pushes to `main`, and weekly schedule, covering **Python** and **JavaScript/TypeScript**.
-- **Dependency controls:**
-  - Dependabot enabled for **pip** and **GitHub Actions** at repo root, and **npm** under `/ui` (if present).
-  - Dependency Review action gates PRs on **high** severity or worse.
-- **Secret scanning posture:**
-  - Add a CI secret scan using **gitleaks** on PRs, pushes to `main`, and a nightly schedule.
-  - Provide a local `make sec-scan` target for devs.
-- **Security policy:** Add `SECURITY.md` with clear vuln-report path.
-- **Docs:** README “Security” section briefly explains our posture and links to `SECURITY.md`.
-- **Green CI:** All workflows pass in CI. Any found alerts are listed in `current-task-deliverables.md` with dispositions (fixed, ignored-with-rationale, or follow-up ticket created).
-
-## Non-Goals
-- Changing runtime architecture or test behavior.
-- Turning off offline-first testing. New security jobs run in GitHub Actions; local dev remains offline-friendly.
+**Source:** Epic “Dedupe tooling, remove dead code, and harden test infra.”
+Focus on Epic checklist item **2)** (Docs/book: switch dev setup to `make dev-minimal`; add opt-ins & `LX_SKIP_MODEL_PREFETCH`).
 
 ---
 
-## Changes to Make
+## Objective
 
-### 1) Add CodeQL
-Create `.github/workflows/codeql.yml`:
+Make the lightweight, offline-first developer workflow the primary path. Update docs to default to `make dev-minimal`, provide optional ML paths, and introduce an explicit environment flag `LX_SKIP_MODEL_PREFETCH` that prevents any model downloads during setup. Ensure the Makefile and helper script(s) honor the flag.
 
-```yaml
-name: CodeQL
+One PR = One Chat. Keep scope tight to **docs + minimal glue**. No CI changes in this PR.
 
-on:
-  push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
-  schedule:
-    - cron: "0 4 * * 0"  # weekly Sunday 04:00 UTC
+---
 
-permissions:
-  contents: read
+## Acceptance Criteria
 
-jobs:
-  analyze:
-    name: Analyze (${{ matrix.language }})
-    runs-on: ubuntu-latest
-    permissions:
-      actions: read
-      contents: read
-      security-events: write
-    strategy:
-      fail-fast: false
-      matrix:
-        language: [ "python", "javascript" ]
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Initialize CodeQL
-        uses: github/codeql-action/init@v3
-        with:
-          languages: ${{ matrix.language }}
-      - name: Autobuild
-        uses: github/codeql-action/autobuild@v3
-      - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v3
-        with:
-          category: "/language:${{ matrix.language }}"
+- **README.md**
+  - Quickstart shows `make dev-minimal` as the default path.
+  - Clearly documents optional ML paths (brief mention) and defers details to `CI-TESTING.md`.
+  - Adds a short “Offline-first” note and documents `LX_SKIP_MODEL_PREFETCH=1`.
+
+- **CI-TESTING.md**
+  - Mentions `make run-ci-mode` (lightweight) and `make run-local-ci` (full), and how `LX_SKIP_MODEL_PREFETCH` interacts with local dev.
+  - States that model prefetch is **opt-in** and should be skipped when the flag is set.
+
+- **Makefile**
+  - If `dev-minimal` target is missing, add it. It must:
+    - Create/activate venv.
+    - Install **non-ML** base + dev dependencies.
+    - **Not** prefetch models.
+  - Ensure any dev setup that runs a prefetch script only does so when `LX_SKIP_MODEL_PREFETCH` is **unset** (or explicitly `0/false`).
+
+- **scripts/**
+  - If a model prefetch script exists (e.g., `scripts/dev_fetch_models.py`), gate it behind `LX_SKIP_MODEL_PREFETCH`. If it does not exist, create a tiny, offline-safe guard that bails when the flag is set.
+  - The guard should treat the following as “true”: `1`, `true`, `yes`, `on` (case-insensitive). Anything else is false.
+
+- **No code path should hard-fail** if the flag is set; prefetch is simply skipped with a clear log line.
+
+- **Docs & Makefile tested locally** via the verification steps below.
+
+---
+
+## Constraints & Conventions
+
+- Commit messages: **imperative mood** (e.g., “Update README to default to make dev-minimal”).
+- Do **not** edit CI workflows in this PR.
+- Offline-first: Assume no network access during `make dev-minimal`.
+- Keep diffs tight; prefer surgical edits over rewrites.
+
+---
+
+## Planned Changes
+
+### 1) README.md (Quickstart & Env)
+
+- Replace the current Quickstart section with a minimal path:
+
+```md
+## Quickstart (lightweight, offline-first)
+
+```bash
+# Minimal dev (no ML downloads, fastest path)
+make dev-minimal
+
+# Run the fast, lightweight checks (matches CI's lightweight mode)
+make run-ci-mode
 ```
 
-### 2) Dependency Review gate
-Create `.github/workflows/dependency-review.yml`:
-
-```yaml
-name: Dependency Review
-
-on:
-  pull_request:
-    branches: [ "main" ]
-
-permissions:
-  contents: read
-
-jobs:
-  review:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/dependency-review-action@v4
-        with:
-          fail-on-severity: high
-          comment-summary-in-pr: true
+### Optional (full local CI with ML deps)
+```bash
+# Brings in ML dependencies and runs the full stack locally
+make run-local-ci
 ```
 
-### 3) Dependabot updates
-Create `.github/dependabot.yml`:
-
-```yaml
-version: 2
-updates:
-  - package-ecosystem: "pip"
-    directory: "/"
-    schedule:
-      interval: "weekly"
-    open-pull-requests-limit: 5
-
-  - package-ecosystem: "github-actions"
-    directory: "/"
-    schedule:
-      interval: "weekly"
-
-  - package-ecosystem: "npm"
-    directory: "/ui"
-    schedule:
-      interval: "weekly"
-    open-pull-requests-limit: 5
+**Offline-first:** Set `LX_SKIP_MODEL_PREFETCH=1` to prevent any model downloads that helper scripts might attempt.
 ```
 
-> Note: If `/ui/package.json` is absent, Dependabot will simply report no manifests found—this is acceptable.
+- Add a short table listing relevant env flags (keep it brief, link longer details to CI-TESTING.md):
 
-### 4) Secret scanning via gitleaks (CI)
-Create `.github/workflows/gitleaks.yml`:
-
-```yaml
-name: Secret Scan (gitleaks)
-
-on:
-  pull_request:
-  push:
-    branches: [ "main" ]
-  schedule:
-    - cron: "0 3 * * *"  # nightly 03:00 UTC
-
-permissions:
-  contents: read
-  security-events: write
-
-jobs:
-  scan:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - name: Gitleaks scan
-        uses: gitleaks/gitleaks-action@v2
-        with:
-          config-path: .gitleaks.toml
-          args: --redact
+```md
+| Variable                | Purpose                                   | Default |
+|-------------------------|-------------------------------------------|---------|
+| LX_SKIP_MODEL_PREFETCH  | Skip any model prefetch during dev setup  | unset   |
 ```
 
-Create `.gitleaks.toml` (tune as needed):
+- Keep the existing `LX_*` vs `GF_*` migration note intact.
 
-```toml
-title = "LoquiLex gitleaks config"
+### 2) CI-TESTING.md
 
-[allowlist]
-description = "Allow common non-secret test/placeholder patterns"
-paths = [
-  '''^\.artifacts/''',
-  '''^tests/''',
-  '''^\.env\.example$''',
-]
-regexes = [
-  '''dummy[_-]?key''',
-  '''example[_-]?secret''',
-]
-```
+Add/adjust sections to describe:
 
-### 5) Makefile convenience target
-Append to `Makefile`:
+- `make run-ci-mode` vs `make run-local-ci` and when to use each.
+- How `LX_SKIP_MODEL_PREFETCH=1` interacts with helper scripts (no model downloads).
+- A short “Verification” recipe (see below).
+
+### 3) Makefile
+
+- Add a `dev-minimal` target if missing. Pseudocode:
 
 ```make
-.PHONY: sec-scan
-sec-scan:
-	@docker run --rm -v "$$(pwd)":/repo zricethezav/gitleaks:latest \
-		detect -s /repo --no-git --redact
+.PHONY: dev-minimal
+dev-minimal:
+	python -m venv .venv
+	. .venv/bin/activate; pip install -U pip
+	# Install base + dev deps only (no ML)
+	. .venv/bin/activate; pip install -r requirements-dev.txt -c constraints.txt
+	@echo "Dev (minimal) ready. Models will NOT be prefetched. Use LX_SKIP_MODEL_PREFETCH=1 to enforce."
 ```
 
-### 6) SECURITY.md
-Create `SECURITY.md`:
+- Wherever model prefetch might be called (e.g., `dev` or `dev-ml` targets), ensure it is gated, for example:
 
-```markdown
-# Security Policy
-
-## Supported Versions
-LoquiLex is pre-1.0; we support the latest commit on `main` and the most recent tagged release (if any).
-
-## Reporting a Vulnerability
-- Prefer **Private Vulnerability Reporting** via GitHub:
-  - https://github.com/Guffawaffle/LoquiLex/security/advisories/new
-- If that is unavailable, please open a minimal **Security** issue without PoC details and request a maintainer contact, or use the contact info on the maintainer’s GitHub profile.
-- We aim to acknowledge within 72 hours and will coordinate a fix and disclosure window as appropriate.
-
-## Security Posture
-- Automated checks: CodeQL (code scanning), Dependabot & Dependency Review (supply chain), gitleaks (secrets).
-- We welcome hardening suggestions via issues or PRs.
+```make
+ifneq ($(shell echo $${LX_SKIP_MODEL_PREFETCH:-0} | tr '[:upper:]' '[:lower:]'),1)
+# or equivalent case-insensitive check executed in the shell
+	. .venv/bin/activate; python scripts/dev_fetch_models.py || true
+else
+	@echo "LX_SKIP_MODEL_PREFETCH set — skipping model prefetch."
+endif
 ```
 
-### 7) README patch
-Add a short “Security” section linking to `SECURITY.md` and mentioning CodeQL/Dependabot/Secret scan.
+### 4) scripts/dev_fetch_models.py (or new guard script)
+
+Implement a tiny guard at the top:
+
+```python
+import os, sys
+
+def _istrue(v: str | None) -> bool:
+    if v is None:
+        return False
+    return v.strip().lower() in {"1", "true", "yes", "on"}
+
+if _istrue(os.getenv("LX_SKIP_MODEL_PREFETCH")):
+    print("LX_SKIP_MODEL_PREFETCH set — skipping model prefetch.")
+    sys.exit(0)
+
+# existing (or placeholder) logic continues here...
+```
+
+If there is no existing script, create this file with only the guard plus a friendly message like “No prefetch actions defined; nothing to do.” so calls are idempotent and harmless.
 
 ---
 
-## Definition of Done (Verification)
-- **Security tab shows**:
-  - “Security policy detected” after merging (from `SECURITY.md`).
-  - CodeQL workflow present and green on a PR against `main`.
-  - Dependency Review leaves a PR comment summary and blocks high-severity.
-  - Gitleaks job runs on PR and schedule; no secrets reported (or findings triaged).
-- **Dependabot PRs** appear (if updates available).
-- **Deliverables file** lists:
-  - Workflow run links, any alerts found, and actions taken (fixes or follow-ups).
-  - Diffs for all added files and the README patch.
+## Verification Steps (local)
 
-## Commit Style
-Use imperative mood:
-- `chore(security): add CodeQL, Dependabot, gitleaks, and SECURITY.md`
-- `docs: add security section to README`
-- `build: add make sec-scan target`
+```bash
+# 1) Fresh clone, no network (simulate) — ensure minimal dev works
+make dev-minimal
 
-## Output
-Write the full report to `.github/copilot/current-task-deliverables.md` with:
-- Executive summary
-- Steps taken
-- Evidence (workflow URLs, logs, screenshots if useful)
-- Final results and remaining items
-- Files changed list
+# 2) Ensure fast checks pass
+make run-ci-mode
+
+# 3) Confirm flag behavior
+LX_SKIP_MODEL_PREFETCH=1 make dev           # Should not attempt any downloads
+LX_SKIP_MODEL_PREFETCH=1 python scripts/dev_fetch_models.py  # Script should exit 0 with a skip message
+
+# 4) Full stack (optional, with network)
+make run-local-ci
+```
+
+---
+
+## Deliverables
+
+- `README.md` and `CI-TESTING.md` updated.
+- `Makefile` updated to include (or preserve) `dev-minimal` without model prefetch.
+- `scripts/dev_fetch_models.py` (existing or new) honors `LX_SKIP_MODEL_PREFETCH` flag.
+- A concise CHANGELOG entry under “Unreleased → Added/Changed”.
+
+---
+
+## PR Title (example)
+
+```
+docs(dev): default to `make dev-minimal`; add `LX_SKIP_MODEL_PREFETCH` flag
+```
+
+## PR Description (example)
+
+- Make `dev-minimal` the primary Quickstart path (offline-first).
+- Document `LX_SKIP_MODEL_PREFETCH` to disable model prefetch during setup.
+- Gate any prefetch script behind the flag.
+- CI remains unchanged. Tight diffs; no behavior change for existing users unless they opt into the flag.
+
+**Verification:** See steps in this task. All checks should pass locally in lightweight mode.
+
+---
+
+## Out of Scope (explicitly)
+
+- Dependency pruning/renames (tracked separately in Epic items 4 & 7).
+- VS Code tasks consolidation (Epic item 3).
+- GPU enablement toggles and profiles.
+```

@@ -4,12 +4,23 @@ History-preserving extraction of the `greenfield` module from rt-whisper, rename
 
 ## Quickstart
 
-
 ```bash
-python -m venv .venv
-source .venv/bin/activate
-pip install -U pip build
-pip install -e .
+make dev-minimal  # Lightweight, offline-first setup
+make run-ci-mode  # Fast, lightweight checks (mirrors CI-lite)
+make run-local-ci # Full dependencies for local development
+```
+
+Offline-first Development
+
+Set LX_SKIP_MODEL_PREFETCH=1 to prevent any model downloads during setup. This ensures a fully offline-friendly environment.
+
+#### Environment flags
+
+| Variable              | Purpose                              | Default |
+|-----------------------|--------------------------------------|---------|
+| LX_SKIP_MODEL_PREFETCH | Skip any model prefetch during setup | unset   |
+
+See CI-TESTING.md for details on run-ci-mode vs run-local-ci.
 
 # Run tests (ensure loquilex is discoverable):
 
