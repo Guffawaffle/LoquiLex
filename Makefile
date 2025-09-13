@@ -23,14 +23,19 @@ install-ml-cpu:
 
 # Prefetch only the tiny Whisper model; temporarily allow network for the fetch.
 models-tiny:
-	HF_HUB_OFFLINE=0 LOQUILEX_OFFLINE=0 GF_ASR_MODEL=tiny.en $(PY) scripts/dev_fetch_models.py
+	@if [ "$${LLX_SKIP_MODEL_PREFETCH:-0}" = "1" ]; then \
+	  echo "[dev] Skipping tiny model prefetch (LLX_SKIP_MODEL_PREFETCH=1)"; \
+	else \
+	  HF_HUB_OFFLINE=0 LOQUILEX_OFFLINE=0 GF_ASR_MODEL=tiny.en $(PY) scripts/dev_fetch_models.py; \
+	fi
 
-# Default dev is LIGHT: no torch/CUDA; just tiny model.
-dev: venv install-base models-tiny
+# Default dev is LIGHT (CPU-only): install minimal ML libs then prefetch tiny model.
+# This keeps downloads to ~100–150MB vs multi-GB when torch/CUDA is pulled.
+dev: venv install-base install-ml-cpu models-tiny
 	@echo "Dev (light) ready. (CPU-only, tiny.en cached)"
 
 # Opt-in: add CPU ML libs (still light; no torch)
-dev-ml-cpu: dev install-ml-cpu
+dev-ml-cpu: venv install-base install-ml-cpu models-tiny
 	@echo "Dev (ml-cpu) ready."
 
 # Opt-in: GPU ML libs — WARNING: huge downloads. Uncomment in requirements-ml-gpu.txt first.
