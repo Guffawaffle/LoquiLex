@@ -1,4 +1,6 @@
-# Central constraints for deterministic installs across CI/dev
+# Cent# Starlette 0.36.x TestClient calls httpx.Client(app=...), removed in httpx>=0.28
+httpx==0.27.2
+starlette==0.36.3constraints for deterministic installs across CI/dev
 # Keep in sync when updating core tooling versions.
 
 numpy==1.26.4

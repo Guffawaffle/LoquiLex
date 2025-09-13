@@ -44,9 +44,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.cache/pip
-          key: pip-${{ runner.os }}-${{ hashFiles('requirements-ci.txt', 'requirements-dev.txt', 'constraints.txt') }}
+          key: pip-${{ runner.os }}-python-3.12.3-${{ hashFiles('requirements-ci.txt', 'requirements-dev.txt', 'constraints.txt') }}
           restore-keys: |
-            pip-${{ runner.os }}-
+            pip-${{ runner.os }}-python-3.12.3-
       - name: Install Python deps
         run: |
           python -m pip install -U pip
@@ -93,9 +93,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.cache/pip
-          key: pip-${{ runner.os }}-${{ hashFiles('requirements-ci.txt', 'requirements-dev.txt', 'constraints.txt') }}
+          key: pip-${{ runner.os }}-python-3.12.3-${{ hashFiles('requirements-ci.txt', 'requirements-dev.txt', 'constraints.txt') }}
           restore-keys: |
-            pip-${{ runner.os }}-
+            pip-${{ runner.os }}-python-3.12.3-
       - name: Install Python deps
         run: |
           python -m pip install -U pip
