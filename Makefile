@@ -1,12 +1,12 @@
-### Makefile is the canonical interface for local, CI, and IDE tasks.
-### Update commands ONLY here (do not hand-edit CI workflow or VS Code tasks).
-### Targets: fmt, lint, typecheck, unit, e2e, ci (aggregates), plus legacy/util extras.
+# Lightweight dev profile: installs only base+dev deps and prefetches tiny model.
 
-VENV?=.venv
-PY=$(VENV)/bin/python
-PIP=$(VENV)/bin/pip
+# ------------------------------
+# Vars
+VENV ?= .venv
+PY   ?= $(VENV)/bin/python
+PIP  ?= $(VENV)/bin/pip
 
-.PHONY: venv install dev fmt fmt-check lint typecheck unit e2e ci test run-local-ci run-ci-mode test-ci run-wav run-zh clean docker-ci docker-ci-test docker-ci-build docker-ci-run docker-ci-shell
+.PHONY: venv install-base install-ml-cpu models-tiny dev dev-ml-cpu dev-ml-gpu fmt fmt-check lint typecheck unit e2e ci test run-local-ci run-ci-mode test-ci run-wav run-zh clean docker-ci docker-ci-test docker-ci-build docker-ci-run docker-ci-shell
 
 # Allow CI to inject extra flags (e.g., --junit-xml)
 PYTEST_FLAGS ?=
@@ -15,11 +15,28 @@ venv:
 	python3 -m venv $(VENV)
 	$(PIP) install -U pip
 
-install: venv
-	$(PIP) install -r requirements.txt
+install-base:
+	$(PIP) install -r requirements-ci.txt -r requirements-dev.txt -c constraints.txt
 
-dev: install
-	$(PIP) install -r requirements-dev.txt
+install-ml-cpu:
+	$(PIP) install -r requirements-ml-cpu.txt -c constraints.txt
+
+# Prefetch only the tiny Whisper model; temporarily allow network for the fetch.
+models-tiny:
+	HF_HUB_OFFLINE=0 LOQUILEX_OFFLINE=0 GF_ASR_MODEL=tiny.en $(PY) scripts/dev_fetch_models.py
+
+# Default dev is LIGHT: no torch/CUDA; just tiny model.
+dev: venv install-base models-tiny
+	@echo "Dev (light) ready. (CPU-only, tiny.en cached)"
+
+# Opt-in: add CPU ML libs (still light; no torch)
+dev-ml-cpu: dev install-ml-cpu
+	@echo "Dev (ml-cpu) ready."
+
+# Opt-in: GPU ML libs — WARNING: huge downloads. Uncomment in requirements-ml-gpu.txt first.
+dev-ml-gpu: dev
+	@echo ">>> Skipping GPU install by default. Edit requirements-ml-gpu.txt and run:"
+	@echo "    pip install -r requirements-ml-gpu.txt -c constraints.txt"
 
 fmt:
 	$(VENV)/bin/black loquilex tests

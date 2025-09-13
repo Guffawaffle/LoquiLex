@@ -1,9 +1,3 @@
-# Heavy ML dependencies - install only when needed for production/local development
-# These are optional for CI testing as tests use fake implementations
-
-accelerate
-faster-whisper
-sentencepiece
-sounddevice
-torch
-transformers
+# Deprecated heavy include. Default to CPU-only ML to keep dev light.
+# You can still opt into GPU by installing requirements-ml-gpu.txt manually.
+-r requirements-ml-cpu.txt
