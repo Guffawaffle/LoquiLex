@@ -94,7 +94,6 @@ The VS Code tasks.json is now clean, well-documented, and free of unused tasks. 
 ## Files Changed
 
 - `.vscode/tasks.json` - Enhanced comments, removed 3 unused mkdocs tasks
-=======
 # Security Epic #16 — Part 1: CodeQL + Dependency Review (Draft)
 
 ## Executive Summary
