@@ -1,194 +1,96 @@
-## Executive Summary
-Expanded the earlier minimal fix into a full CI stabilization update: (1) aligned overlapping dependency versions across `requirements-ci.txt` and `requirements-dev.txt` to stop uninstall/reinstall churn, (2) introduced a central `constraints.txt` for deterministic resolution, (3) added pip caching and unified install steps in `ci.yml` (both unit and e2e jobs), (4) enforced global test timeouts via `pytest-timeout` (pytest.ini defaults + per-job overrides), (5) tightened the e2e WebSocket test to actively send a ping and close promptly to reduce idle wait, and (6) added explicit e2e timeout flags. These changes target perceived "hangs" that were really combined latency from duplicate installs and potentially idle WebSocket waits without enforced ceilings.
+# VS Code Problem Matcher & Task Hygiene - Deliverables
 
-## Steps Taken (Latest Batch)
-- Updated `requirements-ci.txt` to match dev versions for `httpx` (0.28.1) and `pytest-asyncio` (0.26.0) with explanatory comment.
-- Added `constraints.txt` capturing shared pinned versions (tooling + runtime core).
-- Patched `.github/workflows/ci.yml`:
-	- Added pip cache (`actions/cache@v4`) keyed by hash of requirements + constraints.
-	- Consolidated dual installs into a single constrained install command.
-	- Injected `PYTEST_ADDOPTS` for default timeouts (30s unit, 45s e2e) and explicit `--timeout` on e2e run.
-- Enhanced `pytest.ini` with global `timeout=30` and `timeout_method=thread` defaults.
-- Modified `tests/test_e2e_websocket_api.py` WebSocket block to send a `ping` message ensuring the server loop processes activity before closing, avoiding long idle sleeps.
-- Left server/supervisor logic untouched (no functional regressions required for this pass).
-- Prepared this deliverables update summarizing rationale & diffs.
+## Executive Summary
+
+Successfully cleaned up the VS Code tasks.json configuration by:
+1. Enhanced comments explaining Makefile delegation as source of truth
+2. Removed unused mkdocs-related tasks (Generate Docs, Serve Docs, Publish Docs)
+3. Confirmed all tasks use proper `problemMatcher: []` configuration (no `$pytest` references)
+4. Verified task delegation to Makefile where appropriate
+
+## Steps Taken
+
+### 1. Analysis of Current State
+- Examined `.vscode/tasks.json` and found it already used `problemMatcher: []` instead of `["$pytest"]`
+- Checked for mkdocs configuration: no `mkdocs.yml` file found, no mkdocs in requirements files
+- Verified no docs directory exists
+- Confirmed most tasks properly delegate to Makefile targets
+
+### 2. Enhanced Documentation Comments
+**File: `.vscode/tasks.json` (lines 2-4)**
+
+**Before:**
+```json
+// Tasks delegate to Makefile to prevent drift. Update commands only in Makefile.
+```
+
+**After:**
+```json
+// VS Code tasks delegate to Makefile as the source of truth to prevent configuration drift.
+// To modify build/test/lint commands, update the Makefile instead of editing tasks here.
+// All tasks use problemMatcher: [] to avoid VS Code's default matchers.
+```
+
+### 3. Removed Unused Tasks
+**Removed three mkdocs tasks (lines 113-136 in original):**
+- "Generate Docs" - `mkdocs build`
+- "Serve Docs" - `mkdocs serve` 
+- "Publish Docs" - `mkdocs gh-deploy --force`
+
+These were removed because:
+- No `mkdocs.yml` configuration file exists
+- mkdocs is not listed in any requirements files
+- No `docs/` directory exists
+- Tasks would fail if executed
+
+### 4. Verified Proper Task Structure
+All remaining tasks properly:
+- Use `problemMatcher: []` (not `$pytest`)
+- Delegate to Makefile where appropriate (`make unit`, `make lint`, `make fmt`, etc.)
+- Include proper dependencies like `"dependsOn": ["Bootstrap venv"]`
 
 ## Evidence & Verification
 
-### Key File Snapshots (Post-Changes)
-`requirements-ci.txt` (aligned section tail):
-```
-websockets==12.0
+### Before Changes
+```bash
+$ find . -name "*mkdocs*" -o -name "docs" -type d
+# No output - no mkdocs files
 
-# Versions aligned with requirements-dev.txt to avoid reinstall churn
-httpx==0.28.1
-pytest-asyncio==0.26.0
-```
+$ grep -r mkdocs requirements*
+# No output - mkdocs not in requirements
 
-`constraints.txt` (new):
-```
-numpy==1.26.4
-pytest==8.4.2
-pytest-asyncio==0.26.0
-httpx==0.28.1
-websockets==12.0
-fastapi==0.109.2
-uvicorn==0.27.1
-loguru==0.7.2
-rich==13.9.2
-webvtt-py==0.5.1
-mypy==1.18.1
-ruff==0.13.0
-black==24.10.0
+$ grep -r "\$pytest" .vscode/
+# No output - no $pytest problem matchers
 ```
 
-`pytest.ini` additions:
-```
-timeout = 30
-timeout_method = thread
-```
-
-CI workflow (`ci.yml`) notable additions (excerpt):
-```
-			- name: Cache pip
-				uses: actions/cache@v4
-				with:
-					path: ~/.cache/pip
-					key: pip-${{ runner.os }}-${{ hashFiles('requirements-ci.txt', 'requirements-dev.txt', 'constraints.txt') }}
-...
-			- name: Install Python deps
-				run: |
-					python -m pip install -U pip
-					pip install -r requirements-ci.txt -r requirements-dev.txt -c constraints.txt
+### After Changes  
+```json
+{
+  // VS Code tasks delegate to Makefile as the source of truth to prevent configuration drift.
+  // To modify build/test/lint commands, update the Makefile instead of editing tasks here. 
+  // All tasks use problemMatcher: [] to avoid VS Code's default matchers.
+  "version": "2.0.0",
+  "tasks": [
+    // ... all tasks retained except mkdocs ones
+  ]
+}
 ```
 
-E2E pytest invocation now includes explicit timeout safeguard:
-```
-pytest -q --maxfail=1 -m e2e --disable-warnings --no-header --no-summary --timeout=45
-```
-
-`requirements-dev.txt` (current content excerpt):
-```
-pytest==8.4.2
-pytest-cov==7.0.0
-pytest-timeout==2.4.0
-pytest-mock==3.15.0
-pytest-asyncio==0.26.0
-freezegun>=1.5,<2
-httpx==0.28.1
-websockets==12.0
-mypy==1.18.1
-ruff==0.13.0
-black==24.10.0
-numpy==1.26.4
-```
-
-`pyproject.toml` (lint-related excerpt):
-```
-[tool.ruff]
-line-length = 100
-
-[tool.black]
-line-length = 100
-```
-
-`tests/conftest.py` (hash / key features):
-- Centralized imports at top
-- Helper functions `_install_fakes`, `_set_offline_env`, `_patch_translator`
-- `pytest_sessionstart` hook ensures offline environment & fakes before test collection
-- Ensures deterministic, network-free test environment.
-
-### Linting Outputs
-Ruff output:
-```
-$ ruff check loquilex tests
-All checks passed!
-```
-
-Black output:
-```
-All done! ✨ 🍰 ✨
-42 files left unchanged.
-```
-
-Mypy output:
-```
-$ mypy loquilex
-```
-$ pytest -q
-	/home/guff/LoquiLex/loquilex/config/defaults.py:38: DeprecationWarning: [LoquiLex] Using legacy env var GF_SAVE_AUDIO_PATH. Please migrate to LX_*.
-tests/test_config_env.py::test_env_overrides
-	/home/guff/LoquiLex/loquilex/config/defaults.py:38: DeprecationWarning: [LoquiLex] Using legacy env var GF_DEVICE. Please migrate to LX_*.
-
--- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
-25 passed, 5 warnings in 2.11s
-```
-
-### Determinism & Pin Verification
-- Timeouts prevent indefinite hangs during network-isolated WebSocket waits or thread deadlocks.
+**Validation:**
+- JSON syntax is valid for VS Code (JSONC format with comments)
+- All tasks use `problemMatcher: []`
+- No references to unused tools like mkdocs
+- Clear documentation about Makefile delegation
 
 ## Final Results
-- CI steps streamlined: reduced duplicate install churn; future runs benefit from pip cache.
-- Added deterministic constraints; easier maintenance of aligned versions.
-- Introduced safety net against hanging tests (global + e2e-specific timeouts).
-- No functional server code changes; risk minimal.
+
+✅ **All requirements met:**
+- [x] Replace "problemMatcher": ["$pytest"] with [] - **Already done, confirmed all tasks use []**
+- [x] Remove duplicate/unused tasks - **Removed 3 unused mkdocs tasks**  
+- [x] Add brief comments atop tasks.json pointing to Makefile - **Enhanced with detailed comments**
+
+The VS Code tasks.json is now clean, well-documented, and free of unused tasks. All tasks properly delegate to the Makefile as the source of truth for build commands.
+
 ## Files Changed
-- `requirements-ci.txt` (version alignment comment + upgrades)
-- `constraints.txt` (new)
-- `.github/workflows/ci.yml` (cache + unified install + timeouts)
-- `pytest.ini` (global timeout config)
-- `tests/test_e2e_websocket_api.py` (send ping before close)
 
-## Follow-up Recommendations
-- Add a nightly job that runs with `--timeout=0` (no timeout) to surface legitimately long-running regressions separately from PR gating.
-- Periodically produce an SBOM or `pip freeze > artifacts/freeze.txt` artifact to audit dependency drift.
-- Consider migrating to a full lock tool (e.g. `uv pip compile` or `pip-tools`) if dependency graph grows.
-- Address deprecation warnings (migrate `GF_*` env vars) and then promote them to errors.
-
-### Addendum: Runner Communication Failure Mitigation
-Observed GitHub Actions runner losing communication likely due to aggressive iptables OUTPUT policy (dropping all non-local traffic including control plane heartbeats). Remediation steps applied:
-1. Removed iptables DROP rules from `ci.yml` e2e job and replaced with explanatory echo.
-2. Implemented test-level outbound network guard in `tests/conftest.py` that blocks `socket.create_connection` to non-local hosts while permitting localhost usage required for in-process FastAPI server.
-3. Retained offline env var enforcement ensuring no external model downloads.
-
-This shifts isolation from OS firewall (risking runner health checks) to Python-layer control, preserving CI stability.
-
--- End of Deliverables Report --
-## Representative Diffs
-```
-diff --git a/requirements-ci.txt b/requirements-ci.txt
-@@
--httpx==0.27.2
--pytest-asyncio==0.23.8
-+# Versions aligned with requirements-dev.txt to avoid reinstall churn
-+httpx==0.28.1
-+pytest-asyncio==0.26.0
-
-diff --git a/.github/workflows/ci.yml b/.github/workflows/ci.yml
-@@ (unit job excerpt)
-+      - name: Cache pip
-+        uses: actions/cache@v4
-@@ (e2e job excerpt)
-+      - name: Cache pip
-+        uses: actions/cache@v4
-@@
--      - run: pytest -q --maxfail=1 -m e2e --disable-warnings --no-header --no-summary
-+      - run: pytest -q --maxfail=1 -m e2e --disable-warnings --no-header --no-summary --timeout=45
-
-diff --git a/pytest.ini b/pytest.ini
-@@
- timeout = 30
- timeout_method = thread
-
-diff --git a/tests/test_e2e_websocket_api.py b/tests/test_e2e_websocket_api.py
-@@ (within websocket_connect block)
--                            with client.websocket_connect(ws_url):
--                                # Should connect without error
--                                pass
-+                            with client.websocket_connect(ws_url) as ws:
-+                                # Send a lightweight ping to exercise server loop then close promptly
-+                                try:
-+                                    ws.send_text("ping")
-+                                except Exception:
-+                                    pass
-```
+- `.vscode/tasks.json` - Enhanced comments, removed 3 unused mkdocs tasks
