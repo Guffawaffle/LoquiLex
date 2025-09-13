@@ -99,9 +99,22 @@ jobs:
         run: |
           echo "Skipping iptables OUTPUT DROP (previously caused runner comm loss)."
           echo "Relying on fakes/offline env vars; consider socket monkeypatch in tests if stricter isolation needed."
-      - run: pytest -q --maxfail=1 -m e2e --disable-warnings --no-header --no-summary --timeout=500
-      - if: failure()
+      - name: Run e2e tests (verbose with artifacts)
+        run: |
+          set -e
+          mkdir -p reports
+          echo "Running e2e test suite with verbose output"
+          if ! pytest -m e2e -vv -rA -s --maxfail=1 --disable-warnings --junit-xml=reports/e2e.junit.xml; then
+            echo '::group::Re-run last failures (focused verbose)'
+            pytest --lf -vv -rP -s || true
+            echo '::endgroup::'
+            exit 1
+          fi
+      - name: Upload e2e artifacts (always)
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: e2e-logs
-          path: .pytest_cache
+          name: e2e-artifacts
+          path: |
+            reports
+            .pytest_cache

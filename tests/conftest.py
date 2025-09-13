@@ -75,7 +75,8 @@ def forbid_network(monkeypatch):
     Allows only localhost destinations; blocks others at socket layer.
     """
 
-    allowed_hosts = {"127.0.0.1", "::1", "localhost"}
+    # Include 'testserver' which FastAPI TestClient commonly uses as default host
+    allowed_hosts = {"127.0.0.1", "::1", "localhost", "testserver"}
 
     real_create_conn = socket.create_connection
 

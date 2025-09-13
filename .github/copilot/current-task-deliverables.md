@@ -114,24 +114,10 @@ All done! ✨ 🍰 ✨
 Mypy output:
 ```
 $ mypy loquilex
-loquilex/cli/live_en_to_zh.py:421: note: By default the bodies of untyped functions are not checked, consider using --check-untyped-defs  [annotation-unchecked]
-Success: no issues found in 22 source files
-```
-
-### Test Execution Output
 ```
 $ pytest -q
-.........................                                                  [100%]
-================================ warnings summary ================================
-tests/test_config_env.py::test_env_overrides
-	/home/guff/LoquiLex/loquilex/config/defaults.py:38: DeprecationWarning: [LoquiLex] Using legacy env var GF_SAVE_AUDIO. Please migrate to LX_*.
-tests/test_config_env.py::test_env_overrides
 	/home/guff/LoquiLex/loquilex/config/defaults.py:38: DeprecationWarning: [LoquiLex] Using legacy env var GF_SAVE_AUDIO_PATH. Please migrate to LX_*.
 tests/test_config_env.py::test_env_overrides
-	/home/guff/LoquiLex/loquilex/config/defaults.py:38: DeprecationWarning: [LoquiLex] Using legacy env var GF_MAX_LINES. Please migrate to LX_*.
-tests/test_config_env.py::test_env_overrides
-	/home/guff/LoquiLex/loquilex/config/defaults.py:38: DeprecationWarning: [LoquiLex] Using legacy env var GF_PARTIAL_WORD_CAP. Please migrate to LX_*.
-tests/test_units_extra.py::test_pick_device_cpu
 	/home/guff/LoquiLex/loquilex/config/defaults.py:38: DeprecationWarning: [LoquiLex] Using legacy env var GF_DEVICE. Please migrate to LX_*.
 
 -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
@@ -139,20 +125,13 @@ tests/test_units_extra.py::test_pick_device_cpu
 ```
 
 ### Determinism & Pin Verification
-- All overlapping versions now identical (no uninstall loops). `pip install` becomes idempotent under cache.
-- Central `constraints.txt` provides single update surface and reproducible lock-lite behavior.
 - Timeouts prevent indefinite hangs during network-isolated WebSocket waits or thread deadlocks.
-
-### No Additional Diffs Introduced
-Task execution required observation and verification only; no repository modifications performed in this session.
 
 ## Final Results
 - CI steps streamlined: reduced duplicate install churn; future runs benefit from pip cache.
 - Added deterministic constraints; easier maintenance of aligned versions.
 - Introduced safety net against hanging tests (global + e2e-specific timeouts).
-- E2E WebSocket test now performs a minimal interaction, avoiding passive idle.
 - No functional server code changes; risk minimal.
-
 ## Files Changed
 - `requirements-ci.txt` (version alignment comment + upgrades)
 - `constraints.txt` (new)
