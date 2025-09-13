@@ -1,0 +1,25 @@
+name: Secret Scan (gitleaks)
+
+on:
+  pull_request:
+  push:
+    branches: [ main ]
+  schedule:
+    - cron: "0 3 * * *"  # nightly
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # repo history for broader detection
+      - name: Gitleaks scan
+        uses: gitleaks/gitleaks-action@v2
+        with:
+          config-path: .gitleaks.toml
+          args: --redact

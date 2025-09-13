@@ -1,0 +1,13 @@
+title = "LoquiLex gitleaks config"
+
+[allowlist]
+description = "Allow common non-secret test/placeholder patterns"
+paths = [
+  '''^\.artifacts/''',
+  '''^tests/''',
+  '''^\.env\.example$''',
+]
+regexes = [
+  '''dummy[_-]?key''',
+  '''example[_-]?secret''',
+]

@@ -1,88 +1,85 @@
-# Epic #16 — Align LoquiLex with GitHub Security Scanning (CodeQL, Dependabot, Secret Scanning)
-
-## Title
-Epic #16 — Align LoquiLex with GitHub Security Scanning (CodeQL, Dependabot, Secret Scanning)
-
-## Background
-Issue #16 requires aligning the repo with GitHub’s security surfaces (code scanning, dependency scanning, secret scanning) and documenting a disclosure path. Current repo state shows no SECURITY.md present.
-
-## Goals (Acceptance Criteria)
-- **Code scanning:** CodeQL workflow runs on PRs to `main`, pushes to `main`, and weekly schedule, covering **Python** and **JavaScript/TypeScript**.
-- **Dependency controls:**
-  - Dependabot enabled for **pip** and **GitHub Actions** at repo root, and **npm** under `/ui` (if present).
-  - Dependency Review action gates PRs on **high** severity or worse.
-- **Secret scanning posture:**
-  - Add a CI secret scan using **gitleaks** on PRs, pushes to `main`, and a nightly schedule.
-  - Provide a local `make sec-scan` target for devs.
-- **Security policy:** Add `SECURITY.md` with clear vuln-report path.
-- **Docs:** README “Security” section briefly explains our posture and links to `SECURITY.md`.
-- **Green CI:** All workflows pass in CI. Any found alerts are listed in `current-task-deliverables.md` with dispositions (fixed, ignored-with-rationale, or follow-up ticket created).
-
-## Non-Goals
-- Changing runtime architecture or test behavior.
-- Turning off offline-first testing. New security jobs run in GitHub Actions; local dev remains offline-friendly.
+# Epic #16 — Complete Security Posture (Parts 2–4)
+**Branch:** `security/epic16-parts2-4`
+**Scope:** Dependabot hygiene & PR gating (Part 2), Secret scanning & push protection (Part 3), Supply-chain posture / Scorecards + docs (Part 4).
+**Pre-req:** Part 1 (CodeQL advanced setup) is merged and Default CodeQL setup is **disabled**.
 
 ---
 
-## Changes to Make
+## Mission / Acceptance Criteria
+- **Dependabot**:
+  - `.github/dependabot.yml` exists and is tuned for **pip**, **github-actions**, and **npm** (if `/ui` exists).
+  - Weekly cadence, PR cap, labels, optional reviewers, and **groups** for low-noise batching.
+  - Dependency Review workflow remains active and **fails on high** severity.
+- **Secret scanning**:
+  - GitHub **Secret scanning** and **Push protection** verified enabled in repo settings.
+  - CI secret sweep via **gitleaks** runs on PRs, `main`, and nightly schedule.
+  - Local parity: `make sec-scan` runs gitleaks against workspace (no git history by default).
+  - Findings (if any) triaged: fixed, accepted risk (short rationale), or follow-up ticket.
+- **Supply chain posture**:
+  - **OpenSSF Scorecard** workflow runs weekly and uploads SARIF to Code scanning.
+- **Docs & policy**:
+  - `SECURITY.md` present with PVR (private vulnerability reporting) link and 72h acknowledge target.
+  - README contains a brief **Security** section referencing CodeQL, Dependabot, gitleaks, Scorecards, and links to `SECURITY.md`.
+- **Branch protection (manual)**:
+  - Required checks include: Build/Test, **CodeQL**, **Dependency Review**, **Secret Scan (gitleaks)**.
+- **Green CI** for all new workflows on the PR. Deliverables logged to `.github/copilot/current-task-deliverables.md`.
 
-### 1) Add CodeQL
-Create `.github/workflows/codeql.yml`:
+---
 
-```yaml
-name: CodeQL
+## Working Rules (LoquiLex)
+- Commit messages use **imperative mood** (e.g., `chore:`, `build:`, `docs:`).
+- Offline-first tests remain unchanged.
+- Keep workflow `permissions` minimal; grant `security-events: write` only where needed.
 
-on:
-  push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
-  schedule:
-    - cron: "0 4 * * 0"  # weekly Sunday 04:00 UTC
+---
 
-permissions:
-  contents: read
+## Plan of Action
 
-jobs:
-  analyze:
-    name: Analyze (${{ matrix.language }})
-    runs-on: ubuntu-latest
-    permissions:
-      actions: read
-      contents: read
-      security-events: write
-    strategy:
-      fail-fast: false
-      matrix:
-        language: [ "python", "javascript" ]
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Initialize CodeQL
-        uses: github/codeql-action/init@v3
-        with:
-          languages: ${{ matrix.language }}
-      - name: Autobuild
-        uses: github/codeql-action/autobuild@v3
-      - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v3
-        with:
-          category: "/language:${{ matrix.language }}"
+### 0) Create and switch to the feature branch
+```bash
+git switch -c security/epic16-parts2-4
 ```
 
-### 2) Dependency Review gate
-Create `.github/workflows/dependency-review.yml`:
+### 1) Dependabot hygiene (Part 2)
+**File:** `.github/dependabot.yml` (create or update)
 
 ```yaml
-name: Dependency Review
+version: 2
+updates:
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule: { interval: "weekly" }
+    open-pull-requests-limit: 5
+    labels: ["deps", "pip"]
+    reviewers: ["Guffawaffle"]
+    groups:
+      prod-deps:
+        applies-to: version-updates
+        update-types: ["minor", "patch"]
+      security-updates:
+        applies-to: security-updates
 
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule: { interval: "weekly" }
+    labels: ["deps", "gha"]
+
+  - package-ecosystem: "npm"
+    directory: "/ui"
+    schedule: { interval: "weekly" }
+    open-pull-requests-limit: 5
+    labels: ["deps", "npm"]
+```
+
+**Ensure Dependency Review gate is present (create if missing):**
+**File:** `.github/workflows/dependency-review.yml`
+```yaml
+name: Dependency Review
 on:
   pull_request:
-    branches: [ "main" ]
-
+    branches: [ main ]
 permissions:
   contents: read
-
 jobs:
   review:
     runs-on: ubuntu-latest
@@ -94,44 +91,23 @@ jobs:
           comment-summary-in-pr: true
 ```
 
-### 3) Dependabot updates
-Create `.github/dependabot.yml`:
+> _Note_: If `/ui/package.json` does not exist, Dependabot will report no manifests found for npm — acceptable.
 
-```yaml
-version: 2
-updates:
-  - package-ecosystem: "pip"
-    directory: "/"
-    schedule:
-      interval: "weekly"
-    open-pull-requests-limit: 5
+### 2) Secret scanning posture (Part 3)
+**A) Verify GitHub settings (manual):**
+- Settings → **Code security and analysis** → ensure **Secret scanning** and **Push protection** are enabled.
 
-  - package-ecosystem: "github-actions"
-    directory: "/"
-    schedule:
-      interval: "weekly"
-
-  - package-ecosystem: "npm"
-    directory: "/ui"
-    schedule:
-      interval: "weekly"
-    open-pull-requests-limit: 5
-```
-
-> Note: If `/ui/package.json` is absent, Dependabot will simply report no manifests found—this is acceptable.
-
-### 4) Secret scanning via gitleaks (CI)
-Create `.github/workflows/gitleaks.yml`:
-
+**B) Add CI secret sweep with gitleaks**
+**File:** `.github/workflows/gitleaks.yml`
 ```yaml
 name: Secret Scan (gitleaks)
 
 on:
   pull_request:
   push:
-    branches: [ "main" ]
+    branches: [ main ]
   schedule:
-    - cron: "0 3 * * *"  # nightly 03:00 UTC
+    - cron: "0 3 * * *"  # nightly
 
 permissions:
   contents: read
@@ -143,7 +119,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 0  # repo history for broader detection
       - name: Gitleaks scan
         uses: gitleaks/gitleaks-action@v2
         with:
@@ -151,8 +127,7 @@ jobs:
           args: --redact
 ```
 
-Create `.gitleaks.toml` (tune as needed):
-
+**File:** `.gitleaks.toml`
 ```toml
 title = "LoquiLex gitleaks config"
 
@@ -169,19 +144,46 @@ regexes = [
 ]
 ```
 
-### 5) Makefile convenience target
-Append to `Makefile`:
-
+**C) Local parity (developer convenience)**
+Add a make target for local sweeps (no git history by default).
+**Patch:** `Makefile` (append)
 ```make
 .PHONY: sec-scan
 sec-scan:
-	@docker run --rm -v "$$(pwd)":/repo zricethezav/gitleaks:latest \
-		detect -s /repo --no-git --redact
+	@docker run --rm -v "$$(pwd)":/repo zricethezav/gitleaks:latest 		detect -s /repo --no-git --redact
 ```
 
-### 6) SECURITY.md
-Create `SECURITY.md`:
+### 3) OpenSSF Scorecards (Part 4)
+**File:** `.github/workflows/scorecards.yml`
+```yaml
+name: OSSF Scorecard
 
+on:
+  schedule:
+    - cron: "0 6 * * 1"   # weekly Monday
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  scorecard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ossf/scorecard-action@v2.3.3
+        with:
+          results_file: results.sarif
+          results_format: sarif
+      - name: Upload SARIF to code scanning
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: results.sarif
+```
+
+### 4) Docs: SECURITY.md & README
+**File:** `SECURITY.md` (create or update)
 ```markdown
 # Security Policy
 
@@ -191,40 +193,64 @@ LoquiLex is pre-1.0; we support the latest commit on `main` and the most recent 
 ## Reporting a Vulnerability
 - Prefer **Private Vulnerability Reporting** via GitHub:
   - https://github.com/Guffawaffle/LoquiLex/security/advisories/new
-- If that is unavailable, please open a minimal **Security** issue without PoC details and request a maintainer contact, or use the contact info on the maintainer’s GitHub profile.
-- We aim to acknowledge within 72 hours and will coordinate a fix and disclosure window as appropriate.
+- If that is unavailable, open a minimal **Security** issue without PoC details and request a maintainer contact, or use the contact info on the maintainer’s GitHub profile.
+- We aim to acknowledge within **72 hours** and will coordinate a fix and disclosure window as appropriate.
 
 ## Security Posture
-- Automated checks: CodeQL (code scanning), Dependabot & Dependency Review (supply chain), gitleaks (secrets).
+- Automated checks: CodeQL (code scanning), Dependabot & Dependency Review (supply chain), gitleaks (secrets), OpenSSF Scorecards (posture).
 - We welcome hardening suggestions via issues or PRs.
 ```
 
-### 7) README patch
-Add a short “Security” section linking to `SECURITY.md` and mentioning CodeQL/Dependabot/Secret scan.
+**File:** `README.md` — add/update section
+```markdown
+## Security
+
+LoquiLex is maintained with an automated security posture:
+- **CodeQL** (advanced workflow) for static analysis
+- **Dependabot** + **Dependency Review** for supply-chain changes
+- **gitleaks** for CI secret sweeps (with Push Protection enabled in GitHub)
+- **OpenSSF Scorecards** for repo hygiene and best practices
+
+See [SECURITY.md](./SECURITY.md) for how to report vulnerabilities.
+```
+
+### 5) Branch protection (manual)
+- In **Settings → Branches → Branch protection rules** for `main`, ensure **Required status checks** include:
+  - Build/Test (your standard CI),
+  - **CodeQL**,
+  - **Dependency Review**,
+  - **Secret Scan (gitleaks)**.
+- Enable **Require pull request reviews** and **Dismiss stale approvals** (optional).
 
 ---
 
-## Definition of Done (Verification)
-- **Security tab shows**:
-  - “Security policy detected” after merging (from `SECURITY.md`).
-  - CodeQL workflow present and green on a PR against `main`.
-  - Dependency Review leaves a PR comment summary and blocks high-severity.
-  - Gitleaks job runs on PR and schedule; no secrets reported (or findings triaged).
-- **Dependabot PRs** appear (if updates available).
-- **Deliverables file** lists:
-  - Workflow run links, any alerts found, and actions taken (fixes or follow-ups).
-  - Diffs for all added files and the README patch.
+## Verification / Definition of Done
+- All new workflows pass on the PR (pull_request) and schedule triggers are configured.
+- Security tab shows:
+  - Code Scanning: CodeQL and Scorecards SARIF (if any findings).
+  - Secret Scanning: push protection enabled; no new secrets in CI scans.
+  - Dependency Review: continues to gate **high** severity.
+- Deliverables file `.github/copilot/current-task-deliverables.md` includes:
+  1. **Executive Summary** — what changed and why.
+  2. **Steps Taken** — branch, commits, files added/modified.
+  3. **Evidence & Verification** — links to workflow runs, Security tab screenshots/log excerpts.
+  4. **Final Results** — confirm green CI; list findings and dispositions (fixed/accepted risk/follow-up ticket).
+  5. **Files Changed** — list of added/updated files.
 
-## Commit Style
-Use imperative mood:
-- `chore(security): add CodeQL, Dependabot, gitleaks, and SECURITY.md`
-- `docs: add security section to README`
-- `build: add make sec-scan target`
+---
 
-## Output
-Write the full report to `.github/copilot/current-task-deliverables.md` with:
-- Executive summary
-- Steps taken
-- Evidence (workflow URLs, logs, screenshots if useful)
-- Final results and remaining items
-- Files changed list
+## Commit Plan (examples)
+- `chore(deps): tune dependabot (pip/gha/npm) with groups and labels`
+- `ci(security): add gitleaks workflow + make sec-scan`
+- `ci(security): add OpenSSF Scorecard workflow (weekly + SARIF upload)`
+- `docs(security): add/update SECURITY.md and README Security section`
+
+---
+
+## Finish & PR
+```bash
+git add -A
+git commit -m "ci(security): add gitleaks + scorecards; tune dependabot; update docs (epic16 parts 2–4)"
+git push -u origin security/epic16-parts2-4
+# open PR targeting main; title should follow commit style
+```

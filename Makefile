@@ -20,7 +20,8 @@ PIP         := $(if $(wildcard $(VENV_PIP)),$(VENV_PIP),$(SYS_PIP))
 .PHONY: help install-venv install-base install-ml-minimal install-ml-cpu \
         prefetch-asr models-tiny dev dev-minimal dev-ml-cpu \
         lint fmt fmt-check typecheck test unit test-e2e e2e ci clean \
-        docker-ci docker-ci-build docker-ci-run docker-ci-test docker-ci-shell
+        docker-ci docker-ci-build docker-ci-run docker-ci-test docker-ci-shell \
+        sec-scan
 
 help:
 	@echo "Targets:"
@@ -163,3 +164,7 @@ docker-ci-test: docker-ci-build docker-ci-run
 docker-ci-shell: docker-ci-build
 	@echo "=== Shell in CI-parity container (repo mounted at /app) ==="
 	docker run --rm -it -v "$(PWD_SHELL)":/app $(DOCKER_IMAGE) bash
+
+# Secret scanning using Gitleaks
+sec-scan:
+	@docker run --rm -v "$(pwd)":/repo zricethezav/gitleaks:latest detect -s /repo --no-git --redact
