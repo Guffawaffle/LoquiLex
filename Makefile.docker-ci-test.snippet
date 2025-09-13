@@ -1,0 +1,18 @@
+# --- CI-parity via Docker (canonical: docker-ci-test) ---
+.PHONY: docker-ci-test docker-ci-build docker-ci-run docker-ci-shell
+DOCKER_IMAGE ?= loquilex-ci
+PWD_SHELL := $(shell pwd)
+
+docker-ci-build:
+	@echo "=== Building CI-parity image ==="
+	DOCKER_BUILDKIT=1 docker build -f Dockerfile.ci -t $(DOCKER_IMAGE) . --progress=plain
+
+docker-ci-run:
+	@echo "=== Running CI-parity test sequence in container ==="
+	docker run --rm -v "$(PWD_SHELL)":/app $(DOCKER_IMAGE) ./scripts/ci-gh-parity.sh
+
+docker-ci-test: docker-ci-build docker-ci-run
+
+docker-ci-shell: docker-ci-build
+	@echo "=== Opening interactive shell in CI-parity container (repo mounted at /app) ==="
+	docker run --rm -it -v "$(PWD_SHELL)":/app $(DOCKER_IMAGE)

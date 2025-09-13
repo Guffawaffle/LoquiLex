@@ -1,0 +1,24 @@
+name: Rotate Copilot Task on Merge
+on:
+  pull_request:
+    types: [closed]
+
+jobs:
+  rotate:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Rotate task files
+        run: |
+          chmod +x .github/copilot/rotate-task.sh
+          .github/copilot/rotate-task.sh complete
+      - name: Commit archive changes
+        run: |
+          git config user.name "ci-bot"
+          git config user.email "ci@example"
+          git add .github/copilot/archive .github/copilot/current-task*.md
+          git commit -m "Chore: rotate Copilot task files on PR merge" || echo "No changes"
+          git push

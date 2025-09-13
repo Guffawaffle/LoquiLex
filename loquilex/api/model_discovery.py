@@ -1,5 +1,10 @@
 from __future__ import annotations
 
+import os
+import re
+from pathlib import Path
+from typing import Any, Dict, List
+
 """Local model discovery for ASR (whisper) and MT (NLLB/M2M).
 
 We scan common cache locations:
@@ -7,12 +12,6 @@ We scan common cache locations:
 - whisper.cpp GGUF files under third_party/whisper.cpp/models and repo root models/
 - CTranslate2 directories (faster-whisper converted) under ~/.cache/ or project models/
 """
-
-import os
-import re
-from dataclasses import dataclass
-from pathlib import Path
-from typing import Dict, List, Optional
 
 
 def _env_paths() -> List[Path]:
@@ -31,7 +30,7 @@ def _project_paths() -> List[Path]:
     return [root / "models", root / "third_party" / "whisper.cpp" / "models"]
 
 
-def list_asr_models() -> List[Dict]:
+def list_asr_models() -> List[Dict[str, Any]]:
     out: List[Dict] = []
     seen: set[str] = set()
 
@@ -55,9 +54,10 @@ def list_asr_models() -> List[Dict]:
                 "size_bytes": size,
                 "language": "en",
             }
-            if rec["id"] not in seen:
+            model_id = str(rec["id"])
+            if model_id not in seen:
                 out.append(rec)
-                seen.add(rec["id"])
+                seen.add(model_id)
 
     # faster-whisper by model id (names only) — we don't enumerate CT2 dirs reliably
     # Check for actual downloaded models in HF cache
@@ -89,9 +89,10 @@ def list_asr_models() -> List[Dict]:
                         "size_bytes": 0,
                         "language": "en",
                     }
-                    if rec["id"] not in seen:
+                    model_id = str(rec["id"])
+                    if model_id not in seen:
                         out.append(rec)
-                        seen.add(rec["id"])
+                        seen.add(model_id)
                     found = True
                     break
             if found:
@@ -100,7 +101,7 @@ def list_asr_models() -> List[Dict]:
     return out
 
 
-def list_mt_models() -> List[Dict]:
+def list_mt_models() -> List[Dict[str, Any]]:
     out: List[Dict] = []
     seen: set[str] = set()
     caches = _env_paths()
@@ -117,13 +118,18 @@ def list_mt_models() -> List[Dict]:
             hits = list(c.glob(f"**/models--*--{leaf}*")) + list(c.rglob(f"**/{leaf}*"))
             if hits:
                 present = True
-                path = str(hits[0].parent if hits[0].parent.name.startswith('models--') else hits[0].parent.parent)
+                path = str(
+                    hits[0].parent
+                    if hits[0].parent.name.startswith("models--")
+                    else hits[0].parent.parent
+                )
                 break
         if present:
             rec = {"id": cid, "name": leaf, "langs": ["zho_Hans"], "path": path}
-            if rec["id"] not in seen:
+            model_id = str(rec["id"])
+            if model_id not in seen:
                 out.append(rec)
-                seen.add(rec["id"])
+                seen.add(model_id)
     return out
 
 

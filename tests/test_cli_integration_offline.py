@@ -17,7 +17,7 @@ def _install_fake_faster_whisper():
 
 def _install_fake_mt():
     fake_mt = types.ModuleType("greenfield.mt.translator")
-    from tests.fakes.fake_mt import Translator, TranslationResult
+    from tests.fakes.fake_mt import TranslationResult, Translator
 
     fake_mt.Translator = Translator
     fake_mt.TranslationResult = TranslationResult
@@ -59,7 +59,15 @@ def test_vtt_to_zh_offline_with_fake_mt(tmp_path: Path, monkeypatch):
 
     old = sys.argv
     try:
-        sys.argv = [old[0], "--vtt", str(vtt), "--out-text", str(out_txt), "--out-srt", str(out_srt)]
+        sys.argv = [
+            old[0],
+            "--vtt",
+            str(vtt),
+            "--out-text",
+            str(out_txt),
+            "--out-srt",
+            str(out_srt),
+        ]
         cli.main()
     finally:
         sys.argv = old

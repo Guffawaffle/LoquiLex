@@ -1,0 +1,9 @@
+# Heavy ML dependencies - install only when needed for production/local development
+# These are optional for CI testing as tests use fake implementations
+
+accelerate
+faster-whisper
+sentencepiece
+sounddevice
+torch
+transformers

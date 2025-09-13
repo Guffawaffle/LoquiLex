@@ -1,0 +1,175 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Bootstrap venv",
+      "type": "shell",
+      "command": "bash -lc 'test -x .venv/bin/python || (python3 -m venv .venv && source .venv/bin/activate && pip install -U pip && (pip install -e . || true) && (pip install -r requirements-dev.txt || true))'",
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": []
+    },
+
+    {
+      "label": "Run Tests",
+      "type": "shell",
+      "command": "bash -lc 'source .venv/bin/activate && pytest'",
+      "options": { "cwd": "${workspaceFolder}" },
+      "group": "test",
+      "problemMatcher": ["$pytest"],
+      "dependsOn": ["Bootstrap venv"]
+    },
+
+    {
+      "label": "Run Tests (quiet)",
+      "type": "shell",
+      "command": "bash -lc 'source .venv/bin/activate && pytest -q'",
+      "options": { "cwd": "${workspaceFolder}" },
+      "group": "test",
+      "problemMatcher": ["$pytest"],
+      "dependsOn": ["Bootstrap venv"]
+    },
+
+    {
+      "label": "Coverage (HTML)",
+      "type": "shell",
+      "command": "bash -lc 'source .venv/bin/activate && pytest --maxfail=1 --disable-warnings -q --cov=loquilex --cov-report=term-missing --cov-report=html:coverage_html'",
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": ["$pytest"],
+      "dependsOn": ["Bootstrap venv"]
+    },
+
+    {
+      "label": "Lint (ruff)",
+      "type": "shell",
+      "command": "bash -lc 'source .venv/bin/activate && ruff check loquilex tests'",
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": [],
+      "dependsOn": ["Bootstrap venv"]
+    },
+
+    {
+      "label": "Format (black)",
+      "type": "shell",
+      "command": "bash -lc 'source .venv/bin/activate && black loquilex tests'",
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": [],
+      "dependsOn": ["Bootstrap venv"]
+    },
+
+    {
+      "label": "Typecheck (mypy)",
+      "type": "shell",
+      "command": "bash -lc 'source .venv/bin/activate && mypy loquilex'",
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": [],
+      "dependsOn": ["Bootstrap venv"]
+    },
+
+    {
+      "label": "Safety (vuln scan)",
+      "type": "shell",
+      "command": "bash -lc 'source .venv/bin/activate && (safety check || pip install safety && safety check)'",
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": [],
+      "dependsOn": ["Bootstrap venv"]
+    },
+
+    {
+      "label": "Clean pyc/__pycache__",
+      "type": "shell",
+      "command": "bash -lc \"find . -type d -name '__pycache__' -prune -exec rm -rf {} + ; find . -name '*.py[cod]' -delete\"",
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": []
+    },
+
+    {
+      "label": "All Checks",
+      "dependsOrder": "sequence",
+      "dependsOn": [
+        "Bootstrap venv",
+        "Format (black)",
+        "Lint (ruff)",
+        "Typecheck (mypy)",
+        "Run Tests (quiet)"
+      ],
+      "group": { "kind": "build", "isDefault": true }
+    },
+
+    {
+      "label": "Copilot: Promote (new → current)",
+      "type": "shell",
+      "command": ".github/copilot/rotate-task.sh promote",
+      "problemMatcher": []
+    },
+    {
+      "label": "Copilot: Advance (next → new)",
+      "type": "shell",
+      "command": ".github/copilot/rotate-task.sh advance",
+      "problemMatcher": []
+    },
+    {
+      "label": "Copilot: Complete (archive + clear current)",
+      "type": "shell",
+      "command": ".github/copilot/rotate-task.sh complete",
+      "problemMatcher": []
+    },
+
+    // AUTO GENERATED BELOW THIS LINE - best of luck lol
+    {
+      "label": "Generate Docs",
+      "type": "shell",
+      "command": "bash -lc 'source .venv/bin/activate && mkdocs build'",
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": [],
+      "dependsOn": ["Bootstrap venv"]
+    },
+    {
+      "label": "Serve Docs",
+      "type": "shell",
+      "command": "bash -lc 'source .venv/bin/activate && mkdocs serve'",
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": [],
+      "dependsOn": ["Bootstrap venv"]
+    },
+    {
+      "label": "Publish Docs",
+      "type": "shell",
+      "command": "bash -lc 'source .venv/bin/activate && mkdocs gh-deploy --force'",
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": [],
+      "dependsOn": ["Bootstrap venv"]
+    },
+
+    {
+      "label": "Run Local CI (ruff/black/mypy/unit+e2e)",
+      "type": "shell",
+      "command": "make run-local-ci",
+      "options": { "cwd": "${workspaceFolder}" },
+      "group": "test",
+      "problemMatcher": []
+    },
+
+    {
+      "label": "Test CI (alias)",
+      "type": "shell",
+      "command": "make test-ci",
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": []
+    },
+    {
+      "label": "Docker CI (CI-identical container run)",
+      "type": "shell",
+      "command": "make docker-ci",
+      "options": { "cwd": "${workspaceFolder}" },
+      "group": "test",
+      "problemMatcher": []
+    },
+    {
+        "label": "Docker CI Test (GH parity)",
+        "type": "shell",
+        "command": "make docker-ci-test",
+        "group": "test",
+        "problemMatcher": []
+    }
+  ]
+}

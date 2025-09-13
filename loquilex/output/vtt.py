@@ -1,9 +1,7 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import List, Tuple
 import os
-
+from typing import List, Tuple
 
 EPS = 0.001
 
@@ -25,7 +23,7 @@ def write_vtt(cues: List[Tuple[float, float, str]], path: str) -> None:
         os.makedirs(d, exist_ok=True)
     clean: List[Tuple[float, float, str]] = []
     last_end = 0.0
-    for (a, b, t) in cues:
+    for a, b, t in cues:
         t = t.strip()
         if not t:
             continue

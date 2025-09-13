@@ -227,9 +227,9 @@ class SessionManager:
                         continue
                     payload: Dict[str, Any]
                     if text.startswith("EN ≫ "):
-                        payload = {"type": "partial_en", "text": text[len("EN ≫ "):].strip()}
+                        payload = {"type": "partial_en", "text": text[len("EN ≫ ") :].strip()}
                     elif text.startswith("ZH* ≫ "):
-                        payload = {"type": "partial_zh", "text": text[len("ZH* ≫ "):].strip()}
+                        payload = {"type": "partial_zh", "text": text[len("ZH* ≫ ") :].strip()}
                     elif text.startswith("EN(final):"):
                         payload = {"type": "final_en", "text": text.split(":", 1)[1].strip()}
                     elif text.startswith("ZH:"):
@@ -263,10 +263,20 @@ class SessionManager:
     def _download_worker(self, job_id: str, repo_id: str, typ: str) -> None:
         chan = f"_download/{job_id}"
         try:
-            asyncio.run(self._broadcast(chan, {"type": "download_progress", "job_id": job_id, "repo_id": repo_id, "pct": 0}))
+            asyncio.run(
+                self._broadcast(
+                    chan,
+                    {"type": "download_progress", "job_id": job_id, "repo_id": repo_id, "pct": 0},
+                )
+            )
         except RuntimeError:
             loop = asyncio.get_event_loop()
-            loop.create_task(self._broadcast(chan, {"type": "download_progress", "job_id": job_id, "repo_id": repo_id, "pct": 0}))
+            loop.create_task(
+                self._broadcast(
+                    chan,
+                    {"type": "download_progress", "job_id": job_id, "repo_id": repo_id, "pct": 0},
+                )
+            )
 
         code = (
             "from huggingface_hub import snapshot_download;"
@@ -274,13 +284,26 @@ class SessionManager:
             "print(p)"
         )
         try:
-            proc = subprocess.Popen([sys.executable, "-c", code], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, start_new_session=True)
+            proc = subprocess.Popen(
+                [sys.executable, "-c", code],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                start_new_session=True,
+            )
         except Exception as e:
             try:
-                asyncio.run(self._broadcast(chan, {"type": "download_error", "job_id": job_id, "message": str(e)}))
+                asyncio.run(
+                    self._broadcast(
+                        chan, {"type": "download_error", "job_id": job_id, "message": str(e)}
+                    )
+                )
             except RuntimeError:
                 loop = asyncio.get_event_loop()
-                loop.create_task(self._broadcast(chan, {"type": "download_error", "job_id": job_id, "message": str(e)}))
+                loop.create_task(
+                    self._broadcast(
+                        chan, {"type": "download_error", "job_id": job_id, "message": str(e)}
+                    )
+                )
             return
 
         with self._lock:
@@ -292,10 +315,30 @@ class SessionManager:
             pct = 0
             while proc.poll() is None and not self._stop:
                 try:
-                    asyncio.run(self._broadcast(chan, {"type": "download_progress", "job_id": job_id, "repo_id": repo_id, "pct": pct}))
+                    asyncio.run(
+                        self._broadcast(
+                            chan,
+                            {
+                                "type": "download_progress",
+                                "job_id": job_id,
+                                "repo_id": repo_id,
+                                "pct": pct,
+                            },
+                        )
+                    )
                 except RuntimeError:
                     loop = asyncio.get_event_loop()
-                    loop.create_task(self._broadcast(chan, {"type": "download_progress", "job_id": job_id, "repo_id": repo_id, "pct": pct}))
+                    loop.create_task(
+                        self._broadcast(
+                            chan,
+                            {
+                                "type": "download_progress",
+                                "job_id": job_id,
+                                "repo_id": repo_id,
+                                "pct": pct,
+                            },
+                        )
+                    )
                 pct = min(99, pct + 1)
                 time.sleep(1.0)
 
@@ -316,16 +359,34 @@ class SessionManager:
 
         if ret == 0:
             try:
-                asyncio.run(self._broadcast(chan, {"type": "download_done", "job_id": job_id, "local_path": out}))
+                asyncio.run(
+                    self._broadcast(
+                        chan, {"type": "download_done", "job_id": job_id, "local_path": out}
+                    )
+                )
             except RuntimeError:
                 loop = asyncio.get_event_loop()
-                loop.create_task(self._broadcast(chan, {"type": "download_done", "job_id": job_id, "local_path": out}))
+                loop.create_task(
+                    self._broadcast(
+                        chan, {"type": "download_done", "job_id": job_id, "local_path": out}
+                    )
+                )
         else:
             try:
-                asyncio.run(self._broadcast(chan, {"type": "download_error", "job_id": job_id, "message": out or f'rc={ret}'}))
+                asyncio.run(
+                    self._broadcast(
+                        chan,
+                        {"type": "download_error", "job_id": job_id, "message": out or f"rc={ret}"},
+                    )
+                )
             except RuntimeError:
                 loop = asyncio.get_event_loop()
-                loop.create_task(self._broadcast(chan, {"type": "download_error", "job_id": job_id, "message": out or f'rc={ret}'}))
+                loop.create_task(
+                    self._broadcast(
+                        chan,
+                        {"type": "download_error", "job_id": job_id, "message": out or f"rc={ret}"},
+                    )
+                )
 
     def cancel_download(self, job_id: str) -> bool:
         with self._lock:

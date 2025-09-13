@@ -1,14 +1,13 @@
 from __future__ import annotations
 
 import argparse
-import os
 import wave
 from typing import List, Tuple
 
 import numpy as np
 
-from loquilex.output.vtt import write_vtt
 from loquilex.config.defaults import ASR, pick_device
+from loquilex.output.vtt import write_vtt
 
 
 def read_wav_mono_16k(path: str) -> np.ndarray:
@@ -36,6 +35,7 @@ def main() -> None:
 
     # Offline path: use faster-whisper directly for stability
     from faster_whisper import WhisperModel  # type: ignore
+
     device, _ = pick_device()
     # Prefer int8_float32 on CPU for better quality; fallback handled by faster-whisper if unsupported
     compute_type = ASR.compute_type if device == "cuda" else "int8_float32"

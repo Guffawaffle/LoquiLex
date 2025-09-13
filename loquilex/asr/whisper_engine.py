@@ -1,17 +1,17 @@
 from __future__ import annotations
 
-"""faster-whisper runner with VAD and segmentation.
-
-Emits partial text quickly and final segments on end-of-speech or max length.
-"""
-
-from dataclasses import dataclass
-from typing import Callable, Iterable, Iterator, Optional, List
 import time
+from dataclasses import dataclass
+from typing import Callable, Iterable, List, Optional
 
 import numpy as np
 
 from loquilex.config.defaults import ASR, RT, SEG, pick_device
+
+"""faster-whisper runner with VAD and segmentation.
+
+Emits partial text quickly and final segments on end-of-speech or max length.
+"""
 
 
 @dataclass
@@ -99,7 +99,7 @@ class WhisperEngine:
         samples_iter: Iterable[np.ndarray],
         on_partial: Callable[[str], None],
         on_segment: Callable[[Segment], None],
-    on_words: Optional[Callable[[List[Word]], None]] = None,
+        on_words: Optional[Callable[[List[Word]], None]] = None,
     ) -> None:
         """Stateful streaming with ring buffer, debounced partials, and EoS heuristic.
 
@@ -132,7 +132,9 @@ class WhisperEngine:
                 word_timestamps=ASR.word_timestamps,
             )
             segs = list(segments)
-            partial_text = " ".join((s.text or "").strip() for s in segs if (s.text or "").strip()).strip()
+            partial_text = " ".join(
+                (s.text or "").strip() for s in segs if (s.text or "").strip()
+            ).strip()
 
             # Optional word-level callbacks (rolling window support)
             if ASR.word_timestamps and on_words is not None:
@@ -180,7 +182,9 @@ class WhisperEngine:
             end_t = float(segs[-1].end or 0.0) if segs else 0.0
             if segs and (end_t - start_t) >= SEG.segment_max_sec:
                 max_len_hit = True
-            if partial_text and ((now - self._last_seg_end_wall) >= RT.pause_flush_sec or max_len_hit):
+            if partial_text and (
+                (now - self._last_seg_end_wall) >= RT.pause_flush_sec or max_len_hit
+            ):
                 on_segment(Segment(start_t, end_t, partial_text, True))
                 # reset buffer/state for next clause
                 self.buf = np.zeros(0, dtype=np.float32)
