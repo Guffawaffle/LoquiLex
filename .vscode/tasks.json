@@ -1,4 +1,5 @@
 {
+  // Tasks delegate to Makefile to prevent drift. Update commands only in Makefile.
   "version": "2.0.0",
   "tasks": [
     {
@@ -12,20 +13,19 @@
     {
       "label": "Run Tests",
       "type": "shell",
-      "command": "bash -lc 'source .venv/bin/activate && pytest'",
+      "command": "bash -lc 'source .venv/bin/activate && make unit'",
       "options": { "cwd": "${workspaceFolder}" },
       "group": "test",
-      "problemMatcher": ["$pytest"],
+      "problemMatcher": [],
       "dependsOn": ["Bootstrap venv"]
     },
-
     {
-      "label": "Run Tests (quiet)",
+      "label": "Run E2E",
       "type": "shell",
-      "command": "bash -lc 'source .venv/bin/activate && pytest -q'",
+      "command": "bash -lc 'source .venv/bin/activate && make e2e'",
       "options": { "cwd": "${workspaceFolder}" },
       "group": "test",
-      "problemMatcher": ["$pytest"],
+      "problemMatcher": [],
       "dependsOn": ["Bootstrap venv"]
     },
 
@@ -34,32 +34,30 @@
       "type": "shell",
       "command": "bash -lc 'source .venv/bin/activate && pytest --maxfail=1 --disable-warnings -q --cov=loquilex --cov-report=term-missing --cov-report=html:coverage_html'",
       "options": { "cwd": "${workspaceFolder}" },
-      "problemMatcher": ["$pytest"],
+      "problemMatcher": [],
       "dependsOn": ["Bootstrap venv"]
     },
 
     {
       "label": "Lint (ruff)",
       "type": "shell",
-      "command": "bash -lc 'source .venv/bin/activate && ruff check loquilex tests'",
+      "command": "bash -lc 'source .venv/bin/activate && make lint'",
       "options": { "cwd": "${workspaceFolder}" },
       "problemMatcher": [],
       "dependsOn": ["Bootstrap venv"]
     },
-
     {
       "label": "Format (black)",
       "type": "shell",
-      "command": "bash -lc 'source .venv/bin/activate && black loquilex tests'",
+      "command": "bash -lc 'source .venv/bin/activate && make fmt'",
       "options": { "cwd": "${workspaceFolder}" },
       "problemMatcher": [],
       "dependsOn": ["Bootstrap venv"]
     },
-
     {
       "label": "Typecheck (mypy)",
       "type": "shell",
-      "command": "bash -lc 'source .venv/bin/activate && mypy loquilex'",
+      "command": "bash -lc 'source .venv/bin/activate && make typecheck'",
       "options": { "cwd": "${workspaceFolder}" },
       "problemMatcher": [],
       "dependsOn": ["Bootstrap venv"]
@@ -84,15 +82,12 @@
 
     {
       "label": "All Checks",
-      "dependsOrder": "sequence",
-      "dependsOn": [
-        "Bootstrap venv",
-        "Format (black)",
-        "Lint (ruff)",
-        "Typecheck (mypy)",
-        "Run Tests (quiet)"
-      ],
-      "group": { "kind": "build", "isDefault": true }
+      "type": "shell",
+      "command": "bash -lc 'source .venv/bin/activate && make ci'",
+      "options": { "cwd": "${workspaceFolder}" },
+      "group": { "kind": "build", "isDefault": true },
+      "problemMatcher": [],
+      "dependsOn": ["Bootstrap venv"]
     },
 
     {
@@ -140,22 +135,7 @@
       "dependsOn": ["Bootstrap venv"]
     },
 
-    {
-      "label": "Run Local CI (ruff/black/mypy/unit+e2e)",
-      "type": "shell",
-      "command": "make run-local-ci",
-      "options": { "cwd": "${workspaceFolder}" },
-      "group": "test",
-      "problemMatcher": []
-    },
-
-    {
-      "label": "Test CI (alias)",
-      "type": "shell",
-      "command": "make test-ci",
-      "options": { "cwd": "${workspaceFolder}" },
-      "problemMatcher": []
-    },
+    // Legacy CI helper tasks retained below
     {
       "label": "Docker CI (CI-identical container run)",
       "type": "shell",

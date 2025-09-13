@@ -1,3 +1,6 @@
+.models/
+coverage_html/
+reports/
 # Egg-info
 *.egg-info
 loquilex.egg-info/
