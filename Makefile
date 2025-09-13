@@ -83,8 +83,8 @@ print(f"[prefetch-asr] downloaded/prepared: {model}")'
 
 # Prefetch only the tiny model unless explicitly skipped
 models-tiny:
-	@if [ "$${LX_SKIP_MODEL_PREFETCH:-0}" = "1" ]; then \
-		echo "[dev] Skipping tiny model prefetch (LX_SKIP_MODEL_PREFETCH=1)"; \
+	@if echo "$${LX_SKIP_MODEL_PREFETCH:-0}" | grep -Eiq '^(1|true|yes|on)$'; then \
+		echo "[dev] Skipping tiny model prefetch (LX_SKIP_MODEL_PREFETCH set to truthy value)"; \
 	else \
 		$(MAKE) prefetch-asr ASR_MODEL=tiny.en; \
 	fi
