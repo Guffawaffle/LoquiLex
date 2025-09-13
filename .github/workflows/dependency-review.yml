@@ -1,4 +1,5 @@
-name: Dependency Review
+---
+name: dependency-review
 
 on:
   pull_request:
@@ -9,10 +10,15 @@ permissions:
 
 jobs:
   review:
+    name: Dependency Review
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/dependency-review-action@v4
+      # checkout is optional for this action, but harmless and keeps logs consistent
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Dependency Review
+        uses: actions/dependency-review-action@v4
         with:
           fail-on-severity: high
           comment-summary-in-pr: true
