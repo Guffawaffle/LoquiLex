@@ -5,9 +5,9 @@ numpy==1.26.4
 pytest==8.4.2
 pytest-asyncio==0.26.0
 # Pin for Starlette TestClient compatibility (FastAPI 0.109.x → Starlette 0.36.x)
-# Starlette 0.36.x calls httpx.Client(..., app=<asgi app>), dropped in httpx>=0.28
+# Starlette 0.36.x TestClient uses httpx.Client(app=...), dropped in httpx>=0.28
 httpx==0.27.2
-starlette==0.36.3  # make the transitive pin explicit for determinism
+starlette==0.36.3
 websockets==12.0
 fastapi==0.109.2
 uvicorn==0.27.1

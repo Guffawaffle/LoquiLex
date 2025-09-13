@@ -35,7 +35,7 @@ jobs:
       TRANSFORMERS_OFFLINE: 1
       HF_HUB_DISABLE_TELEMETRY: 1
       LOQUILEX_OFFLINE: 1
-      PYTEST_ADDOPTS: "--timeout=500"
+      PYTEST_ADDOPTS: "--timeout=60"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -52,6 +52,12 @@ jobs:
           python -m pip install -U pip
           # Unified install with constraints to avoid churn
           pip install -r requirements-ci.txt -r requirements-dev.txt -c constraints.txt
+      - name: Show key versions
+        run: |
+          python - <<'PY'
+          import httpx, starlette, fastapi, sys
+          print("versions:", "httpx", httpx.__version__, "starlette", starlette.__version__, "fastapi", fastapi.__version__)
+          PY
       - name: Run tests (unit/integration; skip e2e)
         run: |
           set -e
@@ -78,7 +84,7 @@ jobs:
       TRANSFORMERS_OFFLINE: 1
       HF_HUB_DISABLE_TELEMETRY: 1
       LOQUILEX_OFFLINE: 1
-      PYTEST_ADDOPTS: "--timeout=500"
+      PYTEST_ADDOPTS: "--timeout=60"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -95,6 +101,12 @@ jobs:
           python -m pip install -U pip
           # Unified lightweight install with constraints (fakes used; no heavy models)
           pip install -r requirements-ci.txt -r requirements-dev.txt -c constraints.txt
+      - name: Show key versions
+        run: |
+          python - <<'PY'
+          import httpx, starlette, fastapi, sys
+          print("versions:", "httpx", httpx.__version__, "starlette", starlette.__version__, "fastapi", fastapi.__version__)
+          PY
       - name: Enforce localhost-only
         run: |
           echo "Skipping iptables OUTPUT DROP (previously caused runner comm loss)."
