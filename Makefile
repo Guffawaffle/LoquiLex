@@ -3,8 +3,17 @@
 # ------------------------------
 # Vars
 VENV ?= .venv
-PY   ?= $(VENV)/bin/python
-PIP := .venv/bin/python -m pip
+PY   ?= $(shell command -v python3 || command -v python || echo python)
+PIP  ?= $(shell command -v pip3 || command -v pip || echo pip)
+
+# Use venv python/pip if available, otherwise system
+ifeq ($(wildcard $(VENV)/bin/python),)
+    PY := python
+    PIP := pip
+else
+    PY := $(VENV)/bin/python
+    PIP := $(VENV)/bin/pip
+endif
 
 # ---------------------------------------------------------------------------
 # Bootstrap / installs
@@ -12,9 +21,13 @@ PIP := .venv/bin/python -m pip
 
 # Create venv if missing; idempotent
 install-venv:
-	@echo ">> Ensuring .venv exists"
-	@test -x $(PY) || python3 -m venv .venv
-	@$(PY) -m pip install -U pip setuptools wheel
+	@echo ">> Ensuring Python environment is ready"
+	@if [ "$(PY)" = "python" ]; then \
+		echo "Using system Python - no venv needed"; \
+	else \
+		test -x $(PY) || python3 -m venv $(VENV); \
+		$(PY) -m pip install -U pip setuptools wheel; \
+	fi
 
 # Install dev/test deps used by lint/format/typecheck/test
 install-base: install-venv
