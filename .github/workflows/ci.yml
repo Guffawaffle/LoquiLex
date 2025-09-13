@@ -109,7 +109,7 @@ jobs:
       - name: E2E tests
         run: |
           mkdir -p reports
-          make e2e -- PYTEST_ADDOPTS="${PYTEST_ADDOPTS}" || (pytest --lf -vv -rP -s || true)
+          make e2e || (pytest --lf -vv -rP -s || true)
       - name: Upload e2e artifacts (always)
         if: always()
         uses: actions/upload-artifact@v4
