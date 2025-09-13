@@ -1,0 +1,23 @@
+# GPU ML stack (HEAVY) — use ONLY on real GPU hosts.
+# Expect many hundreds of MB to multiple GB of downloads.
+#
+# Choose one index URL appropriate for your CUDA toolchain, e.g.:
+#   --index-url https://download.pytorch.org/whl/cu121
+# Or CPU-only builds:
+#   --index-url https://download.pytorch.org/whl/cpu
+#
+# Example pins (uncomment ONE of the torch lines below as needed):
+# torch==2.3.1+cu121
+# torch==2.3.1+cpu
+#
+# Core libs
+transformers==4.56.1
+accelerate==1.10.1
+sentencepiece==0.2.1
+
+# Optional for local audio
+sounddevice==0.5.2
+
+# NOTE:
+# - Keep pins aligned with constraints.txt
+# - Do NOT install this in CI or Codespaces by default.

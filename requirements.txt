@@ -1,6 +1,6 @@
-# Core lightweight dependencies (always install)
+# Aggregate requirements for local dev (LIGHTWEIGHT).
+# ML stacks are now OPT-IN to avoid multi-GB downloads in Codespaces/laptops.
+# See: requirements-ml-cpu.txt or requirements-ml-gpu.txt and Makefile targets.
 -r requirements-ci.txt
-
-# Heavy ML dependencies (install for production/local dev)
-# Skip in CI to save bandwidth - tests use fake implementations
--r requirements-ml.txt
+-r requirements-dev.txt
+# (intentionally no ML include here)

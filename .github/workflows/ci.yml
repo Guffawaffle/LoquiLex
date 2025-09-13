@@ -6,36 +6,10 @@ on:
   pull_request:
 
 jobs:
-  lint:
+  build-env:
     runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with: { python-version: "3.12" }
-      - run: python -m pip install --upgrade pip
-      - run: pip install ruff black
-      - run: ruff check .
-      - run: black --check .
-
-  typecheck:
-    runs-on: ubuntu-latest
-    needs: lint
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with: { python-version: "3.12" }
-      - run: pip install mypy
-      - run: mypy loquilex || true
-
-  unit:
-    runs-on: ubuntu-latest
-    needs: lint
-    env:
-      HF_HUB_OFFLINE: 1
-      TRANSFORMERS_OFFLINE: 1
-      HF_HUB_DISABLE_TELEMETRY: 1
-      LOQUILEX_OFFLINE: 1
-      PYTEST_ADDOPTS: "--timeout=60"
+    outputs:
+      python-version: 3.12.3
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -50,31 +24,67 @@ jobs:
       - name: Install Python deps
         run: |
           python -m pip install -U pip
-          # Unified install with constraints to avoid churn
           pip install -r requirements-ci.txt -r requirements-dev.txt -c constraints.txt
       - name: Show key versions
         run: |
           python - <<'PY'
-          import httpx, starlette, fastapi, sys
+          import httpx, starlette, fastapi
           print("versions:", "httpx", httpx.__version__, "starlette", starlette.__version__, "fastapi", fastapi.__version__)
           PY
-      - name: Run tests (unit/integration; skip e2e)
-        run: |
-          set -e
-          # show enforced offline env for evidence
-          env | grep -E '^(HF_HUB_OFFLINE|TRANSFORMERS_OFFLINE|HF_HUB_DISABLE_TELEMETRY|LOQUILEX_OFFLINE)=' || true
-          # first attempt (normal verbosity)
-          if ! pytest -m "not e2e" -vv -rA --maxfail=1 --disable-warnings; then
-            echo "::group::Re-run last failures with extra context"
-            pytest --lf -vv -rA
-            echo "::endgroup::"
-            exit 1
-          fi
-      - if: failure()
-        uses: actions/upload-artifact@v4
+
+  quality:
+    runs-on: ubuntu-latest
+    needs: build-env
+    env:
+      HF_HUB_OFFLINE: 1
+      TRANSFORMERS_OFFLINE: 1
+      HF_HUB_DISABLE_TELEMETRY: 1
+      LOQUILEX_OFFLINE: 1
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12.3" }
+      - name: Restore pip cache
+        uses: actions/cache@v4
         with:
-          name: unit-logs
-          path: .pytest_cache
+          path: ~/.cache/pip
+          key: pip-${{ runner.os }}-python-3.12.3-${{ hashFiles('requirements-ci.txt', 'requirements-dev.txt', 'constraints.txt') }}
+      - name: Install (cached)
+        run: |
+          set -euo pipefail
+          python -m pip install -U pip
+          pip install -r requirements-ci.txt -r requirements-dev.txt -c constraints.txt
+      - name: Lint
+        run: make lint
+      - name: Format check
+        run: make fmt-check
+      - name: Typecheck (non-blocking)
+        run: make typecheck
+
+  unit:
+    runs-on: ubuntu-latest
+    needs: quality
+    env:
+      HF_HUB_OFFLINE: 1
+      TRANSFORMERS_OFFLINE: 1
+      HF_HUB_DISABLE_TELEMETRY: 1
+      LOQUILEX_OFFLINE: 1
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12.3" }
+      - name: Restore pip cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: pip-${{ runner.os }}-python-3.12.3-${{ hashFiles('requirements-ci.txt', 'requirements-dev.txt', 'constraints.txt') }}
+      - name: Install (cached)
+        run: |
+          set -euo pipefail
+          python -m pip install -U pip
+          pip install -r requirements-ci.txt -r requirements-dev.txt -c constraints.txt
+      - name: Unit tests
+        run: make unit
 
   e2e:
     runs-on: ubuntu-latest
@@ -84,44 +94,25 @@ jobs:
       TRANSFORMERS_OFFLINE: 1
       HF_HUB_DISABLE_TELEMETRY: 1
       LOQUILEX_OFFLINE: 1
-      PYTEST_ADDOPTS: "--timeout=60"
+      PYTEST_FLAGS: "--junit-xml=reports/e2e.junit.xml -s"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: { python-version: "3.12.3" }
-      - name: Cache pip
+      - name: Restore pip cache
         uses: actions/cache@v4
         with:
           path: ~/.cache/pip
           key: pip-${{ runner.os }}-python-3.12.3-${{ hashFiles('requirements-ci.txt', 'requirements-dev.txt', 'constraints.txt') }}
-          restore-keys: |
-            pip-${{ runner.os }}-python-3.12.3-
-      - name: Install Python deps
+      - name: Install (cached)
         run: |
+          set -euo pipefail
           python -m pip install -U pip
-          # Unified lightweight install with constraints (fakes used; no heavy models)
           pip install -r requirements-ci.txt -r requirements-dev.txt -c constraints.txt
-      - name: Show key versions
+      - name: E2E tests
         run: |
-          python - <<'PY'
-          import httpx, starlette, fastapi, sys
-          print("versions:", "httpx", httpx.__version__, "starlette", starlette.__version__, "fastapi", fastapi.__version__)
-          PY
-      - name: Enforce localhost-only
-        run: |
-          echo "Skipping iptables OUTPUT DROP (previously caused runner comm loss)."
-          echo "Relying on fakes/offline env vars; consider socket monkeypatch in tests if stricter isolation needed."
-      - name: Run e2e tests (verbose with artifacts)
-        run: |
-          set -e
           mkdir -p reports
-          echo "Running e2e test suite with verbose output"
-          if ! pytest -m e2e -vv -rA -s --maxfail=1 --disable-warnings --junit-xml=reports/e2e.junit.xml; then
-            echo '::group::Re-run last failures (focused verbose)'
-            pytest --lf -vv -rP -s || true
-            echo '::endgroup::'
-            exit 1
-          fi
+          make e2e
       - name: Upload e2e artifacts (always)
         if: always()
         uses: actions/upload-artifact@v4
