@@ -8,14 +8,25 @@ Behavior:
 CLI:
   python -m scripts.models prefetch-asr --model tiny.en --dir ./models
 """
+
 from __future__ import annotations
 import argparse
 from pathlib import Path
-from .env import getenv_bool
+
+try:
+    from .env import getenv_bool
+except ImportError:
+    # Handle direct execution
+    import sys
+
+    sys.path.insert(0, str(Path(__file__).parent))
+    from env import getenv_bool
+
 
 def should_skip_prefetch() -> bool:
     # Extend aliases=() if you want to accept GF_* here too.
     return getenv_bool("LX_SKIP_MODEL_PREFETCH", default=False, aliases=("GF_SKIP_MODEL_PREFETCH",))
+
 
 def prefetch_asr(model: str, download_root: Path) -> None:
     """
@@ -26,7 +37,10 @@ def prefetch_asr(model: str, download_root: Path) -> None:
         print("[models] LX_SKIP_MODEL_PREFETCH set — skipping model prefetch.")
         return
     # TODO: implement actual download (honor offline-first by making this opt-in)
-    print(f"[models] (stub) Would prefetch ASR model '{model}' into '{download_root}'. No action taken.")
+    print(
+        f"[models] (stub) Would prefetch ASR model '{model}' into '{download_root}'. No action taken."
+    )
+
 
 def _cli(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="scripts.models", description="Model helper CLI")
@@ -40,6 +54,7 @@ def _cli(argv: list[str] | None = None) -> int:
         prefetch_asr(args.model, Path(args.dir))
         return 0
     return 2
+
 
 if __name__ == "__main__":
     raise SystemExit(_cli())
