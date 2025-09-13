@@ -1,0 +1,26 @@
+---
+name: dependency-review
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  review:
+    name: Dependency Review
+    runs-on: ubuntu-latest
+    steps:
+      # checkout is optional for this action, but harmless and keeps logs consistent
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Dependency Review
+        uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: high
+          comment-summary-in-pr: true
+          show-openssf-scorecard: true
