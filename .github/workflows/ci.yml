@@ -49,8 +49,9 @@ jobs:
         with:
           path: ~/.cache/pip
           key: pip-${{ runner.os }}-python-3.12.3-${{ hashFiles('requirements-ci.txt', 'requirements-dev.txt', 'constraints.txt') }}
-      - name: Install (already cached)
+      - name: Install (cached)
         run: |
+          set -euo pipefail
           python -m pip install -U pip
           pip install -r requirements-ci.txt -r requirements-dev.txt -c constraints.txt
       - name: Lint
@@ -79,10 +80,11 @@ jobs:
           key: pip-${{ runner.os }}-python-3.12.3-${{ hashFiles('requirements-ci.txt', 'requirements-dev.txt', 'constraints.txt') }}
       - name: Install (cached)
         run: |
+          set -euo pipefail
           python -m pip install -U pip
           pip install -r requirements-ci.txt -r requirements-dev.txt -c constraints.txt
       - name: Unit tests
-        run: make unit || (pytest --lf -vv -rA || true)
+        run: make unit
 
   e2e:
     runs-on: ubuntu-latest
@@ -92,7 +94,7 @@ jobs:
       TRANSFORMERS_OFFLINE: 1
       HF_HUB_DISABLE_TELEMETRY: 1
       LOQUILEX_OFFLINE: 1
-      PYTEST_ADDOPTS: "--timeout=45"
+      PYTEST_FLAGS: "--junit-xml=reports/e2e.junit.xml -s"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -104,12 +106,13 @@ jobs:
           key: pip-${{ runner.os }}-python-3.12.3-${{ hashFiles('requirements-ci.txt', 'requirements-dev.txt', 'constraints.txt') }}
       - name: Install (cached)
         run: |
+          set -euo pipefail
           python -m pip install -U pip
           pip install -r requirements-ci.txt -r requirements-dev.txt -c constraints.txt
       - name: E2E tests
         run: |
           mkdir -p reports
-          make e2e || (pytest --lf -vv -rP -s || true)
+          make e2e
       - name: Upload e2e artifacts (always)
         if: always()
         uses: actions/upload-artifact@v4

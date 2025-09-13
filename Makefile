@@ -6,7 +6,10 @@ VENV?=.venv
 PY=$(VENV)/bin/python
 PIP=$(VENV)/bin/pip
 
-.PHONY: venv install dev fmt lint typecheck unit e2e ci test run-local-ci run-ci-mode test-ci run-wav run-zh clean docker-ci docker-ci-test docker-ci-build docker-ci-run docker-ci-shell
+.PHONY: venv install dev fmt fmt-check lint typecheck unit e2e ci test run-local-ci run-ci-mode test-ci run-wav run-zh clean docker-ci docker-ci-test docker-ci-build docker-ci-run docker-ci-shell
+
+# Allow CI to inject extra flags (e.g., --junit-xml)
+PYTEST_FLAGS ?=
 
 venv:
 	python3 -m venv $(VENV)
@@ -21,22 +24,25 @@ dev: install
 fmt:
 	$(VENV)/bin/black loquilex tests
 
+fmt-check:
+	$(VENV)/bin/black --check loquilex tests
+
 lint:
 	$(VENV)/bin/ruff check loquilex tests
 
 typecheck:
 	$(VENV)/bin/mypy loquilex
 
-# Unit tests (non-e2e) quick mode; add extra flags via PYTEST_ADDOPTS if needed
+# Unit tests (non-e2e) quick mode; add extra flags via PYTEST_FLAGS if needed
 unit:
-	$(PY) -m pytest -q -m "not e2e"
+	$(PY) -m pytest -q -m "not e2e" $(PYTEST_FLAGS)
 
 # E2E tests (verbose). Timeout override applied by invoking: make e2e PYTEST_ADDOPTS=--timeout=45
 e2e:
-	$(PY) -m pytest -m e2e -vv -rA
+	$(PY) -m pytest -m e2e -vv -rA $(PYTEST_FLAGS)
 
 # Aggregate CI-style sequence
-ci: fmt lint typecheck unit e2e
+ci: fmt-check lint typecheck unit e2e
 
 # --- CI-identical local run (canonical) ---
 .PHONY: run-local-ci run-ci-mode test-ci
