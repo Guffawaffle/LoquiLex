@@ -1,5 +1,21 @@
 from __future__ import annotations
 
+import asyncio
+import os
+import re
+import time
+import uuid
+from pathlib import Path
+from typing import Any, Callable, Dict, List, Optional
+
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel, Field
+
+from .model_discovery import list_asr_models, list_mt_models, mt_supported_languages
+from .supervisor import SessionConfig, SessionManager
+
 """LoquiLex control-plane API (FastAPI) with WebSocket events.
 
 Endpoints:
@@ -13,24 +29,6 @@ Endpoints:
 
 All new code intentionally lives under loquilex/api/.
 """
-
-import asyncio
-import time
-import os
-import uuid
-import re
-from pathlib import Path
-from typing import Any, Dict, List, Optional
-
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, Field
-
-from .model_discovery import list_asr_models, list_mt_models, mt_supported_languages
-from .supervisor import SessionConfig, SessionManager
-from .events import EventStamper
-
 
 # Allow localhost and 127.0.0.1 by default for dev. Can be overridden via LLX_ALLOWED_ORIGINS.
 ALLOWED_ORIGINS = os.getenv(
@@ -50,6 +48,7 @@ app.add_middleware(
 OUT_ROOT = Path(os.getenv("LLX_OUT_DIR", "loquilex/out")).resolve()
 OUT_ROOT.mkdir(parents=True, exist_ok=True)
 
+
 def _safe_session_dir(sid: str) -> Path:
     if not re.fullmatch(r"[A-Za-z0-9_-]{6,64}", sid):
         raise HTTPException(status_code=400, detail="bad sid")
@@ -58,10 +57,12 @@ def _safe_session_dir(sid: str) -> Path:
         raise HTTPException(status_code=400, detail="invalid path")
     return p
 
+
 app.mount("/out", StaticFiles(directory=str(OUT_ROOT), html=False), name="out")
 
 # Global manager instance
 MANAGER = SessionManager()
+
 
 class CreateSessionReq(BaseModel):
     name: Optional[str] = Field(default=None)
@@ -77,10 +78,13 @@ class CreateSessionReq(BaseModel):
     partial_word_cap: int = Field(default=10)
     save_audio: str = Field(default="off")  # off|wav|flac
 
+
 class CreateSessionResp(BaseModel):
     session_id: str
 
+
 # (Mounted above)
+
 
 class DownloadReq(BaseModel):
     repo_id: str
@@ -95,6 +99,7 @@ class SelfTestReq(BaseModel):
     asr_model_id: str | None = None
     device: str = Field(default="auto")
     seconds: float = Field(default=1.5)
+
 
 class SelfTestResp(BaseModel):
     ok: bool
@@ -115,7 +120,7 @@ PROFILES_DIR = os.path.join("loquilex", "ui", "profiles")
 def get_profiles() -> List[str]:
     if not os.path.isdir(PROFILES_DIR):
         return []
-    return sorted([p[:-5] for p in os.listdir(PROFILES_DIR) if p.endswith('.json')])
+    return sorted([p[:-5] for p in os.listdir(PROFILES_DIR) if p.endswith(".json")])
 
 
 @app.get("/profiles/{name}")
@@ -125,6 +130,7 @@ def get_profile(name: str) -> Dict[str, Any]:
     if not os.path.isfile(path):
         raise HTTPException(status_code=404, detail="not found")
     import json as _json
+
     with open(path, "r", encoding="utf-8") as f:
         return _json.load(f)
 
@@ -135,6 +141,7 @@ def save_profile(name: str, body: Dict[str, Any]) -> Dict[str, Any]:
     safe = "".join(c for c in name if c.isalnum() or c in ("-", "_"))
     path = os.path.join(PROFILES_DIR, f"{safe}.json")
     import json as _json
+
     tmp = path + ".tmp"
     with open(tmp, "w", encoding="utf-8") as f:
         _json.dump(body, f, ensure_ascii=False, indent=2)
@@ -210,13 +217,15 @@ async def create_session(req: CreateSessionReq) -> CreateSessionResp:
 async def post_selftest(req: SelfTestReq) -> SelfTestResp:
     # Minimal self-test: try to import WhisperEngine and warm up; capture a short mic window and compute RMS
     import numpy as np
+
     from loquilex.asr.whisper_engine import WhisperEngine
     from loquilex.audio.capture import capture_stream
-    from .vu import rms_peak, EmaVu
+
+    from .vu import EmaVu, rms_peak
 
     t0 = time.perf_counter()
     try:
-        os.environ["GF_ASR_MODEL"] = req.asr_model_id or os.getenv("GF_ASR_MODEL", "small.en")
+        os.environ["GF_ASR_MODEL"] = req.asr_model_id or os.getenv("GF_ASR_MODEL") or "small.en"
         os.environ["GF_DEVICE"] = req.device
         eng = WhisperEngine()
         eng.warmup()
@@ -226,18 +235,20 @@ async def post_selftest(req: SelfTestReq) -> SelfTestResp:
 
     ema = EmaVu(0.4)
     levels: list[float] = []
-    stop_fn = None
+    stop_fn: Optional[Callable[[], None]] = None
     try:
+
         def cb(fr) -> None:
             r, p = rms_peak(fr.data)
             r2, _ = ema.update(r, p)
             levels.append(r2)
+
         stop_fn = capture_stream(cb)
         await asyncio.sleep(min(3.0, max(0.2, req.seconds)))
     except Exception as e:
         return SelfTestResp(ok=False, asr_load_ms=asr_ms, rms_avg=0.0, message=f"mic failed: {e}")
     finally:
-        if stop_fn:
+        if stop_fn is not None:
             try:
                 stop_fn()
             except Exception:
@@ -248,6 +259,7 @@ async def post_selftest(req: SelfTestReq) -> SelfTestResp:
     # Effective runtime details
     try:
         from loquilex.config.defaults import ASR as _ASR
+
         sample_rate = _ASR.sample_rate
     except Exception:
         sample_rate = None
@@ -270,6 +282,7 @@ async def stop_session(sid: str) -> Dict[str, Any]:
         raise HTTPException(status_code=404, detail="session not found")
     return {"stopped": True}
 
+
 @app.post("/sessions/{sid}/pause")
 async def pause_session(sid: str) -> Dict[str, Any]:
     sess = MANAGER._sessions.get(sid)
@@ -277,6 +290,7 @@ async def pause_session(sid: str) -> Dict[str, Any]:
         raise HTTPException(status_code=404, detail="session not found")
     sess.pause()
     return {"ok": True}
+
 
 @app.post("/sessions/{sid}/resume")
 async def resume_session(sid: str) -> Dict[str, Any]:
@@ -286,6 +300,7 @@ async def resume_session(sid: str) -> Dict[str, Any]:
     sess.resume()
     return {"ok": True}
 
+
 @app.post("/sessions/{sid}/finalize")
 async def finalize_session(sid: str) -> Dict[str, Any]:
     sess = MANAGER._sessions.get(sid)
@@ -293,6 +308,7 @@ async def finalize_session(sid: str) -> Dict[str, Any]:
         raise HTTPException(status_code=404, detail="session not found")
     sess.finalize_now()
     return {"ok": True}
+
 
 @app.get("/sessions/{sid}/snapshot")
 async def get_snapshot(sid: str) -> Dict[str, Any]:

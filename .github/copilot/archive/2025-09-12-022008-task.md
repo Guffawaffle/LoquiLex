@@ -1,0 +1,39 @@
+# Task: Enforce Offline-First Testing
+
+Our CI agents are currently failing because they attempt to reach `huggingface.co` during pytest runs.
+This violates our offline-first principle and could also create unnecessary costs.
+
+## Goals
+- Prevent any network access during tests (hermetic, offline-only).
+- Stub out model loading so tests pass without contacting Hugging Face.
+- Add environment variables in CI to enforce offline mode.
+
+## Requirements
+1. **Environment**
+   - In CI setup, export:
+     ```bash
+     export HF_HUB_OFFLINE=1
+     export TRANSFORMERS_OFFLINE=1
+     export HF_HUB_DISABLE_TELEMETRY=1
+     export LOQUILEX_OFFLINE=1
+     ```
+   - Ensure these are applied before pytest runs.
+
+2. **Test Harness**
+   - Add `tests/conftest.py` with:
+     - An `autouse` fixture that sets the above env vars.
+     - A `stub_models` fixture that monkeypatches our ASR + MT loaders to use fake classes (`FakeASR`, `FakeMT`) returning minimal deterministic outputs.
+
+3. **Code Adjustments**
+   - Patch `loquilex.models.registry` (or equivalent) in `stub_models` to replace any real network-backed loaders with fake implementations.
+   - Ensure no Hugging Face calls are made in any test path.
+
+4. **Verification**
+   - Run `pytest -v` in a clean CI environment with outbound blocked.
+   - Confirm no firewall warnings.
+   - All tests should pass using the stubs.
+
+## Deliverables
+- New file: `tests/conftest.py` with offline env + stubs.
+- CI job updated to set offline env vars before running pytest.
+- `.github/copilot/current-task-deliverables.md` with full run logs (pytest output, confirmation no external calls).

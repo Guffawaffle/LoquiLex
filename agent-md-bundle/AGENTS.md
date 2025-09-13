@@ -1,39 +1,96 @@
-# AGENTS.md — LoquiLex
+# AGENTS.md
 
-> Custom instructions for GitHub Copilot **Coding Agent** (public preview).  
-> Scope: Repository-wide defaults. Nested `AGENTS.md` may refine behavior per subdir.
+This repository uses GitHub Copilot **Coding Agent** (Preview).
+Roles:
+- **Product lead:** you (maintainer/reviewer)
+- **Senior dev:** Lex (advisor/context)
+- **Junior dev:** Copilot (agent)
 
-## Project Primer
-- **Name**: LoquiLex — live captioning & translation.
-- **Core values**: local-first, offline-capable, reproducible, testable, accessible.
-- **Stack**: Python 3.12, FastAPI + WebSockets, CTranslate2 for NLLB/M2M, Whisper (CT2), optional UVicorn.
-- **Latency goals**: partials < 200ms; finals 500–800ms.
-- **Artifacts**: TXT/JSON/VTT/SRT; optional WAV. No SaaS at runtime.
+The agent must follow these steps when working on tasks.
 
-## Build & Test
-- Use a **fully offline** test strategy. Do **not** reach the network (CI enforces localhost-only firewall).
-- Unit tests: `pytest -q -m "not e2e" --maxfail=1`  
-  E2E tests: `pytest -q -m e2e --maxfail=1`
-- Provide fakes/mocks for ASR/MT components. Prefer dependency injection over patching.
-- Do not include compiled artifacts (`__pycache__/`, `*.pyc`) in commits.
+---
 
-## Coding Guidelines
-- Type hints everywhere; docstrings compatible with **PHPStan-style clarity** is not required here, but docblocks should be precise.
-- Lint with **ruff**; format with **black**.
-- Keep WebSocket clients/servers resilient: reconnect, snapshot rehydrate, bounded queues, monotonic time.
-- Separate partial vs final events in schemas.
+## Setup
+```bash
+python3 -m venv .venv
+. .venv/bin/activate
+[ -f requirements.txt ] && pip install -r requirements.txt
+[ -f package.json ] && npm ci
+[ -f composer.json ] && composer install --no-interaction
+```
 
-## PR Expectations
-- Keep diffs minimal. No unrelated reformatting.
-- Update **CHANGELOG.md** when changing behavior or configs.
-- Update **/docs/** if flags, env vars, or routes change.
-- Add/adjust tests for any new behavior. Prefer fast unit tests; mark slow/system with `@pytest.mark.e2e`.
+## Build
+```bash
+# If no build step is required, skip.
+echo "No build step"
+```
 
-## Security & Privacy
-- No hardcoded tokens. No telemetry. Respect local-only constraints.
-- When adding dependencies, prefer **pinned versions** and reproducible installs.
+## Test
+- If `tests/` exists, run its suite (e.g., `pytest`, `npm test`, etc.).
+- Ensure all lint/type-check targets in CI pass (`ruff`, `mypy`, `phpcs`, etc. if defined).
+- Manual checklists or extra validation should be included in **task deliverables**.
 
-## Agent-Specific Behaviors
-- When asked to “add tests,” default to **unit tests** with small, deterministic fixtures.
-- When asked to “optimize,” measure first; add a micro-benchmark or profile note in the PR.
-- When editing CI, keep **offline-first** and separate **lint/type/unit/e2e** jobs.
+---
+
+## Quality Gates
+- **Minimal, focused diffs**: only touch files in scope.
+- **Valid Markdown** (no broken fences).
+- **POSIX-friendly shell** where scripts are required.
+- **CI green**: All tests, lint, and type checks must pass before PR is ready.
+
+---
+
+## PR Rules
+- **Commit style**: Use imperative mood (`Add…`, `Fix…`, `Update…`).
+- **PR description**: Must include WHAT changed, WHY it changed, and reference the related task issue.
+- **No secrets/CI/deploy edits** unless explicitly instructed.
+
+- **Task Source of Truth**
+  - If `.github/copilot/current-task.md` exists, treat it as the authoritative task description.
+  - Otherwise, follow the acceptance criteria in the assigned issue.
+
+- **Task Results**
+  - Record a detailed review and output in `.github/copilot/current-task-deliverables.md`.
+
+---
+
+## Deliverables Policy
+
+- After executing a task, always produce `.github/copilot/current-task-deliverables.md` as a detailed running log for the PR.
+- Never omit or over-summarize: include full logs, diffs, error messages, and verification steps.
+
+### Deliverables Report Format
+
+Each deliverables file must include:
+
+1. **Executive Summary**
+   Concise overview of what was attempted, what changed, and the outcome.
+
+2. **Steps Taken**
+   Bullet-point log of how the task was executed (commands, diffs, edits, config changes).
+
+3. **Evidence & Verification**
+   - Full command outputs (`pytest`, `mypy`, `ruff`, etc.).
+   - Before/after diffs or code snippets.
+   - Logs and stack traces where relevant.
+   - Do not truncate — include the complete context needed for analysis.
+
+4. **Final Results**
+   Whether the goals were met, remaining issues, and follow-up recommendations.
+
+5. **Files Changed**
+   List all modified files and the type of change.
+
+### Logging Policy
+
+- `.github/copilot/current-task-deliverables.md` acts as the **running log** for the PR.
+- Overwrite or extend this file as needed, but never remove historical context unless instructed.
+- This file is part of the review record — keep it detailed and unabridged.
+
+---
+
+## Guardrails
+- Never run destructive commands.
+- Never delete or edit out-of-scope files.
+- If acceptance criteria are unclear, **open a question in the PR** instead of guessing.
+- Follow repo conventions (tests required, semantic commits, docs when behavior changes).

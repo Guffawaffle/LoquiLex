@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import time
-
 from loquilex.segmentation.aggregator import Aggregator
 
 

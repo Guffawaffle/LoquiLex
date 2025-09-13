@@ -1,20 +1,25 @@
 from __future__ import annotations
 
+
 def test_import_api_modules_for_coverage():
     # Import FastAPI modules if available; otherwise skip gracefully
 
     try:
         __import__("fastapi")
+        import loquilex.api.model_discovery
         import loquilex.api.server
         import loquilex.api.supervisor
-        import loquilex.api.model_discovery
+
+        # Access the modules to avoid unused import warnings
+        _ = loquilex.api.server, loquilex.api.supervisor, loquilex.api.model_discovery
     except Exception:
         pass
 
     # Exercise events and vu helpers
-    from loquilex.api.events import EventStamper
-    from loquilex.api.vu import rms_peak, EmaVu
     import numpy as np
+
+    from loquilex.api.events import EventStamper
+    from loquilex.api.vu import EmaVu, rms_peak
 
     st = EventStamper.new()
     out = st.stamp({"type": "x"})

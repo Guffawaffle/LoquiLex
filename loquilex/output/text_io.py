@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import os
 import threading
-from typing import Optional, List
+from typing import List, Optional
 
 
 def _ensure_parent_dir(path: str) -> None:

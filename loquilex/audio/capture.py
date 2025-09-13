@@ -1,21 +1,19 @@
 from __future__ import annotations
 
+import queue
+import shutil
+import subprocess
+import threading
+import time
+from dataclasses import dataclass
+from typing import Callable
+
+import numpy as np
+
 """Microphone capture with sounddevice; ffmpeg pulse/alsa fallback.
 
 Produces 16 kHz mono float32 frames. Never writes files. No side effects on import.
 """
-
-import queue
-import shutil
-import subprocess
-import sys
-import threading
-import time
-from dataclasses import dataclass
-from typing import Callable, Iterable, Optional
-
-import numpy as np
-
 
 SAMPLE_RATE = 16000
 CHANNELS = 1
@@ -129,6 +127,7 @@ def capture_stream(callback: Callable[[AudioFrame], None]) -> Callable[[], None]
         def reader() -> None:
             bufsize = FRAME_SAMPLES * 4  # float32 bytes
             while not stop_flag.is_set():
+                assert proc.stdout is not None  # Already checked above
                 chunk = proc.stdout.read(bufsize)
                 if not chunk:
                     break

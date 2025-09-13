@@ -1,8 +1,7 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Optional
 import contextlib
+from dataclasses import dataclass
 
 from loquilex.config.defaults import MT, pick_device
 
@@ -58,7 +57,7 @@ class Translator:
 
     def _load_nllb(self):
         if self._nllb is None:
-            from transformers import AutoTokenizer, AutoModelForSeq2SeqLM  # type: ignore
+            from transformers import AutoModelForSeq2SeqLM, AutoTokenizer  # type: ignore
 
             tok = AutoTokenizer.from_pretrained(MT.nllb_model, use_safetensors=True)
             model = AutoModelForSeq2SeqLM.from_pretrained(
@@ -73,7 +72,7 @@ class Translator:
 
     def _load_m2m(self):
         if self._m2m is None:
-            from transformers import M2M100Tokenizer, M2M100ForConditionalGeneration  # type: ignore
+            from transformers import M2M100ForConditionalGeneration, M2M100Tokenizer  # type: ignore
 
             tok = M2M100Tokenizer.from_pretrained(MT.m2m_model, use_safetensors=True)
             model = M2M100ForConditionalGeneration.from_pretrained(
@@ -147,7 +146,9 @@ class Translator:
         try:
             tok, model = self._load_m2m()
             tok.src_lang = "en"
-            inputs = tok(text, return_tensors="pt", truncation=True, max_length=min(64, MT.max_input_tokens))
+            inputs = tok(
+                text, return_tensors="pt", truncation=True, max_length=min(64, MT.max_input_tokens)
+            )
             inputs = {k: v.to(self.torch_device) for k, v in inputs.items()}
             cm = torch.no_grad() if torch is not None else contextlib.nullcontext()
             with cm:
@@ -167,7 +168,9 @@ class Translator:
         try:
             tok, model = self._load_nllb()
             tok.src_lang = "eng_Latn"
-            inputs = tok(text, return_tensors="pt", truncation=True, max_length=min(64, MT.max_input_tokens))
+            inputs = tok(
+                text, return_tensors="pt", truncation=True, max_length=min(64, MT.max_input_tokens)
+            )
             inputs = {k: v.to(self.torch_device) for k, v in inputs.items()}
             cm = torch.no_grad() if torch is not None else contextlib.nullcontext()
             with cm:

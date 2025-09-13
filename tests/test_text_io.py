@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import os
-
 from loquilex.output.text_io import RollingTextFile
 
 

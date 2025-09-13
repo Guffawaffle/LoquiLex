@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from loquilex.output.srt import append_srt_cue
 from loquilex.output.text_io import RollingTextFile
 from loquilex.output.vtt import append_vtt_cue
-from loquilex.output.srt import append_srt_cue
 
 
 def test_partial_and_final_files(tmp_path: Path):
@@ -27,8 +27,12 @@ def test_partial_and_final_files(tmp_path: Path):
     for i in range(3):
         f_en.append_final_line(f"en {i}")
         f_zh.append_final_line(f"zh {i}")
-    en_lines = [ln for ln in (tmp_path / "live.final.en.txt").read_text(encoding="utf-8").splitlines() if ln]
-    zh_lines = [ln for ln in (tmp_path / "live.final.zh.txt").read_text(encoding="utf-8").splitlines() if ln]
+    en_lines = [
+        ln for ln in (tmp_path / "live.final.en.txt").read_text(encoding="utf-8").splitlines() if ln
+    ]
+    zh_lines = [
+        ln for ln in (tmp_path / "live.final.zh.txt").read_text(encoding="utf-8").splitlines() if ln
+    ]
     assert en_lines == ["en 1", "en 2"]
     assert zh_lines == ["zh 1", "zh 2"]
 

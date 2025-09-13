@@ -2,28 +2,28 @@ from __future__ import annotations
 
 import argparse
 import os
-import threading
 import queue
-import time
 import signal
-import sys
-from typing import List, Tuple
-from collections import deque
-import wave
 import subprocess
+import sys
+import threading
+import time
+import wave
+from collections import deque
+from typing import List, Tuple
 
 import numpy as np
 
+from loquilex.api.vu import EmaVu, rms_peak
+from loquilex.asr.whisper_engine import Segment, WhisperEngine
 from loquilex.audio.capture import capture_stream
-from loquilex.asr.whisper_engine import WhisperEngine, Segment
-from loquilex.segmentation.aggregator import Aggregator
-from loquilex.output.vtt import write_vtt, append_vtt_cue
-from loquilex.output.srt import write_srt, append_srt_cue
+from loquilex.config.defaults import ASR, RT
 from loquilex.mt.translator import Translator
-from loquilex.post.zh_text import post_process
-from loquilex.config.defaults import RT, ASR
+from loquilex.output.srt import append_srt_cue
 from loquilex.output.text_io import RollingTextFile
-from loquilex.api.vu import rms_peak, EmaVu
+from loquilex.output.vtt import append_vtt_cue, write_vtt
+from loquilex.post.zh_text import post_process
+from loquilex.segmentation.aggregator import Aggregator
 
 
 def main() -> None:
@@ -33,10 +33,27 @@ def main() -> None:
     ap.add_argument("--stream-zh", action="store_true", default=False)
     ap.add_argument("--zh-partial-debounce-sec", type=float, default=0.5)
     ap.add_argument("--combined-vtt", action="store_true", default=False)
-    ap.add_argument("--live-window-words", type=int, default=0, help="Rolling word window size for live draft translation; requires word timestamps")
-    ap.add_argument("--live-update-debounce-sec", type=float, default=0.4, help="Debounce for live draft updates")
-    ap.add_argument("--live-draft-files", action="store_true", default=False, help="Write live EN/ZH drafts to _live_en.txt/_live_zh.txt atomically")
-    ap.add_argument("--seconds", type=int, default=20, help="Duration in seconds; <=0 to run until Ctrl+C")
+    ap.add_argument(
+        "--live-window-words",
+        type=int,
+        default=0,
+        help="Rolling word window size for live draft translation; requires word timestamps",
+    )
+    ap.add_argument(
+        "--live-update-debounce-sec",
+        type=float,
+        default=0.4,
+        help="Debounce for live draft updates",
+    )
+    ap.add_argument(
+        "--live-draft-files",
+        action="store_true",
+        default=False,
+        help="Write live EN/ZH drafts to _live_en.txt/_live_zh.txt atomically",
+    )
+    ap.add_argument(
+        "--seconds", type=int, default=20, help="Duration in seconds; <=0 to run until Ctrl+C"
+    )
     # Verbosity flags
     ap.add_argument("-v", "--verbose", action="store_true", help="Enable verbose logs")
     ap.add_argument("--log-io", action="store_true", help="Log file write operations")
@@ -58,10 +75,6 @@ def main() -> None:
     args = ap.parse_args()
 
     out_vtt = args.out_prefix + ".vtt"  # legacy combined if used
-    out_txt = args.out_prefix + "_zh.txt"  # legacy
-    out_srt = args.out_prefix + "_zh.srt"  # legacy
-    out_vtt_en = args.out_prefix + "_en.vtt"  # legacy
-    out_vtt_zh = args.out_prefix + "_zh.vtt"  # legacy
     out_live_en = args.out_prefix + "_live_en.txt"  # legacy
     out_live_zh = args.out_prefix + "_live_zh.txt"  # legacy
     os.makedirs(os.path.dirname(args.partial_en), exist_ok=True)
@@ -145,15 +158,18 @@ def main() -> None:
     session_t0_mono = None  # will set once first audio frame arrives (monotonic)
     last_t1_mono = None  # monotonic time of latest captured audio end
     audio_since_reset = 0.0  # seconds fed to engine since its last reset
+    mt_dropped = 0  # Count of dropped translation requests due to backlog
 
     def on_partial(txt: str) -> None:
-        nonlocal last_zh_partial_emit, last_zh_partial_text, last_en_partial_text, last_en_partial_print
+        nonlocal last_zh_partial_emit, last_zh_partial_text, last_en_partial_text
         now = time.monotonic()
+
         def emit(s: str) -> None:
             nonlocal last_en_partial_print
             if now - last_en_partial_print >= RT.partial_debounce_sec:
                 print(f"EN ≫ {s}")
                 last_en_partial_print = now
+
         agg.on_partial(txt, emit)
         # Write partial EN line (single line)
         part = txt.strip()
@@ -168,7 +184,11 @@ def main() -> None:
             pass
         # Live ZH partial (debounced), independent of word-window
         use_word_window = ASR.word_timestamps and args.live_window_words > 0
-        if not use_word_window and (now - last_zh_partial_emit) >= args.zh_partial_debounce_sec and part:
+        if (
+            not use_word_window
+            and (now - last_zh_partial_emit) >= args.zh_partial_debounce_sec
+            and part
+        ):
             draft = tr.translate_en_to_zh_draft(part).text
             draft = post_process(draft)
             if draft and draft != last_zh_partial_text:
@@ -202,7 +222,9 @@ def main() -> None:
         if not args.no_final_vtt_en:
             try:
                 append_vtt_cue(args.final_vtt_en, rel_a, rel_b, txt)
-                _io_log(f"[io] vtt append lang=en path={args.final_vtt_en} a={rel_a:.3f} b={rel_b:.3f} chars={len(txt)}")
+                _io_log(
+                    f"[io] vtt append lang=en path={args.final_vtt_en} a={rel_a:.3f} b={rel_b:.3f} chars={len(txt)}"
+                )
             except Exception:
                 pass
         try:
@@ -257,8 +279,6 @@ def main() -> None:
 
     # Proper capture loop; start capture and set start time on first frame
     frames: List[np.ndarray] = []
-    mt_dropped = 0
-    pre_capture_mono = time.monotonic()
 
     # Optional audio recording sinks
     audio_mode = args.save_audio
@@ -281,9 +301,20 @@ def main() -> None:
             try:
                 # Feed float32 raw to ffmpeg to encode FLAC
                 cmd = [
-                    "ffmpeg", "-hide_banner", "-loglevel", "error",
-                    "-f", "f32le", "-ar", str(ASR.sample_rate), "-ac", "1", "-i", "pipe:0",
-                    "-y", args.save_audio_path,
+                    "ffmpeg",
+                    "-hide_banner",
+                    "-loglevel",
+                    "error",
+                    "-f",
+                    "f32le",
+                    "-ar",
+                    str(ASR.sample_rate),
+                    "-ac",
+                    "1",
+                    "-i",
+                    "pipe:0",
+                    "-y",
+                    args.save_audio_path,
                 ]
                 proc = subprocess.Popen(cmd, stdin=subprocess.PIPE)
                 audio_sink_ffmpeg = proc
@@ -296,7 +327,7 @@ def main() -> None:
     last_vu = 0.0
 
     def feed(fr) -> None:
-        nonlocal session_t0_mono, last_t1_mono, audio_since_reset
+        nonlocal session_t0_mono, last_t1_mono, audio_since_reset, last_vu
         if session_t0_mono is None:
             session_t0_mono = time.monotonic()
         frames.append(fr.data)
@@ -319,7 +350,11 @@ def main() -> None:
                 # convert float32 [-1,1] to int16
                 pcm16 = (np.clip(fr.data, -1.0, 1.0) * 32767.0).astype(np.int16).tobytes()
                 audio_sink_wav.writeframes(pcm16)
-            elif audio_mode == "flac" and audio_sink_ffmpeg is not None and audio_sink_ffmpeg.stdin is not None:
+            elif (
+                audio_mode == "flac"
+                and audio_sink_ffmpeg is not None
+                and audio_sink_ffmpeg.stdin is not None
+            ):
                 audio_sink_ffmpeg.stdin.write(fr.data.tobytes())
         except Exception:
             pass
@@ -338,7 +373,9 @@ def main() -> None:
     if args.seconds <= 0:
         print("[cli] Ready — start speaking now (capturing mic)… running until Ctrl+C")
     else:
-        print(f"[cli] Ready — start speaking now (capturing mic)… for {args.seconds}s (timer starts now; Ctrl+C to stop early)")
+        print(
+            f"[cli] Ready — start speaking now (capturing mic)… for {args.seconds}s (timer starts now; Ctrl+C to stop early)"
+        )
     # Start countdown from the Ready message time to guarantee full speaking window
     ready_time_mono = time.monotonic()
 
@@ -373,7 +410,9 @@ def main() -> None:
             if not args.no_final_srt_zh:
                 try:
                     used_idx = append_srt_cue(args.final_srt_zh, srt_index_zh, rel_a, rel_b, zh_txt)
-                    print(f"[io] srt append lang=zh path={args.final_srt_zh} idx={used_idx} a={rel_a:.3f} b={rel_b:.3f} chars={len(zh_txt)}")
+                    print(
+                        f"[io] srt append lang=zh path={args.final_srt_zh} idx={used_idx} a={rel_a:.3f} b={rel_b:.3f} chars={len(zh_txt)}"
+                    )
                     srt_index_zh = used_idx + 1
                 except Exception:
                     pass

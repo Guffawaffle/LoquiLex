@@ -6,7 +6,7 @@ from typing import List, Tuple
 
 def parse_vtt(path: str) -> List[Tuple[float, float, str]]:
     cues: List[Tuple[float, float, str]] = []
-    import re
+
     def ts(s: str) -> float:
         h, m, rest = s.split(":")
         if "," in rest:
@@ -14,6 +14,7 @@ def parse_vtt(path: str) -> List[Tuple[float, float, str]]:
         else:
             s2, ms = rest.split(".")
         return int(h) * 3600 + int(m) * 60 + int(s2) + int(ms) / 1000.0
+
     with open(path, "r", encoding="utf-8") as f:
         lines = [ln.strip() for ln in f]
     i = 0
