@@ -14,7 +14,7 @@ class WhisperModel:
     def __init__(self, *args, **kwargs):
         pass
 
-    def transcribe(self, data, **kwargs) -> Tuple[Iterable[_Seg], dict]:
+    def transcribe(self, _data, **_kwargs) -> Tuple[Iterable[_Seg], dict]:
         # Return two tiny deterministic segments
         segs = [_Seg(0.0, 0.5, "hello"), _Seg(0.5, 1.0, "world")]
         return segs, {"lang": "en"}

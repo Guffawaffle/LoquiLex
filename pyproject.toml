@@ -46,5 +46,8 @@ dev = [
 [tool.ruff]
 line-length = 100
 
+[tool.ruff.lint]
+select = ["F401", "F841", "ARG"]  # Enable unused import, unused variable, and unused arguments detection
+
 [tool.black]
 line-length = 100

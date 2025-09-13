@@ -25,22 +25,22 @@ def _install_fakes() -> None:
     fake_transformers = types.ModuleType("transformers")
 
     class DummyModel:
-        def __init__(self, *args, **kwargs) -> None: ...
-        def to(self, *args, **kwargs):
+        def __init__(self, *_args, **_kwargs) -> None: ...
+        def to(self, *_args, **_kwargs):
             return self
 
         def eval(self):
             return self
 
-        def generate(self, *args, **kwargs):
+        def generate(self, *_args, **_kwargs):
             # Return deterministic token ids
             return [[1, 2, 3]]
 
     class DummyTokenizer:
         src_lang = "eng_Latn"
 
-        def __init__(self, *args, **kwargs) -> None: ...
-        def __call__(self, text, **kwargs):
+        def __init__(self, *_args, **_kwargs) -> None: ...
+        def __call__(self, _text, **_kwargs):
             return {"input_ids": [[1, 2, 3]], "attention_mask": [[1, 1, 1]]}
 
     # Minimal surface used by our code/tests
@@ -92,7 +92,7 @@ def forbid_network(monkeypatch):
     monkeypatch.setattr(socket, "create_connection", guarded_create_connection)
 
 
-def pytest_sessionstart(session: pytest.Session) -> None:
+def pytest_sessionstart(session: pytest.Session) -> None:  # noqa: ARG001
     """
     Pytest lifecycle hook that runs before any tests are collected.
     We:

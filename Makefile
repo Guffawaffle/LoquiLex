@@ -21,7 +21,7 @@ PIP         := $(if $(wildcard $(VENV_PIP)),$(VENV_PIP),$(SYS_PIP))
         prefetch-asr models-tiny dev dev-minimal dev-ml-cpu \
         lint fmt fmt-check typecheck test unit test-e2e e2e ci clean \
         docker-ci docker-ci-build docker-ci-run docker-ci-test docker-ci-shell \
-        sec-scan
+        sec-scan dead-code-analysis
 
 help:
 	@echo "Targets:"
@@ -29,6 +29,7 @@ help:
 	@echo "  dev              - alias of dev-minimal"
 	@echo "  dev-ml-cpu       - add CPU-only ML stack and prefetch tiny model"
 	@echo "  lint / fmt / typecheck / test / e2e / ci"
+	@echo "  dead-code-analysis - run comprehensive dead code detection tools"
 	@echo "Vars:"
 	@echo "  USE_VENV=0       - use system Python instead of creating .venv (good for CI)"
 	@echo "  ASR_MODEL=...    - model to prefetch (default: tiny.en)"
@@ -174,3 +175,8 @@ docker-ci-shell: docker-ci-build
 # Secret scanning using Gitleaks
 sec-scan:
 	@docker run --rm -v "$(PWD)":/repo zricethezav/gitleaks:latest detect -s /repo --no-git --redact
+
+# Dead code analysis using multiple detection tools
+dead-code-analysis: install-base
+	@echo "=== Running comprehensive dead code analysis ==="
+	@./scripts/dead-code-analysis.sh
