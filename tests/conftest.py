@@ -63,7 +63,7 @@ def _set_offline_env() -> None:
 def _patch_translator() -> None:
     """Patch our Translator to the fake implementation after fakes are installed."""
     # Import after fakes are installed so downstream imports see our stubs.
-    import loquilex.mt.translator as mt  # noqa: WPS433 (allowed here intentionally)
+    import loquilex.mt.translator as mt  # (allowed here intentionally)
 
     mt.Translator = fake_mt.Translator
 
