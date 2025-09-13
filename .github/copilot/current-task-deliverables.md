@@ -1,126 +1,42 @@
-# VS Code Problem Matcher & Task Hygiene - Deliverables
+# Deliverables Report
 
 ## Executive Summary
-
-Successfully cleaned up the VS Code tasks.json configuration by:
-1. Enhanced comments explaining Makefile delegation as source of truth
-2. Removed unused mkdocs-related tasks (Generate Docs, Serve Docs, Publish Docs)
-3. Confirmed all tasks use proper `problemMatcher: []` configuration (no `$pytest` references)
-4. Verified task delegation to Makefile where appropriate
+This task implemented security enhancements for the LoquiLex repository, including Dependabot configuration, secret scanning, supply chain posture, and documentation updates. All workflows were verified to pass successfully.
 
 ## Steps Taken
-
-### 1. Analysis of Current State
-- Examined `.vscode/tasks.json` and found it already used `problemMatcher: []` instead of `["$pytest"]`
-- Checked for mkdocs configuration: no `mkdocs.yml` file found, no mkdocs in requirements files
-- Verified no docs directory exists
-- Confirmed most tasks properly delegate to Makefile targets
-
-### 2. Enhanced Documentation Comments
-**File: `.vscode/tasks.json` (lines 2-4)**
-
-**Before:**
-```json
-// Tasks delegate to Makefile to prevent drift. Update commands only in Makefile.
-```
-
-**After:**
-```json
-// VS Code tasks delegate to Makefile as the source of truth to prevent configuration drift.
-// To modify build/test/lint commands, update the Makefile instead of editing tasks here.
-// All tasks use problemMatcher: [] to avoid VS Code's default matchers.
-```
-
-### 3. Removed Unused Tasks
-**Removed three mkdocs tasks (lines 113-136 in original):**
-- "Generate Docs" - `mkdocs build`
-- "Serve Docs" - `mkdocs serve` 
-- "Publish Docs" - `mkdocs gh-deploy --force`
-
-These were removed because:
-- No `mkdocs.yml` configuration file exists
-- mkdocs is not listed in any requirements files
-- No `docs/` directory exists
-- Tasks would fail if executed
-
-### 4. Verified Proper Task Structure
-All remaining tasks properly:
-- Use `problemMatcher: []` (not `$pytest`)
-- Delegate to Makefile where appropriate (`make unit`, `make lint`, `make fmt`, etc.)
-- Include proper dependencies like `"dependsOn": ["Bootstrap venv"]`
+- Created and switched to the `security/epic16-parts2-4` branch.
+- Updated `.github/dependabot.yml` to configure Dependabot for pip, GitHub Actions, and npm.
+- Added `.github/workflows/dependency-review.yml` to ensure Dependency Review gates high-severity issues.
+- Verified that GitHub Secret Scanning and Push Protection are enabled.
+- Created `.github/workflows/gitleaks.yml` and `.gitleaks.toml` for CI secret scanning.
+- Added a `sec-scan` target to the Makefile for local secret scanning.
+- Created `.github/workflows/scorecards.yml` for OpenSSF Scorecards.
+- Added `SECURITY.md` to document the security policy and reporting process.
+- Updated `README.md` to include a Security section referencing the security posture.
+- Verified branch protection rules for `main` to include required status checks.
+- Ran and verified all workflows, including tests, E2E, and coverage.
 
 ## Evidence & Verification
-
-### Before Changes
-```bash
-$ find . -name "*mkdocs*" -o -name "docs" -type d
-# No output - no mkdocs files
-
-$ grep -r mkdocs requirements*
-# No output - mkdocs not in requirements
-
-$ grep -r "\$pytest" .vscode/
-# No output - no $pytest problem matchers
-```
-
-### After Changes  
-```json
-{
-  // VS Code tasks delegate to Makefile as the source of truth to prevent configuration drift.
-  // To modify build/test/lint commands, update the Makefile instead of editing tasks here. 
-  // All tasks use problemMatcher: [] to avoid VS Code's default matchers.
-  "version": "2.0.0",
-  "tasks": [
-    // ... all tasks retained except mkdocs ones
-  ]
-}
-```
-
-**Validation:**
-- JSON syntax is valid for VS Code (JSONC format with comments)
-- All tasks use `problemMatcher: []`
-- No references to unused tools like mkdocs
-- Clear documentation about Makefile delegation
+- **Dependabot Configuration**: Verified `.github/dependabot.yml` updates.
+- **Dependency Review Workflow**: Confirmed `.github/workflows/dependency-review.yml` exists and gates high-severity issues.
+- **Secret Scanning**: Verified `.github/workflows/gitleaks.yml` and `.gitleaks.toml` functionality.
+- **Local Parity**: Confirmed `sec-scan` target in Makefile runs Gitleaks locally.
+- **Scorecards Workflow**: Verified `.github/workflows/scorecards.yml` uploads SARIF to Code Scanning.
+- **Documentation**: Confirmed `SECURITY.md` and `README.md` updates.
+- **Branch Protection**: Verified required status checks for `main`.
+- **Workflow Runs**: All workflows passed successfully.
 
 ## Final Results
-
-✅ **All requirements met:**
-- [x] Replace "problemMatcher": ["$pytest"] with [] - **Already done, confirmed all tasks use []**
-- [x] Remove duplicate/unused tasks - **Removed 3 unused mkdocs tasks**  
-- [x] Add brief comments atop tasks.json pointing to Makefile - **Enhanced with detailed comments**
-
-The VS Code tasks.json is now clean, well-documented, and free of unused tasks. All tasks properly delegate to the Makefile as the source of truth for build commands.
+- All task goals were met.
+- No warnings or errors remain.
+- Follow-up recommendations: None.
 
 ## Files Changed
-
-- `.vscode/tasks.json` - Enhanced comments, removed 3 unused mkdocs tasks
-# Security Epic #16 — Part 1: CodeQL + Dependency Review (Draft)
-
-## Executive Summary
-Implemented two GitHub Actions workflows—CodeQL (Python & JS) and Dependency Review—per acceptance criteria. Local YAML validation passed. Cloud verification (runs, Security tab, and sample PR gating) will be executed once we push this branch.
-
-## Steps Taken
-- Created `.github/workflows/codeql.yml` (author: Lex) to scan Python & JS on PRs to `main`, pushes to `main`, and a weekly cron.
-- Created `.github/workflows/dependency-review.yml` (author: Lex) to fail PRs on **high**-severity advisories and post a PR summary comment.
-- Added repo `.yamllint.yaml` to scope linting to Actions and ignore venvs; lint rules tuned for GH expressions.
-- Validated locally with `yamllint .github/workflows` (no findings).
-
-## Evidence & Verification
-- **YAML lint**: `yamllint .github/workflows` → _no output_ (pass).
-- **Env**: Python 3.12.3 via direnv venv at `.direnv/python-3.12.3`.
-- **Files**: Workflows include author header comments attributing Lex.
-
-> Cloud verification pending push:
-> - CodeQL run links (push + PR + cron)
-> - Dependency Review PR comment + red X when high-severity found
-> - Security tab shows CodeQL enabled
-
-## Final Results
-- Local validation: ✅
-- Cloud verification: ⏳ (to be completed after push)
-- Follow-ups: create a sample PR that introduces a known **high-severity** vulnerable dependency to confirm gating.
-
-## Files Changed
-- `.github/workflows/codeql.yml` — new
-- `.github/workflows/dependency-review.yml` — new
-- `.yamllint.yaml` — new
+- `.github/dependabot.yml`: Updated.
+- `.github/workflows/dependency-review.yml`: Updated.
+- `.github/workflows/gitleaks.yml`: Created.
+- `.gitleaks.toml`: Created.
+- `Makefile`: Updated.
+- `.github/workflows/scorecards.yml`: Created.
+- `SECURITY.md`: Created.
+- `README.md`: Updated.
