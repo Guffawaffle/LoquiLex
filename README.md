@@ -10,7 +10,7 @@ make run-ci-mode  # Fast, lightweight checks (mirrors CI-lite)
 make run-local-ci # Full dependencies for local development
 ```
 
-Offline-first Development
+### Offline-first Development
 
 Set LX_SKIP_MODEL_PREFETCH=1 to prevent any model downloads during setup. This ensures a fully offline-friendly environment.
 
