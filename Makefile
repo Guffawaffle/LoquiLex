@@ -1,134 +1,154 @@
 # Lightweight dev profile: installs only base+dev deps and prefetches tiny model.
 
-# ------------------------------
-# Vars
-VENV ?= .venv
-PY   ?= $(shell command -v python3 || command -v python || echo python)
-PIP  ?= $(shell command -v pip3 || command -v pip || echo pip)
+## ------------------------------
+## Config
+VENV        ?= .venv
+USE_VENV    ?= 1                  # set to 0 in CI to use system python
+ASR_MODEL   ?= tiny.en            # override: make dev-minimal ASR_MODEL=base.en
 
-# Use venv python/pip if available, otherwise system
-ifeq ($(wildcard $(VENV)/bin/python),)
-    PY := python
-    PIP := pip
-else
-    PY := $(VENV)/bin/python
-    PIP := $(VENV)/bin/pip
-endif
+## ------------------------------
+## Interpreter/PIP selection (prefer venv if present)
+VENV_PY     := $(VENV)/bin/python
+VENV_PIP    := $(VENV)/bin/pip
+SYS_PY      := $(shell command -v python3 || command -v python || echo python)
+SYS_PIP     := $(shell command -v pip3 || command -v pip || echo pip)
+PY          := $(if $(wildcard $(VENV_PY)),$(VENV_PY),$(SYS_PY))
+PIP         := $(if $(wildcard $(VENV_PIP)),$(VENV_PIP),$(SYS_PIP))
 
-# ---------------------------------------------------------------------------
-# Bootstrap / installs
-.PHONY: install-venv install-base
+## ------------------------------
+## Phony targets
+.PHONY: help install-venv install-base install-ml-minimal install-ml-cpu \
+        prefetch-asr models-tiny dev dev-minimal dev-ml-cpu \
+        lint fmt fmt-check typecheck test unit test-e2e e2e ci clean \
+        docker-ci docker-ci-build docker-ci-run docker-ci-test docker-ci-shell
 
-# Create venv if missing; idempotent
+help:
+	@echo "Targets:"
+	@echo "  dev-minimal      - base+dev deps + minimal ML (no torch/CUDA) + tiny model prefetch"
+	@echo "  dev              - alias of dev-minimal"
+	@echo "  dev-ml-cpu       - add CPU-only ML stack and prefetch tiny model"
+	@echo "  lint / fmt / typecheck / test / e2e / ci"
+	@echo "Vars:"
+	@echo "  USE_VENV=0       - use system Python instead of creating .venv (good for CI)"
+	@echo "  ASR_MODEL=...    - model to prefetch (default: tiny.en)"
+
+## ------------------------------
+## Bootstrap / installs
+
+# Create venv if requested and missing; otherwise ensure system Python has pip
 install-venv:
 	@echo ">> Ensuring Python environment is ready"
-	@if [ "$(PY)" = "python" ]; then \
-		echo "Using system Python - no venv needed"; \
+	@if [ "$(USE_VENV)" = "0" ]; then \
+		echo "Using system Python: $(SYS_PY)"; \
+		"$(SYS_PY)" -m pip --version >/dev/null || { echo "ERROR: pip not available for $(SYS_PY)"; exit 1; }; \
 	else \
-		test -x $(PY) || python3 -m venv $(VENV); \
-		$(PY) -m pip install -U pip setuptools wheel; \
+		if [ ! -x "$(VENV_PY)" ]; then \
+			echo "Creating venv at $(VENV)"; \
+			"$(SYS_PY)" -m venv "$(VENV)"; \
+		fi; \
+		"$(VENV_PY)" -m pip install -U pip setuptools wheel; \
 	fi
 
 # Install dev/test deps used by lint/format/typecheck/test
 install-base: install-venv
 	@echo ">> Installing base dev/test dependencies"
-	@$(PIP) install -r requirements-ci.txt -r requirements-dev.txt -c constraints.txt
+	@if [ "$(USE_VENV)" = "0" ] || [ ! -x "$(VENV_PIP)" ]; then PIP_CMD="$(SYS_PIP)"; else PIP_CMD="$(VENV_PIP)"; fi; \
+	$$PIP_CMD install -r requirements-ci.txt -r requirements-dev.txt -c constraints.txt
 
-install-ml-cpu:
-	$(PIP) install -r requirements-ml-cpu.txt -c constraints.txt
+# Minimal ML stack (no torch/CUDA) to keep Codespaces lightweight
+install-ml-minimal: install-venv
+	@if [ "$(USE_VENV)" = "0" ] || [ ! -x "$(VENV_PIP)" ]; then PIP_CMD="$(SYS_PIP)"; else PIP_CMD="$(VENV_PIP)"; fi; \
+	$$PIP_CMD install -r requirements-ml-minimal.txt -c constraints.txt
 
-# Prefetch only the tiny Whisper model; temporarily allow network for the fetch.
+# Optional: CPU ML additions (still no heavy GPU wheels)
+install-ml-cpu: install-venv
+	@if [ "$(USE_VENV)" = "0" ] || [ ! -x "$(VENV_PIP)" ]; then PIP_CMD="$(SYS_PIP)"; else PIP_CMD="$(VENV_PIP)"; fi; \
+	$$PIP_CMD install -r requirements-ml-cpu.txt -c constraints.txt
+
+## ------------------------------
+## Model prefetch (tiny by default)
+
+# Prefetch a specific ASR model (default tiny.en) to avoid on-demand downloads
+prefetch-asr:
+	@echo "[prefetch-asr] Downloading ASR model: $(ASR_MODEL)"
+	@ASR_MODEL="$(ASR_MODEL)" $(PY) - <<-'PY'
+	import os
+	from faster_whisper import WhisperModel
+	model = os.environ.get("ASR_MODEL") or os.environ.get("GF_ASR_MODEL") or "tiny.en"
+	print(f"Downloading {model}...")
+	WhisperModel(model, device="cpu", compute_type="int8")
+	print(f"[prefetch-asr] downloaded/prepared: {model}")
+	PY
+
+# Prefetch only the tiny model unless explicitly skipped
 models-tiny:
 	@if [ "$${LLX_SKIP_MODEL_PREFETCH:-0}" = "1" ]; then \
-	  echo "[dev] Skipping tiny model prefetch (LLX_SKIP_MODEL_PREFETCH=1)"; \
+		echo "[dev] Skipping tiny model prefetch (LLX_SKIP_MODEL_PREFETCH=1)"; \
 	else \
-	  HF_HUB_OFFLINE=0 LOQUILEX_OFFLINE=0 GF_ASR_MODEL=tiny.en $(PY) scripts/dev_fetch_models.py; \
+		$(MAKE) prefetch-asr ASR_MODEL=tiny.en; \
 	fi
 
-# Default dev is LIGHT (CPU-only): install minimal ML libs then prefetch tiny model.
-# This keeps downloads to ~100–150MB vs multi-GB when torch/CUDA is pulled.
-dev: venv install-base install-ml-cpu models-tiny
-	@echo "Dev (light) ready. (CPU-only, tiny.en cached)"
+## ------------------------------
+## Dev presets
 
-# Opt-in: add CPU ML libs (still light; no torch)
-dev-ml-cpu: venv install-base install-ml-cpu models-tiny
-	@echo "Dev (ml-cpu) ready."
+# Lightweight developer setup (safe for Codespaces)
+dev-minimal: install-base install-ml-minimal models-tiny
+	@echo "✅ dev-minimal ready (ASR_MODEL=$(ASR_MODEL)); heavy CUDA/Torch not installed."
 
-# Opt-in: GPU ML libs — WARNING: huge downloads. Uncomment in requirements-ml-gpu.txt first.
-dev-ml-gpu: dev
-	@echo ">>> Skipping GPU install by default. Edit requirements-ml-gpu.txt and run:"
-	@echo "    pip install -r requirements-ml-gpu.txt -c constraints.txt"
+# Keep `dev` as the default developer entrypoint
+dev: dev-minimal
+	@true
 
-.PHONY: test unit
-test: install-base
-	$(PY) -m pytest -q
-unit: test
+# Opt-in CPU ML stack (no torch/CUDA)
+dev-ml-cpu: install-base install-ml-cpu models-tiny
+	@echo "✅ dev-ml-cpu ready."
 
-.PHONY: test-e2e
-test-e2e: install-base
-	$(PY) -m pytest -m e2e -q
+## ------------------------------
+## Quality gates & tests
 
-.PHONY: lint
 lint: install-base
 	$(PY) -m ruff check loquilex tests
 
-.PHONY: fmt
 fmt: install-base
 	$(PY) -m black loquilex tests
 
-.PHONY: fmt-check
 fmt-check: install-base
 	$(PY) -m black --check --diff loquilex tests
 
-.PHONY: typecheck
 typecheck: install-base
 	$(PY) -m mypy loquilex
 
-.PHONY: ci
+test: install-base
+	$(PY) -m pytest -q
+
+unit: test
+
+test-e2e: install-base
+	$(PY) -m pytest -m e2e -q
+
+# Verbose E2E (add extra flags via: make e2e PYTEST_FLAGS="--timeout=45")
+e2e: install-base
+	$(PY) -m pytest -m e2e -vv -rA $(PYTEST_FLAGS)
+
 ci: lint typecheck test
 	@echo "✓ CI checks passed locally"
 
-# Unit tests (non-e2e) quick mode; add extra flags via PYTEST_FLAGS if needed
-
-# E2E tests (verbose). Timeout override applied by invoking: make e2e PYTEST_ADDOPTS=--timeout=45
-e2e:
-	$(PY) -m pytest -m e2e -vv -rA $(PYTEST_FLAGS)
-
-# Aggregate CI-style sequence
-
-# --- CI-identical local run (canonical) ---
-.PHONY: run-local-ci run-ci-mode test-ci
-OFFLINE_ENV = HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 HF_HUB_DISABLE_TELEMETRY=1 LOQUILEX_OFFLINE=1
-
-run-local-ci:
-	@echo "=== Running ALL CI checks locally with full ML dependencies ==="
-	@CI_MODE=local scripts/run-local-ci.sh
-
-run-ci-mode:
-	@echo "=== Running CI checks with lightweight dependencies (CI simulation) ==="
-	@CI_MODE=ci scripts/run-local-ci.sh
-
-# Back-compat alias (uses full local mode by default)
-test-ci: run-local-ci
-
-run-wav:
-	$(PY) -m loquilex.cli.wav_to_vtt --wav ../../test.wav --out loquilex/out/asr_en.vtt
-
-run-zh:
-	$(PY) -m loquilex.cli.vtt_to_zh --vtt loquilex/out/asr_en.vtt --out-text loquilex/out/live_zh.txt --out-srt loquilex/out/live_zh.srt
+## ------------------------------
+## Cleanup
 
 clean:
-	rm -rf .pytest_cache out .coverage
+	rm -rf .pytest_cache .coverage $(VENV) dist build
 
-.PHONY: docker-ci
-docker-ci:
-	@echo "=== Running CI in Docker (Dockerfile.ci) ==="
-	docker build -f Dockerfile.ci -t loquilex-ci .
-	docker run --rm -v $(PWD):/app loquilex-ci ./scripts/ci-entrypoint.sh
-# --- CI-parity via Docker (canonical: docker-ci-test) ---
-.PHONY: docker-ci-test docker-ci-build docker-ci-run docker-ci-shell
+## ------------------------------
+## Docker CI parity (optional)
+
 DOCKER_IMAGE ?= loquilex-ci
 PWD_SHELL := $(shell pwd)
+
+docker-ci:
+	@echo "=== Running CI in Docker (Dockerfile.ci) ==="
+	docker build -f Dockerfile.ci -t $(DOCKER_IMAGE) .
+	docker run --rm -v "$(PWD_SHELL)":/app $(DOCKER_IMAGE) ./scripts/ci-entrypoint.sh
 
 docker-ci-build:
 	@echo "=== Building CI-parity image ==="
@@ -141,5 +161,5 @@ docker-ci-run:
 docker-ci-test: docker-ci-build docker-ci-run
 
 docker-ci-shell: docker-ci-build
-	@echo "=== Opening interactive shell in CI-parity container (repo mounted at /app) ==="
-	docker run --rm -it -v "$(PWD_SHELL)":/app $(DOCKER_IMAGE)
+	@echo "=== Shell in CI-parity container (repo mounted at /app) ==="
+	docker run --rm -it -v "$(PWD_SHELL)":/app $(DOCKER_IMAGE) bash
