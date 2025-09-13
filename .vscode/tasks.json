@@ -1,5 +1,7 @@
 {
-  // Tasks delegate to Makefile to prevent drift. Update commands only in Makefile.
+  // VS Code tasks delegate to Makefile as the source of truth to prevent configuration drift.
+  // To modify build/test/lint commands, update the Makefile instead of editing tasks here.
+  // All tasks use problemMatcher: [] to avoid VS Code's default matchers.
   "version": "2.0.0",
   "tasks": [
     {
@@ -107,32 +109,6 @@
       "type": "shell",
       "command": ".github/copilot/rotate-task.sh complete",
       "problemMatcher": []
-    },
-
-    // AUTO GENERATED BELOW THIS LINE - best of luck lol
-    {
-      "label": "Generate Docs",
-      "type": "shell",
-      "command": "bash -lc 'source .venv/bin/activate && mkdocs build'",
-      "options": { "cwd": "${workspaceFolder}" },
-      "problemMatcher": [],
-      "dependsOn": ["Bootstrap venv"]
-    },
-    {
-      "label": "Serve Docs",
-      "type": "shell",
-      "command": "bash -lc 'source .venv/bin/activate && mkdocs serve'",
-      "options": { "cwd": "${workspaceFolder}" },
-      "problemMatcher": [],
-      "dependsOn": ["Bootstrap venv"]
-    },
-    {
-      "label": "Publish Docs",
-      "type": "shell",
-      "command": "bash -lc 'source .venv/bin/activate && mkdocs gh-deploy --force'",
-      "options": { "cwd": "${workspaceFolder}" },
-      "problemMatcher": [],
-      "dependsOn": ["Bootstrap venv"]
     },
 
     // Legacy CI helper tasks retained below
