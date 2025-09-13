@@ -6,5 +6,9 @@
     "ruff.lint.enabled": true,
     "ruff.lint.args": ["--line-length=100"],
     "python.testing.pytestEnabled": true,
-    "python.testing.pytestArgs": ["tests"]
+    "python.testing.pytestArgs": [
+        "tests"
+    ],
+    "python-envs.defaultEnvManager": "ms-python.python:system",
+    "python-envs.pythonProjects": []
 }
