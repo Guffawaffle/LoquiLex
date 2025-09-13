@@ -1,24 +1,30 @@
-name: Rotate Copilot Task on Merge
+name: Rotate Current Task
+
 on:
-  pull_request:
-    types: [closed]
+  workflow_dispatch:
+  schedule:
+    - cron: "0 9 * * 1" # Mondays 09:00 UTC
+
+permissions:
+  contents: write   # allow committing generated updates if your rotate step does that
+  pull-requests: write
+
+concurrency:
+  group: rotate-task-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   rotate:
-    if: github.event.pull_request.merged == true
+    name: Rotate task
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - name: Rotate task files
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Rotate (script or placeholder)
         run: |
-          chmod +x .github/copilot/rotate-task.sh
-          .github/copilot/rotate-task.sh complete
-      - name: Commit archive changes
-        run: |
-          git config user.name "ci-bot"
-          git config user.email "ci@example"
-          git add .github/copilot/archive .github/copilot/current-task*.md
-          git commit -m "Chore: rotate Copilot task files on PR merge" || echo "No changes"
-          git push
+          if [ -x scripts/rotate-task.sh ]; then
+            scripts/rotate-task.sh
+          else
+            echo "No scripts/rotate-task.sh found; rotation is a no-op."
+          fi

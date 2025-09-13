@@ -1,18 +1,18 @@
 ---
-# Author: Lex (AI assistant), requested by @guff — 2025-09-13
-name: CodeQL (Python & JS)
+name: codeql
 
-"on":
+on:
   push:
-    branches: ["main"]
+    branches: [main]
   pull_request:
-    branches: ["main"]
+    branches: [main]
   schedule:
-    - cron: "23 1 * * 1"  # weekly, Sun 01:23 UTC-ish
+    - cron: "33 5 * * 1"
 
 permissions:
   contents: read
   security-events: write
+  actions: read
 
 jobs:
   analyze:
@@ -21,9 +21,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        language: ["python", "javascript"]  # <- space after comma fixes yamllint 'commas'
+        language: [python, javascript]
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v3
@@ -33,7 +35,7 @@ jobs:
       - name: Autobuild
         uses: github/codeql-action/autobuild@v3
 
-      - name: Perform CodeQL Analysis
+      - name: Analyze
         uses: github/codeql-action/analyze@v3
         with:
           category: "/language:${{ matrix.language }}"
