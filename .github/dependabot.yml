@@ -5,7 +5,26 @@
 
 version: 2
 updates:
-  - package-ecosystem: "" # See documentation for possible values
-    directory: "/" # Location of package manifests
-    schedule:
-      interval: "weekly"
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule: { interval: "weekly" }
+    open-pull-requests-limit: 5
+    labels: ["deps", "pip"]
+    reviewers: ["Guffawaffle"]
+    groups:
+      prod-deps:
+        applies-to: version-updates
+        update-types: ["minor", "patch"]
+      security-updates:
+        applies-to: security-updates
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule: { interval: "weekly" }
+    labels: ["deps", "gha"]
+
+  - package-ecosystem: "npm"
+    directory: "/ui"
+    schedule: { interval: "weekly" }
+    open-pull-requests-limit: 5
+    labels: ["deps", "npm"]
