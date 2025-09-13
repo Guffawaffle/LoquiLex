@@ -70,12 +70,25 @@ def _patch_translator() -> None:
 
 @pytest.fixture(autouse=True)
 def forbid_network(monkeypatch):
-    """Network guard to block external connections during tests."""
+    """Network guard to block external connections during tests.
 
-    def _blocked(*a, **k):
-        raise RuntimeError("Network disabled in tests")
+    Allows only localhost destinations; blocks others at socket layer.
+    """
 
-    monkeypatch.setattr(socket, "create_connection", _blocked)
+    allowed_hosts = {"127.0.0.1", "::1", "localhost"}
+
+    real_create_conn = socket.create_connection
+
+    def guarded_create_connection(address, *args, **kwargs):  # type: ignore[override]
+        try:
+            host = address[0]
+        except Exception:
+            host = None
+        if host and host not in allowed_hosts:
+            raise RuntimeError(f"Blocked outbound connection to {host}")
+        return real_create_conn(address, *args, **kwargs)
+
+    monkeypatch.setattr(socket, "create_connection", guarded_create_connection)
 
 
 def pytest_sessionstart(session: pytest.Session) -> None:
