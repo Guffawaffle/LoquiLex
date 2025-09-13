@@ -1,0 +1,53 @@
+..........................                                               [100%]
+=============================== warnings summary ===============================
+tests/test_config_env.py::test_env_overrides
+  /home/runner/work/LoquiLex/LoquiLex/loquilex/config/defaults.py:38: DeprecationWarning: [LoquiLex] Using legacy env var GF_SAVE_AUDIO. Please migrate to LX_*.
+    _warn_once(name_gf)
+
+tests/test_config_env.py::test_env_overrides
+  /home/runner/work/LoquiLex/LoquiLex/loquilex/config/defaults.py:38: DeprecationWarning: [LoquiLex] Using legacy env var GF_SAVE_AUDIO_PATH. Please migrate to LX_*.
+    _warn_once(name_gf)
+
+tests/test_config_env.py::test_env_overrides
+  /home/runner/work/LoquiLex/LoquiLex/loquilex/config/defaults.py:38: DeprecationWarning: [LoquiLex] Using legacy env var GF_MAX_LINES. Please migrate to LX_*.
+    _warn_once(name_gf)
+
+tests/test_config_env.py::test_env_overrides
+  /home/runner/work/LoquiLex/LoquiLex/loquilex/config/defaults.py:38: DeprecationWarning: [LoquiLex] Using legacy env var GF_PARTIAL_WORD_CAP. Please migrate to LX_*.
+    _warn_once(name_gf)
+
+tests/test_e2e_websocket_api.py::test_e2e_websocket_live_session
+tests/test_e2e_websocket_api.py::test_session_config_validation
+tests/test_e2e_websocket_api.py::test_api_model_endpoints
+  /home/runner/work/LoquiLex/LoquiLex/.venv/lib/python3.12/site-packages/httpx/_client.py:690: DeprecationWarning: The 'app' shortcut is now deprecated. Use the explicit style 'transport=WSGITransport(app=...)' instead.
+    warnings.warn(message, DeprecationWarning)
+
+tests/test_units_extra.py::test_pick_device_cpu
+  /home/runner/work/LoquiLex/LoquiLex/loquilex/config/defaults.py:38: DeprecationWarning: [LoquiLex] Using legacy env var GF_DEVICE. Please migrate to LX_*.
+    _warn_once(name_gf)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+================================ tests coverage ================================
+_______________ coverage: platform linux, python 3.12.3-final-0 ________________
+
+Name                                  Stmts   Miss  Cover   Missing
+-------------------------------------------------------------------
+loquilex/__init__.py                      2      0   100%
+loquilex/api/__init__.py                  0      0   100%
+loquilex/api/events.py                   19      0   100%
+loquilex/api/vu.py                       19      1    95%   12
+loquilex/asr/whisper_engine.py          113     37    67%   52-53, 66-77, 94-95, 112, 116, 142-163, 184, 188-194
+loquilex/cli/vtt_to_zh.py                58      2    97%   18, 73
+loquilex/cli/wav_to_vtt.py               42      5    88%   21, 24-26, 69
+loquilex/config/defaults.py              92      9    90%   31, 36, 52-53, 60-61, 142, 147, 149
+loquilex/mt/translator.py               114     86    25%   15, 27-28, 45-56, 59-71, 74-86, 89-133, 141-189
+loquilex/output/paths.py                 14      0   100%
+loquilex/output/srt.py                   73     10    86%   26, 29, 67-68, 75-79, 81
+loquilex/output/text_io.py               48      1    98%   64
+loquilex/output/vtt.py                   72      5    93%   29, 79-82
+loquilex/post/zh_text.py                 21      4    81%   32-35
+loquilex/segmentation/aggregator.py      36      1    97%   49
+-------------------------------------------------------------------
+TOTAL                                   723    161    78%
+Coverage HTML written to dir htmlcov
+26 passed, 8 warnings in 3.52s

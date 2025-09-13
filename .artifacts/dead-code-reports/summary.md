@@ -1,0 +1,177 @@
+=== Dead Code Analysis Report ===
+Generated: Sat Sep 13 11:12:52 UTC 2025
+
+## 1. Ruff Analysis (unused imports/variables/arguments)
+
+⚠️  Unused code detected by Ruff:
+```
+ARG002 Unused method argument: `args`
+  --> tests/conftest.py:29:23
+   |
+27 |     class DummyModel:
+28 |         def __init__(self, *args, **kwargs) -> None: ...
+29 |         def to(self, *args, **kwargs):
+   |                       ^^^^
+30 |             return self
+   |
+
+ARG002 Unused method argument: `kwargs`
+  --> tests/conftest.py:29:31
+   |
+27 |     class DummyModel:
+28 |         def __init__(self, *args, **kwargs) -> None: ...
+29 |         def to(self, *args, **kwargs):
+   |                               ^^^^^^
+30 |             return self
+   |
+
+ARG002 Unused method argument: `args`
+  --> tests/conftest.py:35:29
+   |
+33 |             return self
+34 |
+35 |         def generate(self, *args, **kwargs):
+   |                             ^^^^
+36 |             # Return deterministic token ids
+37 |             return [[1, 2, 3]]
+   |
+
+ARG002 Unused method argument: `kwargs`
+  --> tests/conftest.py:35:37
+   |
+33 |             return self
+34 |
+35 |         def generate(self, *args, **kwargs):
+   |                                     ^^^^^^
+36 |             # Return deterministic token ids
+37 |             return [[1, 2, 3]]
+   |
+
+ARG002 Unused method argument: `text`
+  --> tests/conftest.py:43:28
+   |
+42 |         def __init__(self, *args, **kwargs) -> None: ...
+43 |         def __call__(self, text, **kwargs):
+   |                            ^^^^
+44 |             return {"input_ids": [[1, 2, 3]], "attention_mask": [[1, 1, 1]]}
+   |
+
+ARG002 Unused method argument: `kwargs`
+  --> tests/conftest.py:43:36
+   |
+42 |         def __init__(self, *args, **kwargs) -> None: ...
+43 |         def __call__(self, text, **kwargs):
+   |                                    ^^^^^^
+44 |             return {"input_ids": [[1, 2, 3]], "attention_mask": [[1, 1, 1]]}
+   |
+
+ARG001 Unused function argument: `session`
+  --> tests/conftest.py:95:25
+   |
+95 | def pytest_sessionstart(session: pytest.Session) -> None:
+   |                         ^^^^^^^
+96 |     """
+97 |     Pytest lifecycle hook that runs before any tests are collected.
+   |
+
+ARG002 Unused method argument: `data`
+  --> tests/fakes/fake_whisper.py:17:26
+   |
+15 |         pass
+16 |
+17 |     def transcribe(self, data, **kwargs) -> Tuple[Iterable[_Seg], dict]:
+   |                          ^^^^
+18 |         # Return two tiny deterministic segments
+19 |         segs = [_Seg(0.0, 0.5, "hello"), _Seg(0.5, 1.0, "world")]
+   |
+
+ARG002 Unused method argument: `kwargs`
+  --> tests/fakes/fake_whisper.py:17:34
+   |
+15 |         pass
+16 |
+17 |     def transcribe(self, data, **kwargs) -> Tuple[Iterable[_Seg], dict]:
+   |                                  ^^^^^^
+18 |         # Return two tiny deterministic segments
+19 |         segs = [_Seg(0.0, 0.5, "hello"), _Seg(0.5, 1.0, "world")]
+   |
+
+ARG005 Unused lambda argument: `s`
+  --> tests/test_aggregator.py:33:38
+   |
+31 |     agg = Aggregator(now=now)
+32 |     finals: list[tuple[float, float, str]] = []
+33 |     agg.on_partial("partial", lambda s: None)
+   |                                      ^
+34 |     t[0] += 1.0
+35 |     agg.force_finalize(lambda a, b, s: finals.append((a, b, s)))
+   |
+
+ARG001 Unused function argument: `monkeypatch`
+  --> tests/test_cli_integration_offline.py:27:59
+   |
+27 | def test_wav_to_vtt_offline_with_fake_asr(tmp_path: Path, monkeypatch):
+   |                                                           ^^^^^^^^^^^
+28 |     _install_fake_faster_whisper()
+29 |     wav = tmp_path / "a.wav"
+   |
+
+ARG001 Unused function argument: `monkeypatch`
+  --> tests/test_cli_integration_offline.py:47:57
+   |
+47 | def test_vtt_to_zh_offline_with_fake_mt(tmp_path: Path, monkeypatch):
+   |                                                         ^^^^^^^^^^^
+48 |     # Create a tiny VTT
+49 |     vtt = tmp_path / "a.vtt"
+   |
+
+ARG001 Unused function argument: `monkeypatch`
+  --> tests/test_cli_integration_offline.py:81:52
+   |
+81 | def test_output_boundary_respected(tmp_path: Path, monkeypatch):
+   |                                                    ^^^^^^^^^^^
+82 |     # Ensure we can guard paths within GF_OUT_DIR in tests using helper
+83 |     from loquilex.output.paths import ensure_out_path
+   |
+
+Found 13 errors.
+```
+
+## 2. Vulture Analysis (dead code detection, min-confidence 70%)
+
+✅ No dead code detected by Vulture
+
+## 3. Coverage Analysis (files with 0% coverage)
+
+Running coverage analysis...
+Files with 0% coverage:
+```
+✅ No files with 0% coverage found
+```
+
+Files with <25% coverage:
+```
+✅ No files with <25% coverage found
+```
+
+## 4. Multi-Signal Analysis (flagged by ≥2 tools)
+
+Analyzing overlap between tools...
+### Files/functions mentioned by multiple tools:
+```
+No overlap analysis possible (insufficient data from tools)
+```
+
+## 5. Summary & Recommendations
+
+- **Ruff findings**: 130 unused imports/variables/arguments
+- **Vulture findings**: 0 dead code items
+- **Zero coverage files**: 0 files
+
+**Next Steps:**
+1. Review items flagged by multiple tools for removal
+2. Unused function parameters can often be prefixed with _ if they're required by interface
+3. Dead code items with high confidence (>90%) are safe candidates for removal
+4. Low/zero coverage files should be examined for actual usage vs dead code
+
+Full reports saved to: .artifacts/dead-code-reports/
