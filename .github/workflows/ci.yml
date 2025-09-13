@@ -56,7 +56,7 @@ jobs:
       - name: Lint
         run: make lint
       - name: Format check
-        run: make fmt
+        run: make fmt-check
       - name: Typecheck (non-blocking)
         run: make typecheck
 
