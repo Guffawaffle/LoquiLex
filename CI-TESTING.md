@@ -153,6 +153,37 @@ pip install -r requirements.txt      # Core dependencies
 pip install -r requirements-dev.txt  # Dev dependencies (includes httpx for e2e)
 ```
 
+## Script Helpers
+
+LoquiLex provides centralized helpers for environment handling and model management:
+
+### Environment Helpers (`scripts/env.py`)
+
+- `getenv(name, default=None, aliases=())` - Reads environment variables with legacy `GF_*` support and deprecation warnings
+- `getenv_bool(name, default=False, aliases=())` - Reads boolean environment variables
+- `is_truthy(value)` - Checks if a string value is truthy (1, true, yes, on)
+
+### Model Helpers (`scripts/models.py`)
+
+- `should_skip_prefetch()` - Checks `LX_SKIP_MODEL_PREFETCH` (or legacy `GF_SKIP_MODEL_PREFETCH`)
+- `prefetch_asr(model, download_root)` - Stub for ASR model prefetching (no-op when skip flag set)
+- CLI: `python -m scripts.models prefetch-asr --model tiny.en --dir ./models`
+
+### Usage Example
+
+```python
+from scripts.env import getenv, getenv_bool
+from scripts.models import should_skip_prefetch
+
+# Environment handling with legacy support
+model = getenv("LX_ASR_MODEL", "tiny.en", aliases=("GF_ASR_MODEL",))
+skip = getenv_bool("LX_SKIP_MODEL_PREFETCH", aliases=("GF_SKIP_MODEL_PREFETCH",))
+
+# Model prefetch gating
+if should_skip_prefetch():
+    print("Skipping model prefetch")
+```
+
 ## Files Created
 
 - `scripts/run-local-ci.sh` - Comprehensive CI replication script
