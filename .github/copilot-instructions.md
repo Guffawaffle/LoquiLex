@@ -9,7 +9,7 @@ Local-first live captioning + EN↔ZH translation:
 - **Supervisor/session** pattern with bounded queues
 
 ## Environment & Config
-- Prefer **`LX_*`** env vars; legacy **`GF_*`** are read for migration with a one‑time deprecation warning.
+- Use **`LX_*`** env vars exclusively.
 - Common: `LX_ASR_MODEL`, `LX_ASR_LANGUAGE`, `LX_DEVICE`, `LX_NLLB_MODEL`/`LX_M2M_MODEL`, `LX_OUT_DIR`, timing (`LX_PAUSE_FLUSH_SEC`, `LX_SEGMENT_MAX_SEC`).
 
 ## Day‑1 Commands
@@ -53,7 +53,6 @@ Prompt files live in `.github/prompts/` with front‑matter (e.g., `mode: agent`
 
 ## Gotchas
 - VS Code tasks: avoid `$pytest` problemMatcher unless defined; use Make/CLI to run tests.
-- Don’t introduce new `GF_*` usage; prefer `LX_*` and preserve one‑time deprecation behavior.
 
 ## Forbidden Patterns
 - Network access in tests; implicit model downloads; hidden side effects.

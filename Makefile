@@ -87,7 +87,7 @@ prefetch-asr:
     @ASR_MODEL="$(ASR_MODEL)" $(PY) -c ' \
 import os; \
 from faster_whisper import WhisperModel; \
-model = os.environ.get("ASR_MODEL") or os.environ.get("GF_ASR_MODEL") or "tiny.en"; \
+model = os.environ.get("ASR_MODEL") or os.environ.get("LX_ASR_MODEL") or "tiny.en"; \
 print(f"Downloading {model}..."); \
 WhisperModel(model, device="cpu", compute_type="int8"); \
 print(f"[prefetch-asr] downloaded/prepared: {model}")'

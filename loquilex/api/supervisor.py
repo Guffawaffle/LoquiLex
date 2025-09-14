@@ -47,15 +47,15 @@ class Session:
 
     def start(self) -> None:
         env = os.environ.copy()
-        env["GF_ASR_MODEL"] = self.cfg.asr_model_id
-        env["GF_DEVICE"] = self.cfg.device
-        env["GF_ASR_VAD"] = "1" if self.cfg.vad else "0"
-        env["GF_ASR_BEAM"] = str(self.cfg.beams)
-        env["GF_PAUSE_FLUSH_SEC"] = str(self.cfg.pause_flush_sec)
-        env["GF_SEGMENT_MAX_SEC"] = str(self.cfg.segment_max_sec)
-        env["GF_PARTIAL_WORD_CAP"] = str(self.cfg.partial_word_cap)
-        env["LLX_OUT_DIR"] = str(self.run_dir)
-        env["GF_SAVE_AUDIO"] = self.cfg.save_audio
+        env["LX_ASR_MODEL"] = self.cfg.asr_model_id
+        env["LX_DEVICE"] = self.cfg.device
+        env["LX_ASR_VAD"] = "1" if self.cfg.vad else "0"
+        env["LX_ASR_BEAM"] = str(self.cfg.beams)
+        env["LX_PAUSE_FLUSH_SEC"] = str(self.cfg.pause_flush_sec)
+        env["LX_SEGMENT_MAX_SEC"] = str(self.cfg.segment_max_sec)
+        env["LX_PARTIAL_WORD_CAP"] = str(self.cfg.partial_word_cap)
+        env["LX_OUT_DIR"] = str(self.run_dir)
+        env["LX_SAVE_AUDIO"] = self.cfg.save_audio
 
         script = [sys.executable, "-m", "loquilex.cli.live_en_to_zh", "--seconds", "-1"]
         self.proc = subprocess.Popen(
@@ -143,7 +143,7 @@ class SessionManager:
         self._lock = threading.Lock()
         self._downloads: Dict[str, Tuple[str, str]] = {}
         self._stop = False
-        self._max_cuda_sessions = int(os.getenv("GF_MAX_CUDA_SESSIONS", "1"))
+        self._max_cuda_sessions = int(os.getenv("LX_MAX_CUDA_SESSIONS", "1"))
         self._stampers: Dict[str, EventStamper] = {}
         self._dl_procs: Dict[str, subprocess.Popen] = {}
 
