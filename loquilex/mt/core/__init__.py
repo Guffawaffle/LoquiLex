@@ -6,7 +6,7 @@ from .registry import register_provider, create, available
 
 __all__ = [
     "MTProvider",
-    "TokenizerAdapter", 
+    "TokenizerAdapter",
     "Lang",
     "QualityMode",
     "register_provider",

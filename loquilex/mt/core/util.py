@@ -26,7 +26,7 @@ def normalize_lang(lang: str) -> Lang:
         # Map generic zh to environment-specified variant
         return resolve_zh_variant()
     elif lang == "zh-Hans":
-        return "zh-Hans" 
+        return "zh-Hans"
     elif lang == "zh-Hant":
         return "zh-Hant"
     else:

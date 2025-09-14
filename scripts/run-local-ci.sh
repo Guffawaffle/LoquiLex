@@ -3,10 +3,10 @@ set -euo pipefail
 
 VENV="${VENV:-.venv}"
 CI_MODE="${CI_MODE:-local}"  # "ci" for lightweight, "local" for full ML deps
-export HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 HF_HUB_DISABLE_TELEMETRY=1 LOQUILEX_OFFLINE=1
+export HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 HF_HUB_DISABLE_TELEMETRY=1 LX_OFFLINE=1
 
 echo "=== Environment (offline flags) ==="
-env | grep -E '^(HF_HUB_OFFLINE|TRANSFORMERS_OFFLINE|HF_HUB_DISABLE_TELEMETRY|LOQUILEX_OFFLINE)='
+env | grep -E '^(HF_HUB_OFFLINE|TRANSFORMERS_OFFLINE|HF_HUB_DISABLE_TELEMETRY|LX_OFFLINE)='
 echo "CI_MODE=${CI_MODE} (ci=lightweight, local=full ML deps)"
 
 echo "=== Installing Dependencies ==="

@@ -20,7 +20,7 @@ $ make -n lint fmt typecheck test e2e ci
 .venv/bin/python -m ruff check loquilex tests
 .venv/bin/python -m black loquilex tests
 .venv/bin/python -m mypy loquilex
-HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 HF_HUB_DISABLE_TELEMETRY=1 LOQUILEX_OFFLINE=1 pytest -q
+HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 HF_HUB_DISABLE_TELEMETRY=1 LX_OFFLINE=1 pytest -q
 .venv/bin/python -m pytest -m e2e -vv -rA
 ```
 

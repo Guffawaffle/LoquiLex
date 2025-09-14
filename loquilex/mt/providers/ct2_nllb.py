@@ -48,7 +48,7 @@ class CT2NLLBProvider:
                 self._model_dir,
                 device=device,
                 compute_type=self._compute_type,
-                inter_threads=self._workers
+                inter_threads=self._workers,
             )
 
             self._tokenizer = NLLBTokenizerAdapter()
@@ -78,7 +78,7 @@ class CT2NLLBProvider:
                 [tokens],
                 target_prefix=[target_prefix],
                 beam_size=beam_size,
-                max_decoding_length=256
+                max_decoding_length=256,
             )
 
             # Decode result
@@ -89,12 +89,7 @@ class CT2NLLBProvider:
             raise MTProviderError(f"Translation failed: {e}")
 
     def translate_chunked(
-        self,
-        chunks: Iterable[str],
-        src: Lang,
-        tgt: Lang,
-        *,
-        quality: QualityMode = "realtime"
+        self, chunks: Iterable[str], src: Lang, tgt: Lang, *, quality: QualityMode = "realtime"
     ) -> Iterator[str]:
         """Translate sequence of text chunks."""
         for chunk in chunks:
@@ -112,13 +107,13 @@ class CT2NLLBProvider:
                 ("en", "zh-Hans"),
                 ("zh-Hans", "en"),
                 ("en", "zh-Hant"),
-                ("zh-Hant", "en")
+                ("zh-Hant", "en"),
             ],
             "requires_target_prefix": True,
             "device_types": ["cpu", "cuda"],
             "compute_types": ["int8", "int8_float16", "float16", "float32"],
             "supports_chunked": True,
-            "supports_streaming_partials": False
+            "supports_streaming_partials": False,
         }
 
 

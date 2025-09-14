@@ -9,6 +9,7 @@ from .types import Lang, QualityMode
 
 class ProviderCapabilities(TypedDict):
     """Provider capability metadata."""
+
     family: str  # "nllb" | "m2m" | "custom"
     model_name: str  # e.g., "nllb-200-d600M"
     directions: list[tuple[Lang, Lang]]
@@ -47,12 +48,7 @@ class MTProvider(Protocol):
         ...
 
     def translate_chunked(
-        self,
-        chunks: Iterable[str],
-        src: Lang,
-        tgt: Lang,
-        *,
-        quality: QualityMode = "realtime"
+        self, chunks: Iterable[str], src: Lang, tgt: Lang, *, quality: QualityMode = "realtime"
     ) -> Iterator[str]:
         """Translate sequence of text chunks, yielding final translations."""
         ...

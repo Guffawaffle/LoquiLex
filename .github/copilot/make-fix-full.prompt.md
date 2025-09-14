@@ -3,7 +3,7 @@ Run the full repository test suite via Makefile targets (CI-equivalent), diagnos
 
 #environment
 - Python 3.12.3
-- Offline-first env: export HF_HUB_OFFLINE=1, TRANSFORMERS_OFFLINE=1, HF_HUB_DISABLE_TELEMETRY=1, LOQUILEX_OFFLINE=1
+- Offline-first env: export HF_HUB_OFFLINE=1, TRANSFORMERS_OFFLINE=1, HF_HUB_DISABLE_TELEMETRY=1, LX_OFFLINE=1
 - Work from repo root. Use Makefile targets as the source of truth. Follow `AGENTS.md` conventions.
 
 #discovery
