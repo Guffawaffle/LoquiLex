@@ -152,7 +152,7 @@ Periodic performance metrics broadcast.
 Here's a minimal Python client example showing how to consume streaming events:
 
 ```python
-import asyncio
+import anyio
 import websockets
 import json
 import requests

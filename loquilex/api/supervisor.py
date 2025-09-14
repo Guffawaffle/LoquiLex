@@ -25,7 +25,7 @@ class StreamingSession:
     """In-process streaming session using the new StreamingASR pipeline."""
 
     def __init__(self, sid: str, cfg: SessionConfig, run_dir: Path) -> None:
-        from typing import Optional, Callable, Awaitable, Dict, Any
+        from typing import Callable, Awaitable
         self.sid = sid
         self.cfg = cfg
         self.run_dir = run_dir

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 import anyio
 from unittest.mock import patch
 

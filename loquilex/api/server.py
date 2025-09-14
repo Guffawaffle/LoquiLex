@@ -7,7 +7,7 @@ import re
 import time
 import uuid
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, Union
 
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
@@ -15,7 +15,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from .model_discovery import list_asr_models, list_mt_models, mt_supported_languages
-from .supervisor import SessionConfig, SessionManager, StreamingSession
+from .supervisor import Session, SessionConfig, SessionManager, StreamingSession
 
 logger = logging.getLogger(__name__)
 
@@ -348,7 +348,7 @@ async def get_asr_snapshot(sid: str) -> Dict[str, Any]:
             raise HTTPException(status_code=503, detail="ASR snapshot not available")
         return snapshot
     else:
-        raise HTTPException(status_code=400, detail="session does not support ASR snapshots")
+        raise HTTPException(status_code=400, detail="snapshot not available for non-streaming session")
 
 
 @app.get("/sessions/{sid}/snapshot")
