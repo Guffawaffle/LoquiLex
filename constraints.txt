@@ -1,3 +1,5 @@
+# Path A (Keep Pin): deterministic dev/CI. Bump via Path B (Coordinated Upgrade)
+# when FastAPI/Starlette/httpx are upgraded together after local + E2E validation.
 # Central constraints for deterministic installs across CI/dev
 # Keep in sync when updating core tooling versions.
 
