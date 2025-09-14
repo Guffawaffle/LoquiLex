@@ -13,7 +13,7 @@ Run the full repository test suite via Makefile targets (CI-equivalent), diagnos
 
 #discovery
 1) Identify the canonical “full suite” target in this priority order:
-   - ci, run-ci-mode, test, unit, e2e, test-e2e
+   - ci, verify, check, test-all, tests, test
 2) Inspect available targets:
    - make help || true
    - make -qp | sed -n 's/^\([a-zA-Z0-9][a-zA-Z0-9._-]*\):.*/\1/p' | sort -u
@@ -57,4 +57,4 @@ Write ONLY this report to `.github/copilot/current-task-deliverables.md`:
 
 #run
 - FULL_TARGET: auto-discover using #discovery; prefer `ci` if present (treat `run-ci-mode` as an alias).
-- ISSUE_REF: 31
+- ISSUE_REF: <optional>
