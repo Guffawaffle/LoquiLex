@@ -12,7 +12,7 @@ permissions:
 
 jobs:
   dead-code-analysis:
-    name: Dead Code Detection  
+    name: Dead Code Detection
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -52,7 +52,7 @@ jobs:
             cat .artifacts/dead-code-reports/vulture-deadcode.txt
             exit 1
           fi
-          
+
           # Check for unused imports (not just arguments, which may be interface-required)
           if .venv/bin/python -m ruff check loquilex tests --select=F401 --quiet; then
             echo "✅ No unused imports detected"
@@ -61,5 +61,13 @@ jobs:
             .venv/bin/python -m ruff check loquilex tests --select=F401
             exit 1
           fi
-          
+
           echo "✅ Dead code analysis passed"
+
+      - name: Upload dead-code reports
+        if: always()  # still uploads even if earlier steps fail
+        uses: actions/upload-artifact@v4
+        with:
+          name: dead-code-reports
+          path: .artifacts/dead-code-reports/**
+          if-no-files-found: warn
