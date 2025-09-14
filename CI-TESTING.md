@@ -1,3 +1,12 @@
+# Dead code analysis (non-blocking)
+
+`dead-code-analysis` is **warn-only** and **not part of CI**. Run locally:
+
+```bash
+make dead-code-analysis
+```
+
+Or trigger the manual GitHub Action: **Dead Code Analysis (Manual)**.
 # Testing in CI-Identical Environment
 
 This document explains how to test LoquiLex in the exact same environment as the CI pipeline.

@@ -414,9 +414,14 @@ async def ws_events(ws: WebSocket, sid: str) -> None:
         await MANAGER.register_ws(sid, ws)
         while True:
             try:
-                await ws.receive_text()
-            except Exception:
-                await asyncio.sleep(10)
+                # Receive and process messages through the protocol manager
+                message = await ws.receive_text()
+                await MANAGER.handle_ws_message(sid, ws, message)
+            except WebSocketDisconnect:
+                break
+            except Exception as e:
+                logger.exception(f"WebSocket message handling error: {e}")
+                await asyncio.sleep(1)  # Brief pause before retry
     except WebSocketDisconnect:
         pass
     finally:

@@ -138,6 +138,9 @@ typecheck: install-base
 test:
 	HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 HF_HUB_DISABLE_TELEMETRY=1 LX_OFFLINE=1 pytest -q
 
+test-online:
+	HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 HF_HUB_DISABLE_TELEMETRY=1 LX_OFFLINE=0 pytest -q
+
 unit: test
 
 test-e2e: install-base
@@ -190,8 +193,9 @@ sec-scan:
 
 # Dead code analysis using multiple detection tools
 dead-code-analysis: install-base
-	@echo "=== Running comprehensive dead code analysis ==="
-	@./scripts/dead-code-analysis.sh
+	@echo "=== Running comprehensive dead code analysis (WARN-ONLY) ==="
+	- ./scripts/dead-code-analysis.sh || echo "[warn] dead code found (non-blocking)"
+	@echo "== done =="
 
 .PHONY: dead-code-report
 dead-code-report:

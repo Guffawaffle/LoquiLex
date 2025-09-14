@@ -17,6 +17,8 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 from fastapi import WebSocket
 
 from .events import EventStamper
+from .ws_protocol import WSProtocolManager
+from .ws_types import MessageType, HeartbeatConfig, ServerLimits
 
 logger = logging.getLogger(__name__)
 
@@ -405,6 +407,19 @@ class SessionManager:
         self._stampers: Dict[str, EventStamper] = {}
         self._dl_procs: Dict[str, subprocess.Popen] = {}
 
+        # New WebSocket protocol managers
+        self._ws_protocols: Dict[str, WSProtocolManager] = {}
+
+        # Default WebSocket configuration
+        self._default_hb_config = HeartbeatConfig(
+            interval_ms=int(os.getenv("LX_WS_HB_INTERVAL_MS", "10000")),
+            timeout_ms=int(os.getenv("LX_WS_HB_TIMEOUT_MS", "30000")),
+        )
+        self._default_limits = ServerLimits(
+            max_in_flight=int(os.getenv("LX_WS_MAX_IN_FLIGHT", "64")),
+            max_msg_bytes=int(os.getenv("LX_WS_MAX_MSG_BYTES", "131072")),
+        )
+
         t = threading.Thread(target=self._log_pump, daemon=True)
         t.start()
         self._bg_threads.append(t)
@@ -447,19 +462,42 @@ class SessionManager:
         return True
 
     async def register_ws(self, sid: str, ws: WebSocket) -> None:
+        """Register WebSocket connection with new envelope protocol."""
+        # Get or create protocol manager for this session
         with self._lock:
+            protocol_manager = self._ws_protocols.get(sid)
+            if not protocol_manager:
+                protocol_manager = WSProtocolManager(
+                    sid=sid, hb_config=self._default_hb_config, limits=self._default_limits
+                )
+                protocol_manager.set_disconnect_callback(self._cleanup_ws_protocol)
+                self._ws_protocols[sid] = protocol_manager
+
+            # Also maintain legacy WebSocket list for compatibility
             lst = self._ws.setdefault(sid, [])
             lst.append(ws)
-        try:
-            await ws.send_json(self._stamp({"type": "hello", "sid": sid}, sid))
-        except Exception:
-            pass
+
+        # Add connection to protocol manager (sends welcome)
+        await protocol_manager.add_connection(ws)
 
     async def unregister_ws(self, sid: str, ws: WebSocket) -> None:
+        """Unregister WebSocket connection."""
         with self._lock:
+            # Remove from legacy list
             lst = self._ws.get(sid, [])
             if ws in lst:
                 lst.remove(ws)
+
+            # Remove from protocol manager
+            protocol_manager = self._ws_protocols.get(sid)
+
+        if protocol_manager:
+            await protocol_manager.remove_connection(ws)
+
+    def _cleanup_ws_protocol(self, sid: str) -> None:
+        """Cleanup callback for protocol manager."""
+        with self._lock:
+            self._ws_protocols.pop(sid, None)
 
     def _stamp(self, payload: Dict[str, Any], sid: str) -> Dict[str, Any]:
         with self._lock:
@@ -469,7 +507,45 @@ class SessionManager:
                 self._stampers[sid] = stamper
         return stamper.stamp(payload)
 
+    async def handle_ws_message(self, sid: str, ws: WebSocket, message: str) -> None:
+        """Handle incoming WebSocket message through protocol manager."""
+        with self._lock:
+            protocol_manager = self._ws_protocols.get(sid)
+
+        if protocol_manager:
+            await protocol_manager.handle_message(ws, message)
+        else:
+            logger.warning(f"No protocol manager for session {sid}")
+
     async def _broadcast(self, sid: str, payload: Dict[str, Any]) -> None:
+        """Broadcast message using new envelope protocol."""
+        with self._lock:
+            protocol_manager = self._ws_protocols.get(sid)
+
+        if protocol_manager:
+            # Convert legacy payload to new envelope format
+            event_type = self._map_legacy_type_to_envelope(payload.get("type", "status"))
+            success = await protocol_manager.send_domain_event(event_type, payload)
+            if not success:
+                logger.warning(f"Flow control prevented sending message to {sid}")
+        else:
+            # Fallback to legacy broadcast for compatibility
+            await self._legacy_broadcast(sid, payload)
+
+    def _map_legacy_type_to_envelope(self, legacy_type: str) -> MessageType:
+        """Map legacy message types to envelope message types."""
+        mapping = {
+            "partial_en": MessageType.ASR_PARTIAL,
+            "final_en": MessageType.ASR_FINAL,
+            "partial_translation": MessageType.ASR_PARTIAL,  # Multilingual support
+            "final_translation": MessageType.ASR_FINAL,
+            "mt_final": MessageType.MT_FINAL,
+            "status": MessageType.STATUS,
+        }
+        return mapping.get(legacy_type, MessageType.STATUS)
+
+    async def _legacy_broadcast(self, sid: str, payload: Dict[str, Any]) -> None:
+        """Legacy broadcast method for backward compatibility."""
         with self._lock:
             conns = list(self._ws.get(sid, []))
         for ws in conns:

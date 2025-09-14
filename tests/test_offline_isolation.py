@@ -53,5 +53,8 @@ def test_offline_env_vars_set():
         "LX_OFFLINE": "1",
     }
 
+    # Only run this test if LX_OFFLINE is '1'
+    if os.environ.get("LX_OFFLINE") != "1":
+        pytest.skip("LX_OFFLINE is not '1'; skipping offline env var test.")
     for var, expected_value in expected_offline_vars.items():
         assert os.environ.get(var) == expected_value, f"Expected {var}={expected_value}"

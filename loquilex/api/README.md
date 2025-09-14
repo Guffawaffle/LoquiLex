@@ -81,117 +81,215 @@ Get performance metrics for a session.
 
 ### WebSocket Events
 
+
+**New in v1:** LoquiLex now uses a **versioned envelope protocol** for all WebSocket messages with heartbeats, acknowledgements, and resume functionality.
+
+**Note:**
+- Message type (`t`) is strictly validated using an Enum (`MessageType`) covering all v1 types.
+- Errors use a structured payload with an `ErrorCode` enum (`code`, `detail`, optional `retry_after_ms`).
+
 #### Connection
-Connect to `/ws/{sid}` for real-time streaming events.
+Connect to `/events/{sid}` for real-time streaming events with the new envelope protocol.
 
-#### Event Schema
+#### Envelope Schema (v1)
 
-##### ASR Partial Event
-Sent during live transcription when partial text is available.
+All WebSocket messages use a shared envelope structure:
 
 ```json
 {
-  "type": "asr.partial",
-  "stream_id": "session_123",
-  "segment_id": "seg001",
+  "v": 1,                        // Schema version
+  "t": "asr.partial",            // Message type (namespaced)
+  "sid": "sess_8Gm6...",         // Session ID (server-issued)
+  "id": "msg_a1b2c3",            // Message ID (server-unique)
+  "seq": 42,                     // Sequence number per session
+  "corr": "msg_prev",            // Optional correlation ID
+  "t_wall": "2025-09-14T18:03:26.512Z",  // ISO8601 timestamp
+  "t_mono_ms": 1234567,          // Milliseconds since session start
+  "data": { /* type-specific payload */ }
+}
+```
+
+#### Control Messages
+
+##### Client Hello
+Sent by client after connection to announce capabilities:
+
+```json
+{
+  "v": 1,
+  "t": "client.hello",
+  "data": {
+    "agent": "loquilex-ui/0.3.0",
+    "accept": ["asr.partial", "asr.final", "mt.final"],
+    "ack_mode": "cumulative",      // "cumulative" | "per-message"
+    "max_in_flight": 32,           // Sliding window size
+    "resume": {                    // Optional resume info
+      "sid": "sess_8Gm6...",
+      "last_seq": 41
+    }
+  }
+}
+```
+
+##### Server Welcome
+Sent by server after client connection:
+
+```json
+{
+  "v": 1,
+  "t": "server.welcome",
+  "sid": "sess_8Gm6...",
+  "seq": 0,
+  "data": {
+    "hb": {
+      "interval_ms": 10000,        // Heartbeat interval
+      "timeout_ms": 30000          // Heartbeat timeout
+    },
+    "resume_window": {
+      "seconds": 300,              // Resume window duration
+      "token": "rTok_xxx"          // Resume token (optional)
+    },
+    "limits": {
+      "max_in_flight": 64,         // Server max sliding window
+      "max_msg_bytes": 131072      // Max message size
+    }
+  }
+}
+```
+
+##### Heartbeats
+Server and client exchange heartbeats to detect liveness:
+
+```json
+{
+  "v": 1,
+  "t": "server.hb",
+  "sid": "sess_8Gm6...",
+  "seq": 7,
+  "data": {
+    "ts": "2025-09-14T18:03:30.000Z",
+    "q_out": 0,                    // Server outbound queue depth
+    "q_in": 0,                     // Server inbound queue depth
+    "latency_ms_est": 48           // Estimated latency
+  }
+}
+```
+
+##### Acknowledgements
+Client acknowledges received messages for flow control:
+
+```json
+{
+  "v": 1,
+  "t": "client.ack",
+  "sid": "sess_8Gm6...",
+  "data": {
+    "ack_seq": 42                  // Cumulative ack up to sequence 42
+  }
+}
+```
+
+#### Domain Events
+
+Domain events use the same envelope with type-specific payloads:
+
+##### ASR Partial Event
+Sent during live transcription when partial text is available:
+
+```json
+{
+  "v": 1,
+  "t": "asr.partial",
+  "sid": "sess_123",
   "seq": 1,
-  "text": "Hello world this is",
-  "words": [
-    {"w": "Hello", "t0": 0.0, "t1": 0.5, "conf": 0.95},
-    {"w": "world", "t0": 0.5, "t1": 1.0, "conf": 0.92},
-    {"w": "this", "t0": 1.0, "t1": 1.3, "conf": 0.88},
-    {"w": "is", "t0": 1.3, "t1": 1.5, "conf": 0.91}
-  ],
-  "stable": false,
-  "ts_monotonic": 1234567890.123
+  "t_wall": "2025-09-14T18:03:26.512Z",
+  "t_mono_ms": 1234,
+  "data": {
+    "text": "Hello world this is",
+    "segment_id": "seg001",
+    "final": false
+  }
 }
 ```
 
 ##### ASR Final Event
-Sent when a complete segment is finalized.
+Sent when a complete segment is finalized:
 
 ```json
 {
-  "type": "asr.final",
-  "stream_id": "session_123",
-  "segment_id": "seg001",
+  "v": 1,
+  "t": "asr.final",
+  "sid": "sess_123",
   "seq": 2,
-  "text": "Hello world this is a test.",
-  "words": [
-    {"w": "Hello", "t0": 0.0, "t1": 0.5, "conf": 0.95},
-    {"w": "world", "t0": 0.5, "t1": 1.0, "conf": 0.92},
-    {"w": "this", "t0": 1.0, "t1": 1.3, "conf": 0.88},
-    {"w": "is", "t0": 1.3, "t1": 1.5, "conf": 0.91},
-    {"w": "a", "t0": 1.5, "t1": 1.6, "conf": 0.89},
-    {"w": "test", "t0": 1.6, "t1": 2.0, "conf": 0.94}
-  ],
-  "eou_reason": "punctuation",
-  "segment_duration_ms": 2000.0,
-  "ts_monotonic": 1234567892.456
-}
-```
-
-##### Metrics Event
-Periodic performance metrics broadcast.
-
-```json
-{
-  "type": "asr_metrics.partial|asr_metrics.final",
-  "stream_id": "session_123",
-  "timestamp": 1234567890.123,
-  "session_duration": 45.67,
-  "text_length": 234,
-  "word_count": 45,
-  "seq": 12,
-  "segment_id": "seg001"
+  "t_wall": "2025-09-14T18:03:28.512Z",
+  "t_mono_ms": 3456,
+  "data": {
+    "text": "Hello world this is a test.",
+    "segment_id": "seg001",
+    "start_ms": 0,
+    "end_ms": 2000
+  }
 }
 ```
 
 ##### MT Final Event
-Sent when machine translation of a finalized ASR segment is complete.
+Sent when machine translation of a finalized ASR segment is complete:
 
 ```json
 {
-  "type": "mt.final",
-  "stream_id": "session_123",
-  "segment_id": "seg001",
+  "v": 1,
+  "t": "mt.final",
+  "sid": "sess_123",
   "seq": 3,
-  "text": "你好，世界，这是一个测试。",
-  "src_text": "Hello world this is a test.",
-  "src_lang": "en",
-  "tgt_lang": "zh-Hans",
-  "provider": "ct2-nllb",
-  "quality": "realtime",
-  "ts_server": 1234567890.123,
-  "ts_session": 12.345
+  "corr": "msg_asr_final",           // Links to source ASR message
+  "t_wall": "2025-09-14T18:03:29.512Z",
+  "t_mono_ms": 4567,
+  "data": {
+    "text": "你好，世界，这是一个测试。",
+    "src": "en",
+    "tgt": "zh-Hans"
+  }
 }
 ```
 
-##### MT Error Event
-Sent when machine translation fails.
+##### Status Event
+Sent for session status updates:
 
 ```json
 {
-  "type": "mt.error",
-  "stream_id": "session_123",
-  "segment_id": "seg001",
+  "v": 1,
+  "t": "status",
+  "sid": "sess_123",
   "seq": 4,
-  "error": "Translation model not available",
-  "src_text": "Hello world",
-  "ts_server": 1234567890.123,
-  "ts_session": 12.345
+  "t_wall": "2025-09-14T18:03:30.512Z",
+  "t_mono_ms": 5678,
+  "data": {
+    "stage": "processing",
+    "detail": "Audio analysis in progress"
+  }
 }
 ```
+
+#### Flow Control & Reliability
+
+The new protocol includes several reliability features:
+
+- **Sliding Window**: Server respects `max_in_flight` limit to prevent overwhelming client
+- **Acknowledgements**: Client sends `client.ack` messages; server maintains replay buffer
+- **Resume/Reconnect**: Client can reconnect and replay missed messages within window
+- **Heartbeats**: Bi-directional liveness detection with configurable intervals
+- **At-least-once delivery**: Messages may be delivered multiple times; client should handle duplicates
 
 ## Client Example
 
-Here's a minimal Python client example showing how to consume streaming events:
+Here's a Python client example using the new envelope protocol:
 
 ```python
-import anyio
-import websockets
+import asyncio
 import json
 import requests
+import websockets
+from datetime import datetime
 
 # Create a streaming session
 response = requests.post("http://localhost:8000/sessions", json={
@@ -203,30 +301,94 @@ response = requests.post("http://localhost:8000/sessions", json={
 })
 session_id = response.json()["session_id"]
 
-async def consume_events():
-    uri = f"ws://localhost:8000/ws/{session_id}"
-    async with websockets.connect(uri) as websocket:
+class LoquiLexClient:
+    def __init__(self, session_id: str):
+        self.session_id = session_id
+        self.last_ack_seq = 0
+        self.websocket = None
+
+    async def connect(self):
+        """Connect and handle the envelope protocol."""
+        uri = f"ws://localhost:8000/events/{self.session_id}"
+        self.websocket = await websockets.connect(uri)
+
+        # Wait for welcome message
+        welcome_raw = await self.websocket.recv()
+        welcome = json.loads(welcome_raw)
+        print(f"Connected! Welcome: {welcome['t']}")
+
+        # Send client hello
+        hello = {
+            "v": 1,
+            "t": "client.hello",
+            "data": {
+                "agent": "example-client/1.0",
+                "accept": ["asr.partial", "asr.final", "mt.final", "status"],
+                "ack_mode": "cumulative",
+                "max_in_flight": 16
+            }
+        }
+        await self.websocket.send(json.dumps(hello))
+
+        # Acknowledge welcome
+        await self.send_ack(welcome["seq"])
+
+    async def send_ack(self, seq: int):
+        """Send acknowledgement for received messages."""
+        if seq > self.last_ack_seq:
+            ack = {
+                "v": 1,
+                "t": "client.ack",
+                "sid": self.session_id,
+                "data": {"ack_seq": seq}
+            }
+            await self.websocket.send(json.dumps(ack))
+            self.last_ack_seq = seq
+
+    async def listen(self):
+        """Listen for messages and handle them."""
         while True:
-            event = json.loads(await websocket.recv())
-            if event["type"] == "asr.partial":
-                print(f"Partial: {event['text']}")
-            elif event["type"] == "asr.final":
-                print(f"Final: {event['text']}")
-            elif event["type"] == "mt.final":
-                print(f"Translation: {event['text']} (from: {event['src_text']})")
-            elif event["type"] == "mt.error":
-                print(f"Translation error: {event['error']}")
+            try:
+                message_raw = await self.websocket.recv()
+                envelope = json.loads(message_raw)
 
-# Run the consumer
-asyncio.run(consume_events())
+                # Handle different message types
+                if envelope["t"] == "asr.partial":
+                    print(f"Partial: {envelope['data']['text']}")
+                elif envelope["t"] == "asr.final":
+                    print(f"Final: {envelope['data']['text']}")
+                elif envelope["t"] == "mt.final":
+                    print(f"Translation: {envelope['data']['text']}")
+                elif envelope["t"] == "status":
+                    print(f"Status: {envelope['data']['stage']}")
+                elif envelope["t"] == "server.hb":
+                    print("❤️ Heartbeat received")
 
-# Periodically check status
-status = requests.get(f"http://localhost:8000/sessions/{session_id}/snapshot")
-print(f"Status: {status.json()['status']}")
+                # Acknowledge non-control messages
+                if envelope["t"] not in ["server.hb", "server.welcome", "server.ack"]:
+                    await self.send_ack(envelope["seq"])
 
-# Get metrics
-metrics = requests.get(f"http://localhost:8000/sessions/{session_id}/metrics")
-print(f"Metrics: {metrics.json()}")
+            except websockets.exceptions.ConnectionClosed:
+                print("Connection closed")
+                break
+
+async def main():
+    client = LoquiLexClient(session_id)
+    await client.connect()
+    await client.listen()
+
+# Run the client
+asyncio.run(main())
+```
+
+#### Configuration via Environment Variables
+
+WebSocket behavior can be configured via environment variables:
+
+- `LX_WS_HB_INTERVAL_MS`: Heartbeat interval in milliseconds (default: 10000)
+- `LX_WS_HB_TIMEOUT_MS`: Heartbeat timeout in milliseconds (default: 30000)
+- `LX_WS_MAX_IN_FLIGHT`: Maximum sliding window size (default: 64)
+- `LX_WS_MAX_MSG_BYTES`: Maximum message size in bytes (default: 131072)
 ```
 
 ## Offline-First Design
@@ -244,4 +406,8 @@ All endpoints return appropriate HTTP status codes:
 - `404`: Session not found
 - `500`: Internal server error (generic message, no exception details leaked)
 
-WebSocket connections are resilient to temporary network issues and will automatically reconnect.
+WebSocket connections use the new envelope protocol with resilience features:
+- Automatic reconnection with message replay within the resume window
+- Flow control to prevent client overload
+- Heartbeat monitoring for connection health
+- At-least-once delivery with client-side deduplication
