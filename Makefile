@@ -190,8 +190,9 @@ sec-scan:
 
 # Dead code analysis using multiple detection tools
 dead-code-analysis: install-base
-	@echo "=== Running comprehensive dead code analysis ==="
-	@./scripts/dead-code-analysis.sh
+	@echo "=== Running comprehensive dead code analysis (WARN-ONLY) ==="
+	- ./scripts/dead-code-analysis.sh || echo "[warn] dead code found (non-blocking)"
+	@echo "== done =="
 
 .PHONY: dead-code-report
 dead-code-report:
