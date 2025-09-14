@@ -36,13 +36,7 @@ jobs:
         run: |
           make dead-code-analysis
 
-      - name: Upload dead code reports
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: dead-code-reports
-          path: .artifacts/dead-code-reports/
-          retention-days: 30
+      # Uploading will happen after checks to avoid duplicate artifact names
 
       - name: Check for dead code issues
         run: |
@@ -71,3 +65,4 @@ jobs:
           name: dead-code-reports
           path: .artifacts/dead-code-reports/**
           if-no-files-found: warn
+          retention-days: 30
