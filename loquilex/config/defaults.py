@@ -14,6 +14,8 @@ T = TypeVar("T")
 
 def _coerce(val: str, caster: Callable[[str], T]) -> T:
     return caster(val)
+def _env(name: str, default: str) -> str:
+    return os.getenv(name, default)
 
 
 def _env(name: str, default: str) -> str:
