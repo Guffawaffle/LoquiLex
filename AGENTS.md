@@ -81,6 +81,9 @@ Each deliverables file must include:
 5. **Files Changed**
    List all modified files and the type of change.
 
+### Template
+Use `.github/copilot/deliverables-template.md` as a starting point for new deliverables.
+
 ### Logging Policy
 
 - `.github/copilot/current-task-deliverables.md` acts as the **running log** for the PR.
