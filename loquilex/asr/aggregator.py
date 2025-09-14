@@ -8,6 +8,7 @@ from dataclasses import dataclass, field
 from typing import Any, Callable, Deque, Dict, List, Optional
 
 from .stream import ASRPartialEvent, ASRFinalEvent, ASRSnapshotEvent
+from .metrics import ASRMetrics
 
 __all__ = ["PartialFinalAggregator"]
 
@@ -50,6 +51,7 @@ class PartialFinalAggregator:
         max_partials: int = 100,  # configurable via LX_ASR_MAX_PARTIALS
         max_recent_finals: int = 20,
         now_fn: Optional[Callable[[], float]] = None,
+        enable_metrics: bool = True,
     ) -> None:
         self.stream_id = stream_id
         self.max_partials = max_partials
@@ -69,6 +71,9 @@ class PartialFinalAggregator:
         
         # Live partial for snapshots
         self.current_partial: Optional[PartialState] = None
+        
+        # Performance metrics
+        self.metrics = ASRMetrics(stream_id) if enable_metrics else None
 
     def add_partial(
         self, 
@@ -135,6 +140,10 @@ class PartialFinalAggregator:
         }
         
         emit_fn(enriched_event)
+        
+        # Record metrics
+        if self.metrics:
+            self.metrics.on_partial_event(enriched_event)
 
     def add_final(
         self,
@@ -200,6 +209,10 @@ class PartialFinalAggregator:
         }
         
         emit_fn(enriched_event)
+        
+        # Record metrics
+        if self.metrics:
+            self.metrics.on_final_event(enriched_event)
 
     def get_snapshot(self) -> Dict[str, Any]:
         """Generate snapshot for reconnect scenarios."""
@@ -236,7 +249,7 @@ class PartialFinalAggregator:
 
     def get_stats(self) -> Dict[str, Any]:
         """Get aggregator statistics for monitoring."""
-        return {
+        base_stats = {
             "stream_id": self.stream_id,
             "global_seq": self.global_seq,
             "active_partials": len(self.partials),
@@ -245,6 +258,21 @@ class PartialFinalAggregator:
             "max_partials": self.max_partials,
             "max_recent_finals": self.max_recent_finals,
         }
+        
+        # Add performance metrics if available
+        if self.metrics:
+            base_stats["performance"] = self.metrics.get_summary()
+            
+        return base_stats
+
+    def get_metrics_summary(self) -> Optional[Dict[str, Any]]:
+        """Get performance metrics summary."""
+        return self.metrics.get_summary() if self.metrics else None
+
+    def log_metrics_summary(self) -> None:
+        """Log performance metrics summary."""
+        if self.metrics:
+            self.metrics.log_summary()
 
     def clear_old_finals(self, keep_count: Optional[int] = None) -> None:
         """Clear old final segments to prevent unbounded growth."""

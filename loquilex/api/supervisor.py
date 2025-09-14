@@ -188,6 +188,15 @@ class StreamingSession:
             except Exception as e:
                 print(f"[StreamingSession] Force finalize error: {e}")
     
+    def get_metrics(self) -> Optional[Dict[str, Any]]:
+        """Get performance metrics."""
+        if self._aggregator:
+            try:
+                return self._aggregator.get_metrics_summary()
+            except Exception as e:
+                print(f"[StreamingSession] Metrics error: {e}")
+        return None
+
     def get_asr_snapshot(self) -> Optional[Dict[str, Any]]:
         """Get ASR snapshot for reconnects."""
         if self._aggregator:

@@ -312,6 +312,25 @@ async def finalize_session(sid: str) -> Dict[str, Any]:
     return {"ok": True}
 
 
+@app.get("/sessions/{sid}/metrics")
+async def get_session_metrics(sid: str) -> Dict[str, Any]:
+    """Get performance metrics for a streaming session."""
+    sess = MANAGER._sessions.get(sid)
+    if not sess:
+        raise HTTPException(status_code=404, detail="session not found")
+    
+    if not hasattr(sess, 'get_metrics'):
+        raise HTTPException(status_code=400, detail="session does not support metrics")
+    
+    try:
+        metrics = sess.get_metrics()
+        if metrics is None:
+            raise HTTPException(status_code=503, detail="metrics not available")
+        return metrics
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"metrics error: {e}")
+
+
 @app.get("/sessions/{sid}/asr/snapshot")
 async def get_asr_snapshot(sid: str) -> Dict[str, Any]:
     """Get ASR snapshot for reconnect scenarios (streaming sessions only)."""

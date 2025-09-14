@@ -2,6 +2,7 @@
 
 from .stream import StreamingASR, ASRWord, ASRSegment, ASRPartialEvent, ASRFinalEvent, ASRSnapshotEvent
 from .aggregator import PartialFinalAggregator
+from .metrics import ASRMetrics
 
 __all__ = [
     "StreamingASR",
@@ -11,4 +12,5 @@ __all__ = [
     "ASRFinalEvent", 
     "ASRSnapshotEvent",
     "PartialFinalAggregator",
+    "ASRMetrics",
 ]
