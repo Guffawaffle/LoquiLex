@@ -368,6 +368,14 @@ async def get_snapshot(sid: str) -> Dict[str, Any]:
             asr_snapshot = sess.get_asr_snapshot()
         except Exception:
             pass  # ASR snapshot is optional
+    
+    # Try to get MT status if session supports it
+    mt_status = None
+    if hasattr(sess, "get_mt_status"):
+        try:
+            mt_status = sess.get_mt_status()
+        except Exception:
+            pass  # MT status is optional
 
     # Determine status correctly for both regular and streaming sessions
     if hasattr(sess, "_audio_thread") and sess._audio_thread is not None:
@@ -389,6 +397,9 @@ async def get_snapshot(sid: str) -> Dict[str, Any]:
 
     if asr_snapshot:
         base_snapshot["asr"] = asr_snapshot
+        
+    if mt_status:
+        base_snapshot["mt"] = mt_status
 
     return base_snapshot
 
