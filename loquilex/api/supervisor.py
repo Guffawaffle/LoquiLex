@@ -406,18 +406,18 @@ class SessionManager:
         self._max_cuda_sessions = int(os.getenv("LX_MAX_CUDA_SESSIONS", "1"))
         self._stampers: Dict[str, EventStamper] = {}
         self._dl_procs: Dict[str, subprocess.Popen] = {}
-        
+
         # New WebSocket protocol managers
         self._ws_protocols: Dict[str, WSProtocolManager] = {}
-        
+
         # Default WebSocket configuration
         self._default_hb_config = HeartbeatConfig(
             interval_ms=int(os.getenv("LX_WS_HB_INTERVAL_MS", "10000")),
-            timeout_ms=int(os.getenv("LX_WS_HB_TIMEOUT_MS", "30000"))
+            timeout_ms=int(os.getenv("LX_WS_HB_TIMEOUT_MS", "30000")),
         )
         self._default_limits = ServerLimits(
             max_in_flight=int(os.getenv("LX_WS_MAX_IN_FLIGHT", "64")),
-            max_msg_bytes=int(os.getenv("LX_WS_MAX_MSG_BYTES", "131072"))
+            max_msg_bytes=int(os.getenv("LX_WS_MAX_MSG_BYTES", "131072")),
         )
 
         t = threading.Thread(target=self._log_pump, daemon=True)
@@ -468,17 +468,15 @@ class SessionManager:
             protocol_manager = self._ws_protocols.get(sid)
             if not protocol_manager:
                 protocol_manager = WSProtocolManager(
-                    sid=sid,
-                    hb_config=self._default_hb_config,
-                    limits=self._default_limits
+                    sid=sid, hb_config=self._default_hb_config, limits=self._default_limits
                 )
                 protocol_manager.set_disconnect_callback(self._cleanup_ws_protocol)
                 self._ws_protocols[sid] = protocol_manager
-                
+
             # Also maintain legacy WebSocket list for compatibility
             lst = self._ws.setdefault(sid, [])
             lst.append(ws)
-            
+
         # Add connection to protocol manager (sends welcome)
         await protocol_manager.add_connection(ws)
 
@@ -489,13 +487,13 @@ class SessionManager:
             lst = self._ws.get(sid, [])
             if ws in lst:
                 lst.remove(ws)
-                
+
             # Remove from protocol manager
             protocol_manager = self._ws_protocols.get(sid)
-            
+
         if protocol_manager:
             await protocol_manager.remove_connection(ws)
-            
+
     def _cleanup_ws_protocol(self, sid: str) -> None:
         """Cleanup callback for protocol manager."""
         with self._lock:
@@ -513,7 +511,7 @@ class SessionManager:
         """Handle incoming WebSocket message through protocol manager."""
         with self._lock:
             protocol_manager = self._ws_protocols.get(sid)
-            
+
         if protocol_manager:
             await protocol_manager.handle_message(ws, message)
         else:
@@ -523,7 +521,7 @@ class SessionManager:
         """Broadcast message using new envelope protocol."""
         with self._lock:
             protocol_manager = self._ws_protocols.get(sid)
-            
+
         if protocol_manager:
             # Convert legacy payload to new envelope format
             event_type = self._map_legacy_type_to_envelope(payload.get("type", "status"))
@@ -533,7 +531,7 @@ class SessionManager:
         else:
             # Fallback to legacy broadcast for compatibility
             await self._legacy_broadcast(sid, payload)
-            
+
     def _map_legacy_type_to_envelope(self, legacy_type: str) -> MessageType:
         """Map legacy message types to envelope message types."""
         mapping = {
@@ -545,7 +543,7 @@ class SessionManager:
             "status": MessageType.STATUS,
         }
         return mapping.get(legacy_type, MessageType.STATUS)
-            
+
     async def _legacy_broadcast(self, sid: str, payload: Dict[str, Any]) -> None:
         """Legacy broadcast method for backward compatibility."""
         with self._lock:
