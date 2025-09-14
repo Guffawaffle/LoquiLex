@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 
 from loquilex.config.defaults import MT, pick_device
 
+
 try:  # optional dependency
     import torch
 except Exception:  # torch might not be installed in test env
@@ -48,13 +49,12 @@ class Translator:
     def __init__(self) -> None:
         device, _ = pick_device()
         self.device_str = device
+        is_cuda = False
         if torch is not None and device == "cuda":
             try:
                 is_cuda = torch.cuda.is_available()
             except Exception:
                 is_cuda = False
-        else:
-            is_cuda = False
         self.torch_device = "cuda" if is_cuda else "cpu"
         self._nllb = None
         self._m2m = None

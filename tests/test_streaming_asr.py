@@ -370,6 +370,7 @@ class TestAsyncBridge:
         class MockLoop:
             def __init__(self):
                 self.scheduled = []
+
             def call_soon_threadsafe(self, fn):
                 self.scheduled.append(fn)
                 fn()  # Immediately execute for test
@@ -397,8 +398,10 @@ class TestAsyncBridge:
 
         # Mock aggregator to trigger emit_event
         mock_aggregator = MagicMock()
+
         def mock_add_partial(_partial_event, emit_fn):
             emit_fn({"type": "test"})
+
         mock_aggregator.add_partial.side_effect = mock_add_partial
         session.aggregator = mock_aggregator
 
@@ -449,10 +452,13 @@ class TestAsyncBridge:
 
         # Mock aggregator to trigger emit_event
         from unittest.mock import MagicMock
+
         mock_aggregator = MagicMock()
+
         # Make add_partial call the emit_fn with a dummy event
         def mock_add_partial(_partial_event, emit_fn):
             emit_fn({"type": "test"})
+
         mock_aggregator.add_partial.side_effect = mock_add_partial
         session.aggregator = mock_aggregator
 

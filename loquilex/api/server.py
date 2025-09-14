@@ -7,7 +7,7 @@ import re
 import time
 import uuid
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Any, Callable, Dict, List, Optional
 
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
@@ -15,7 +15,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from .model_discovery import list_asr_models, list_mt_models, mt_supported_languages
-from .supervisor import Session, SessionConfig, SessionManager, StreamingSession
+from .supervisor import SessionConfig, SessionManager, StreamingSession
 
 logger = logging.getLogger(__name__)
 
@@ -332,7 +332,9 @@ async def get_session_metrics(sid: str) -> Dict[str, Any]:
             logger.exception("metrics error")
             raise HTTPException(status_code=500, detail="metrics error")
     else:
-        raise HTTPException(status_code=400, detail="metrics not available for non-streaming session")
+        raise HTTPException(
+            status_code=400, detail="metrics not available for non-streaming session"
+        )
 
 
 @app.get("/sessions/{sid}/asr/snapshot")
@@ -348,7 +350,9 @@ async def get_asr_snapshot(sid: str) -> Dict[str, Any]:
             raise HTTPException(status_code=503, detail="ASR snapshot not available")
         return snapshot
     else:
-        raise HTTPException(status_code=400, detail="snapshot not available for non-streaming session")
+        raise HTTPException(
+            status_code=400, detail="snapshot not available for non-streaming session"
+        )
 
 
 @app.get("/sessions/{sid}/snapshot")
@@ -371,7 +375,11 @@ async def get_snapshot(sid: str) -> Dict[str, Any]:
         status = "running" if sess._audio_thread.is_alive() else "stopped"
     else:
         # Regular session - check subprocess
-        status = "running" if (sess.proc and getattr(sess.proc, "poll", lambda: None)() is None) else "stopped"
+        status = (
+            "running"
+            if (sess.proc and getattr(sess.proc, "poll", lambda: None)() is None)
+            else "stopped"
+        )
 
     base_snapshot = {
         "sid": sid,

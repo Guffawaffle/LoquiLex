@@ -95,7 +95,7 @@ class TestStreamingIntegration:
             # Try to get ASR snapshot - should fail
             response = client.get(f"/sessions/{session_id}/asr/snapshot")
             assert response.status_code == 400
-            assert "does not support ASR snapshots" in response.json()["detail"]
+            assert "snapshot not available for non-streaming session" in response.json()["detail"]
 
         finally:
             # Clean up
@@ -421,7 +421,9 @@ class TestErrorHygiene:
             sess = MANAGER._sessions.get(session_id)
             if sess and hasattr(sess, "get_asr_snapshot"):
                 original_get_asr_snapshot = sess.get_asr_snapshot
-                sess.get_asr_snapshot = lambda: (_ for _ in ()).throw(RuntimeError("snapshot test error"))
+                sess.get_asr_snapshot = lambda: (_ for _ in ()).throw(
+                    RuntimeError("snapshot test error")
+                )
 
                 # Call snapshot endpoint
                 response = client.get(f"/sessions/{session_id}/snapshot")

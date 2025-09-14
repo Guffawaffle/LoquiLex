@@ -26,6 +26,7 @@ class StreamingSession:
 
     def __init__(self, sid: str, cfg: SessionConfig, run_dir: Path) -> None:
         from typing import Callable, Awaitable
+
         self.sid = sid
         self.cfg = cfg
         self.run_dir = run_dir
@@ -52,9 +53,10 @@ class StreamingSession:
         if self._event_loop is None or self._broadcast_fn is None:
             print("[StreamingSession] dropping event (no loop or broadcast_fn)")
             return
-        self._event_loop.call_soon_threadsafe(
-            lambda: asyncio.create_task(self._broadcast_fn(self.sid, event))
-        )
+        # Ensure _broadcast_fn returns a coroutine
+        def coro():
+            return self._broadcast_fn(self.sid, event)
+        self._event_loop.call_soon_threadsafe(lambda: asyncio.create_task(coro()))
 
     def start(self) -> None:
         """Start the streaming ASR session."""
@@ -104,11 +106,13 @@ class StreamingSession:
                     stop_capture = capture_stream(on_audio_frame)
 
                     # Broadcast ready status using safe scheduling
-                    self._schedule_broadcast({
-                        "type": "status",
-                        "stage": "operational",
-                        "log": "Ready — start speaking now (streaming mode)",
-                    })
+                    self._schedule_broadcast(
+                        {
+                            "type": "status",
+                            "stage": "operational",
+                            "log": "Ready — start speaking now (streaming mode)",
+                        }
+                    )
 
                     # Keep thread alive until stopped
                     while not self._stop_evt.is_set():
@@ -116,11 +120,13 @@ class StreamingSession:
 
                 except Exception as e:
                     print(f"[StreamingSession] Audio worker error: {e}")
-                    self._schedule_broadcast({
-                        "type": "status",
-                        "stage": "error",
-                        "log": f"Audio error: {e}",
-                    })
+                    self._schedule_broadcast(
+                        {
+                            "type": "status",
+                            "stage": "error",
+                            "log": f"Audio error: {e}",
+                        }
+                    )
                 finally:
                     # Guarantee audio capture cleanup
                     if stop_capture is not None:
