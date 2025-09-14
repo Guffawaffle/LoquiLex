@@ -67,7 +67,7 @@ Write **only** the following report to `.github/copilot/current-task-deliverable
 - Produce `.github/copilot/current-task-deliverables.md` exactly as specified.
 
 #run
-- TARGET: [lint,ci,typecheck,fmt,test,e2e]
+- TARGET: [dead-code-analysis]
 - MAKE_FLAGS: <optional>
 - ISSUE_REF: 31
 - PR_REF: 48

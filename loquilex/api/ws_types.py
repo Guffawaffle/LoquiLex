@@ -5,7 +5,7 @@ including control types (hello, welcome, heartbeats, acks) and domain events
 (ASR partials/finals, MT finals, status updates).
 
 Envelope design supports:
-- Versioned schema for forward/backward compatibility  
+- Versioned schema for forward/backward compatibility
 - Session management with server-issued IDs
 - Sequence numbering for acknowledgements and replay
 - Monotonic timing for latency measurement
@@ -68,7 +68,7 @@ class WSEnvelope(BaseModel):
     )
     data: Dict[str, Any] = Field(default_factory=dict, description="Type-specific payload")
 
-    def model_post_init(self, __context) -> None:
+    def model_post_init(self) -> None:
         """Auto-generate message ID if not provided."""
         if self.id is None and self.sid is not None:
             self.id = f"msg_{uuid.uuid4().hex[:8]}"
