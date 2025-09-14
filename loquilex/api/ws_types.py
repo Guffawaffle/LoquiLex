@@ -361,6 +361,7 @@ class SessionState:
 
 # New resilient comms payload types
 
+
 class SessionResumeData(BaseModel):
     """Session resume request payload."""
 

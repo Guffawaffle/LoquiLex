@@ -23,14 +23,12 @@ from fastapi import WebSocket
 
 from .ws_types import (
     AckData,
-    AckMode,
     ClientHelloData,
     FlowControlData,
     HeartbeatConfig,
     HeartbeatData,
     MessageType,
     QueueDropData,
-    ResumeInfo,
     ResumeWindow,
     ServerLimits,
     ServerWelcomeData,
@@ -40,7 +38,6 @@ from .ws_types import (
     SessionAckData,
     SessionState,
     SystemHeartbeatData,
-    SystemMetricsData,
     WSEnvelope,
 )
 
@@ -84,22 +81,22 @@ class WSProtocolManager:
 
         # Configuration with environment variable support
         import os
-        
+
         # Default configuration
         default_hb_config = HeartbeatConfig(
             interval_ms=int(os.getenv("LX_WS_HEARTBEAT_MS", "5000")),
             timeout_ms=int(os.getenv("LX_WS_HEARTBEAT_TIMEOUT_MS", "15000")),
         )
-        
+
         default_resume_window = ResumeWindow(
             seconds=int(os.getenv("LX_WS_RESUME_TTL_SEC", "10")),
         )
-        
+
         default_limits = ServerLimits(
             max_in_flight=int(os.getenv("LX_WS_MAX_IN_FLIGHT", "64")),
             max_msg_bytes=int(os.getenv("LX_WS_MAX_MSG_BYTES", "131072")),
         )
-        
+
         self.hb_config = hb_config or default_hb_config
         self.resume_window = resume_window or default_resume_window
         self.limits = limits or default_limits
@@ -110,26 +107,25 @@ class WSProtocolManager:
         # Heartbeat tracking
         self._hb_task: Optional[asyncio.Task] = None
         self._hb_timeout_task: Optional[asyncio.Task] = None
-        
+
         # System heartbeat for resilient comms
         self._system_hb_task: Optional[asyncio.Task] = None
 
         # Callbacks
         self._on_disconnect: Optional[Callable[[str], None]] = None
-        
+
         # Bounded queues and telemetry
         from .bounded_queue import BoundedQueue, ReplayBuffer
-        
+
         # Replace simple replay buffer with bounded replay buffer
         max_replay_events = int(os.getenv("LX_WS_RESUME_MAX_EVENTS", "500"))
         self._replay_buffer = ReplayBuffer(
-            maxsize=max_replay_events,
-            ttl_seconds=self.resume_window.seconds
+            maxsize=max_replay_events, ttl_seconds=self.resume_window.seconds
         )
-        
+
         # Outbound event queue for each connection
         self._outbound_queues: Dict[WebSocket, BoundedQueue] = {}
-        
+
         # Telemetry
         self._metrics = {
             "queue_depths": {},
@@ -161,19 +157,19 @@ class WSProtocolManager:
         if len(self.connections) == 1:
             await self._start_heartbeat()
             await self._start_system_heartbeat()
-            
+
         # Create bounded outbound queue for this connection
         from .bounded_queue import BoundedQueue
+
         client_buffer_size = int(os.getenv("LX_CLIENT_EVENT_BUFFER", "300"))
         self._outbound_queues[ws] = BoundedQueue(
-            maxsize=client_buffer_size,
-            name=f"outbound_{id(ws)}"
+            maxsize=client_buffer_size, name=f"outbound_{id(ws)}"
         )
 
     async def remove_connection(self, ws: WebSocket) -> None:
         """Remove a WebSocket connection."""
         self.connections.discard(ws)
-        
+
         # Clean up outbound queue for this connection
         if ws in self._outbound_queues:
             del self._outbound_queues[ws]
@@ -230,31 +226,31 @@ class WSProtocolManager:
         """Handle session resume request."""
         try:
             resume_data = SessionResumeData.model_validate(envelope.data)
-            
+
             # Check session ID match
             if resume_data.session_id != self.sid:
                 await self._send_session_new(ws, envelope.corr, "session_id_mismatch")
                 return
-                
+
             # Check epoch if provided
             if resume_data.epoch is not None and resume_data.epoch != self.state.epoch:
                 await self._send_session_new(ws, envelope.corr, "epoch_mismatch")
                 return
-            
+
             # Check if resume is within window
             elapsed = time.monotonic() - self.state.t0_mono
             if elapsed > self.resume_window.seconds:
                 await self._send_session_new(ws, envelope.corr, "resume_expired")
                 return
-                
+
             # Get replay messages
             replay_messages = self._replay_buffer.get_messages_after(resume_data.last_seq)
-            
+
             # Send session snapshot with replay data
             await self._send_session_snapshot(ws, envelope.corr, replay_messages)
-            
+
             logger.info(f"Session {self.sid} resumed, replayed {len(replay_messages)} messages")
-            
+
         except Exception as e:
             logger.exception(f"Error handling session resume: {e}")
             await self._send_error(ws, "invalid_resume", str(e))
@@ -272,18 +268,18 @@ class WSProtocolManager:
             finalized_transcript=[],  # Would be populated from session state
             active_partials=[],  # Would be populated from session state
         )
-        
+
         snapshot_envelope = self._create_envelope(
             MessageType.SESSION_SNAPSHOT,
             snapshot_data.model_dump(),
             corr=corr,
         )
         await self._send_to_connection(ws, snapshot_envelope)
-        
+
         # Send replay messages
         for msg in replay_messages:
             await self._send_to_connection(ws, msg)
-            
+
         # Send session ack to complete handshake
         ack_data = SessionAckData(session_id=self.sid, status="resumed")
         ack_envelope = self._create_envelope(
@@ -293,22 +289,20 @@ class WSProtocolManager:
         )
         await self._send_to_connection(ws, ack_envelope)
 
-    async def _send_session_new(
-        self, ws: WebSocket, corr: Optional[str], reason: str
-    ) -> None:
+    async def _send_session_new(self, ws: WebSocket, corr: Optional[str], reason: str) -> None:
         """Send session new response for failed resume."""
         # Reset session state for fresh start
         self.state.epoch += 1
         self.state.seq = 0
         self.state.last_ack_seq = 0
         self._replay_buffer.clear()
-        
+
         new_data = SessionNewData(
             session_id=self.sid,
-            epoch=self.state.epoch, 
+            epoch=self.state.epoch,
             reason=reason,
         )
-        
+
         new_envelope = self._create_envelope(
             MessageType.SESSION_NEW,
             new_data.model_dump(),
@@ -372,7 +366,7 @@ class WSProtocolManager:
             return False
 
         envelope = self._create_envelope(event_type, data)
-        
+
         # Add to both state and bounded replay buffer for compatibility
         self.state.add_to_replay_buffer(envelope)
         if envelope.seq is not None:
@@ -473,7 +467,7 @@ class WSProtocolManager:
         """Start system heartbeat for resilient comms."""
         if self._system_hb_task:
             return
-            
+
         self._system_hb_task = asyncio.create_task(self._system_heartbeat_loop())
 
     async def _stop_heartbeat(self) -> None:
@@ -495,7 +489,7 @@ class WSProtocolManager:
                 await t
             except asyncio.CancelledError:
                 pass
-                
+
     async def _stop_system_heartbeat(self) -> None:
         """Stop system heartbeat."""
         if self._system_hb_task:
@@ -549,31 +543,31 @@ class WSProtocolManager:
             pass
         except Exception as e:
             logger.exception(f"Heartbeat timeout error: {e}")
-            
+
     async def _system_heartbeat_loop(self) -> None:
         """Send system heartbeats with comprehensive metrics."""
         try:
             while True:
                 await asyncio.sleep(self.hb_config.interval_ms / 1000.0)
-                
+
                 if not self.connections:
                     break
-                    
+
                 # Collect telemetry
                 queue_depths = {}
                 drop_counts = {}
-                
+
                 # Replay buffer metrics
                 replay_telemetry = self._replay_buffer.get_telemetry()
                 queue_depths["replay_buffer"] = replay_telemetry["size"]
                 drop_counts["replay_buffer"] = replay_telemetry["total_dropped"]
-                
+
                 # Outbound queue metrics
                 for i, (ws, queue) in enumerate(self._outbound_queues.items()):
                     queue_telemetry = queue.get_telemetry()
                     queue_depths[f"outbound_{i}"] = queue_telemetry["size"]
                     drop_counts[f"outbound_{i}"] = queue_telemetry["total_dropped"]
-                
+
                 # System heartbeat
                 system_hb_data = SystemHeartbeatData(
                     ts=datetime.now(timezone.utc).isoformat(),
@@ -582,13 +576,12 @@ class WSProtocolManager:
                     drop_counts=drop_counts,
                     latency_metrics=self._metrics.get("latency_metrics", {}),
                 )
-                
+
                 system_hb_envelope = self._create_envelope(
-                    MessageType.SYSTEM_HEARTBEAT,
-                    system_hb_data.model_dump()
+                    MessageType.SYSTEM_HEARTBEAT, system_hb_data.model_dump()
                 )
                 await self._broadcast(system_hb_envelope)
-                
+
         except asyncio.CancelledError:
             pass
         except Exception as e:
@@ -606,7 +599,7 @@ class WSProtocolManager:
             except Exception:
                 pass
         self.connections.clear()
-        
+
         # Clear outbound queues
         self._outbound_queues.clear()
 
@@ -617,40 +610,37 @@ class WSProtocolManager:
     async def close(self) -> None:
         """Gracefully close the session."""
         await self._cleanup_session()
-        
+
     async def emit_queue_drop(self, path: str, count: int, reason: str, total: int) -> None:
         """Emit queue drop notification."""
         drop_data = QueueDropData(
             path=path,
-            count=count, 
+            count=count,
             reason=reason,
             total_dropped=total,
         )
-        
-        drop_envelope = self._create_envelope(
-            MessageType.QUEUE_DROP,
-            drop_data.model_dump()
-        )
+
+        drop_envelope = self._create_envelope(MessageType.QUEUE_DROP, drop_data.model_dump())
         await self._broadcast(drop_envelope)
-        
+
     def get_telemetry_summary(self) -> Dict[str, Any]:
         """Get comprehensive telemetry summary."""
         queue_depths = {}
         drop_totals = {}
-        
+
         # Replay buffer
         replay_tel = self._replay_buffer.get_telemetry()
         queue_depths["replay_buffer"] = replay_tel["size"]
         drop_totals["replay_buffer"] = replay_tel["total_dropped"]
-        
+
         # Outbound queues
         for i, (_, queue) in enumerate(self._outbound_queues.items()):
             queue_tel = queue.get_telemetry()
             queue_depths[f"outbound_{i}"] = queue_tel["size"]
             drop_totals[f"outbound_{i}"] = queue_tel["total_dropped"]
-            
+
         uptime = time.monotonic() - self.state.t0_mono
-        
+
         return {
             "session_id": self.sid,
             "epoch": self.state.epoch,

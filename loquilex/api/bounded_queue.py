@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import time
 from collections import deque
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any, Deque, Generic, Optional, TypeVar
 
 T = TypeVar("T")
@@ -39,7 +39,7 @@ class DropMetrics:
 
 class BoundedQueue(Generic[T]):
     """Thread-safe bounded queue with drop-oldest policy and telemetry.
-    
+
     Features:
     - Fixed capacity with drop-oldest behavior
     - Non-blocking producers (never block, may drop)
@@ -50,42 +50,39 @@ class BoundedQueue(Generic[T]):
     def __init__(self, maxsize: int, name: str = "queue"):
         if maxsize <= 0:
             raise ValueError("maxsize must be positive")
-        
+
         self.maxsize = maxsize
         self.name = name
         self._queue: Deque[T] = deque(maxlen=maxsize)
         self.metrics = DropMetrics()
-        self._lock = None  # Will be initialized when first accessed
-        
+        # Initialize the lock eagerly to avoid races during lazy init
+        import threading
+
+        self._lock = threading.RLock()
+
     def _ensure_lock(self):
-        """Lazy initialization of lock for thread safety."""
-        if self._lock is None:
-            import threading
-            self._lock = threading.RLock()
+        """No-op: lock is created in __init__ (kept for API compatibility)."""
+        return
 
     def put_nowait(self, item: T) -> bool:
-        """Add item to queue, dropping oldest if at capacity.
-        
+        """Add item; if at capacity, drop oldest and record telemetry.
         Returns:
-            True if item was added, False if dropped (should not happen with deque)
+            True (item always added; check metrics.recent_drops to see if an oldest item was dropped).
         """
         self._ensure_lock()
         with self._lock:
             # Check if we're at capacity before adding
             dropped = len(self._queue) == self.maxsize
-            
             # Add item (deque automatically drops oldest if at maxlen)
             self._queue.append(item)
-            
             # Record drop if we were at capacity
             if dropped:
                 self.metrics.record_drop("capacity")
-                
-            return True  # deque always accepts items
+            return True
 
     def get_nowait(self) -> Optional[T]:
         """Remove and return item from front of queue.
-        
+
         Returns:
             Item if available, None if queue is empty
         """
@@ -152,7 +149,7 @@ class BoundedQueue(Generic[T]):
 
 class ReplayBuffer(BoundedQueue[Any]):
     """Specialized bounded queue for WebSocket message replay.
-    
+
     Maintains messages with sequence numbers for replay after reconnect.
     Supports both time-based and capacity-based eviction.
     """
@@ -162,46 +159,43 @@ class ReplayBuffer(BoundedQueue[Any]):
         self.ttl_seconds = ttl_seconds
 
     def add_message(self, seq: int, envelope: Any) -> None:
-        """Add message with sequence number and automatic cleanup."""
-        # Clean up expired messages first
-        self._cleanup_expired()
-        
-        # Store message with metadata
-        message_record = {
-            "seq": seq,
-            "envelope": envelope,
-            "timestamp": time.monotonic(),
-        }
-        
-        self.put_nowait(message_record)
+        """Add message with sequence number and automatic cleanup (thread-safe)."""
+        self._ensure_lock()
+        with self._lock:
+            # Clean up expired messages first under the same lock
+            self._cleanup_expired(locked=True)
+            # Store message with metadata
+            message_record = {
+                "seq": seq,
+                "envelope": envelope,
+                "timestamp": time.monotonic(),
+            }
+            self.put_nowait(message_record)
 
     def get_messages_after(self, last_seq: int) -> list[Any]:
         """Get all messages with seq > last_seq for replay."""
         self._ensure_lock()
         with self._lock:
             # Clean up expired messages
-            self._cleanup_expired()
-            
+            self._cleanup_expired(locked=True)
+
             result = []
             for record in self._queue:
                 # Access seq from the record, not the envelope
                 if record["seq"] > last_seq:
                     result.append(record["envelope"])
-            
+
             return result
 
-    def _cleanup_expired(self) -> None:
-        """Remove messages older than TTL."""
+    def _cleanup_expired(self, locked: bool = False) -> None:
+        """Remove messages older than TTL (caller can pass locked=True if holding self._lock)."""
         if self.ttl_seconds <= 0:
             return
-            
-        current_time = time.monotonic()
-        cutoff_time = current_time - self.ttl_seconds
-        
-        # Remove from front while messages are expired
-        while self._queue:
-            if self._queue[0]["timestamp"] < cutoff_time:
-                self._queue.popleft()
-                self.metrics.record_drop("ttl_expired")
-            else:
-                break
+        if not locked:
+            self._ensure_lock()
+            with self._lock:
+                return self._cleanup_expired(locked=True)
+        cutoff_time = time.monotonic() - self.ttl_seconds
+        while self._queue and self._queue[0]["timestamp"] < cutoff_time:
+            self._queue.popleft()
+            self.metrics.record_drop("ttl_expired")
