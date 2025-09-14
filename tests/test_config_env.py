@@ -4,10 +4,10 @@ import importlib
 
 
 def test_env_overrides(monkeypatch):
-    monkeypatch.setenv("GF_MAX_LINES", "123")
-    monkeypatch.setenv("GF_PARTIAL_WORD_CAP", "9")
-    monkeypatch.setenv("GF_SAVE_AUDIO", "flac")
-    monkeypatch.setenv("GF_SAVE_AUDIO_PATH", "loquilex/out/session.flac")
+    monkeypatch.setenv("LX_MAX_LINES", "123")
+    monkeypatch.setenv("LX_PARTIAL_WORD_CAP", "9")
+    monkeypatch.setenv("LX_SAVE_AUDIO", "flac")
+    monkeypatch.setenv("LX_SAVE_AUDIO_PATH", "loquilex/out/session.flac")
     # Reload module to pick env
     from loquilex.config import defaults as mod
 
