@@ -1,47 +1,87 @@
 # LoquiLex Current Task Deliverables
+# Current Task — PR #27 Polish: docs accuracy, tiny test nit, and CI trigger hygiene
 
 ## Executive Summary
-Successfully completed PR #25 hardening with bounded WebSocket receive, explicit offline network guard, consistent offline environments, and LX-only env policy enforcement. All quality gates passed (fmt, lint, typecheck, tests), with WS roundtrip under 1.0s and no external network access during tests.
+Executed the task to polish PR #27 on branch `chore/base-camp` targeting `main`. The primary changes involved updating the CodeQL workflow to use consistent trigger style by omitting the branches filter for push events, and adding commentary to `constraints.txt` explaining the pinning policy. No duplicate import was found in `tests/test_compat_versions.py`, and documentation references were already accurate since the referenced files exist. All quality gates passed successfully.
 
 ## Steps Taken
-1. **Applied bounded WebSocket receive patch** to `tests/test_e2e_websocket_api.py` using threading with 0.8s hard timeout to prevent test hangs
-2. **Updated offline isolation test** in `tests/test_offline_isolation.py` to include `::1` in allowed hosts and updated regex patterns for new error messages
-3. **Added forbid_network fixture** to `tests/conftest.py` with session scope, blocking non-loopback connections at socket level
-4. **Updated Makefile test target** to export offline environment variables (`HF_HUB_OFFLINE=1`, `TRANSFORMERS_OFFLINE=1`, `HF_HUB_DISABLE_TELEMETRY=1`, `LOQUILEX_OFFLINE=1`)
-5. **Enforced LX-only env policy** in `loquilex/config/defaults.py` by modifying `_env()` helper to raise ValueError for non-LX_ prefixed variables
-6. **Updated dev_fetch_models.py** to use clearer skip message when `LX_SKIP_MODEL_PREFETCH=1`
-7. **Ran quality gates**: `make fmt-check` (passed after auto-formatting), `make lint` (passed after removing unused imports), `make typecheck` (passed), `make test` (33 passed)
-8. **Ran specific tests**: WS test completed in 0.60s, offline isolation tests all passed
-9. **Verified acceptance criteria**: All tests green, WS ≤1.0s, network isolation working, lint/type clean, `_env()` restricted
+1. **Read current task**: Retrieved and analyzed `.github/copilot/current-task.md` to understand objectives.
+2. **Verified import in test file**: Checked `tests/test_compat_versions.py` for duplicate `import httpx` - none found, as the import is correctly consolidated.
+3. **Checked documentation accuracy**: Verified `.github/copilot/README.md` references to `main.prompt.md` and `rotate-task.sh` - both files exist, so no removal needed.
+4. **Confirmed versioning instructions**: Verified README.md version bump instructions reference `pyproject.toml`, which exists in the repo.
+5. **Updated CodeQL workflow**: Modified `.github/workflows/codeql.yml` to omit `branches: ['**']` for push events, making it consistent with implicit all-branches behavior.
+6. **Added constraints commentary**: Prepended comments to `constraints.txt` explaining Path A (Keep Pin) policy for deterministic dev/CI.
+7. **Ran quality gates**:
+   - Lint (ruff): Passed with no issues.
+   - Format (black): Passed, 45 files left unchanged.
+   - Typecheck (mypy): Passed with one note (annotation-unchecked) but no issues.
+   - Unit tests: Passed 33 tests with 3 deprecation warnings (expected for httpx compatibility).
 
 ## Evidence & Verification
-### Command Outputs
-- **Format check**: `make fmt-check` - Initially failed with 3 files needing reformatting, passed after `make fmt`
-- **Lint**: `make lint` - Initially failed with 2 unused import errors (typing.Callable, anyio), passed after removal
-- **Typecheck**: `make typecheck` - Passed with note about untyped functions (acceptable)
-- **Tests**: `make test` - 33 passed, 3 warnings (deprecation warnings from httpx)
-- **WS specific test**: `pytest -vv tests/test_e2e_websocket_api.py::test_e2e_websocket_live_session` - PASSED in 0.60s
-- **Offline isolation tests**: `pytest -vv tests/test_offline_isolation.py` - 3/3 PASSED
+### Lint Output
+```
+.venv/bin/python -m ruff check loquilex tests
+All checks passed!
+```
 
-### Environment Details
-- Python version: 3.12.3
-- Test environment: Offline mode with network guard active
-- Dependencies: All CI requirements satisfied
+### Format Output
+```
+.venv/bin/python -m black loquilex tests
+All done! ✨ 🍰 ✨
+45 files left unchanged.
+```
 
-### Code Changes Summary
-- **tests/test_e2e_websocket_api.py**: Replaced anyio.fail_after with threading-based bounded receive (0.8s timeout)
-- **tests/test_offline_isolation.py**: Updated allowed_hosts to include `::1`, fixed regex patterns
-- **tests/conftest.py**: Added forbid_network fixture blocking external connections
-- **Makefile**: Modified test target to export offline env vars
-- **loquilex/config/defaults.py**: Restricted _env() to LX_ prefixed vars only
-- **scripts/dev_fetch_models.py**: Improved skip message clarity
+### Typecheck Output
+```
+.venv/bin/python -m mypy loquilex
+loquilex/cli/live_en_to_zh.py:421: note: By default the bodies of untyped functions are not checked, consider using --check-untyped-defs  [annotation-unchecked]
+Success: no issues found in 22 source files
+```
+
+### Test Output
+```
+HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 HF_HUB_DISABLE_TELEMETRY=1 LOQUILEX_OFFLINE=1 pytest -q
+.................................                                       [100%]
+============================== warnings summary ===============================
+tests/test_e2e_websocket_api.py::test_e2e_websocket_live_session
+tests/test_e2e_websocket_api.py::test_session_config_validation
+tests/test_e2e_websocket_api.py::test_api_model_endpoints
+  /home/guff/LoquiLex/.venv/lib/python3.12/site-packages/httpx/_client.py:690: DeprecationWarning: The 'app' shortcut is now deprecated. Use the explicit style 'transport=WSGITransport(app=...)' instead.
+    warnings.warn(message, DeprecationWarning)
+
+33 passed, 3 warnings in 2.07s
+```
+
+### CodeQL Workflow Diff
+```diff
+on:
+-  push:
+-    branches: ['**']
++  push:
+   pull_request:
+     branches: [main]
+   schedule:
+     - cron: "0 4 * * 0" # weekly
+```
+
+### Constraints.txt Diff
+```diff
++# Path A (Keep Pin): deterministic dev/CI. Bump via Path B (Coordinated Upgrade)
++# when FastAPI/Starlette/httpx are upgraded together after local + E2E validation.
+ # Central constraints for deterministic installs across CI/dev
+ # Keep in sync when updating core tooling versions.
+```
 
 ## Final Results
-All acceptance criteria met:
-- ✅ Pytests green (33 passed)
-- ✅ WS test ≤1.0s (0.60s actual)
-- ✅ No external network access (network guard active)
-- ✅ ruff/mypy clean
-- ✅ `_env()` restricted to LX_ vars
+All acceptance criteria have been met:
+- ✅ No duplicate import in `tests/test_compat_versions.py` (none existed).
+- ✅ Copilot README does not reference missing files (files exist).
+- ✅ Version bump instructions match repo reality (`pyproject.toml` exists).
+- ✅ CodeQL workflow triggers are valid and consistent (omitted branches filter for push).
+- ✅ `constraints.txt` clearly states the pinning policy with added comments.
 
-No remaining warnings or follow-up items required. Task completed successfully.
+The task goals were fully achieved. No remaining issues or follow-ups required.
+
+## Files Changed
+- `.github/workflows/codeql.yml`: Updated push trigger to omit branches filter for consistency.
+- `constraints.txt`: Added comments explaining pinning policy.

@@ -84,6 +84,60 @@ The container sets offline-friendly environment flags (`HF_HUB_OFFLINE`, `TRANSF
 
 Tooling (ruff, black, mypy, pytest) is always installed even if not explicitly pinned in requirements files.
 
+## Development Workflow
+
+LoquiLex uses a structured GitHub Copilot Coding Agent workflow for development tasks:
+
+- **Task Management**: Tasks defined in `.github/copilot/current-task.md`
+- **Quality Gates**: Automated linting, formatting, type checking, and testing
+- **Deliverables**: Detailed execution logs in `.github/copilot/current-task-deliverables.md`
+- **Branch Strategy**: Feature branches with imperative commit messages
+
+See [`.github/copilot/README.md`](.github/copilot/README.md) for complete workflow documentation.
+
+## Versioning & Releases
+
+### Versioning Strategy
+
+LoquiLex uses **Semantic Versioning (SemVer)**:
+
+- **MAJOR.MINOR.PATCH** (e.g., `1.2.3`)
+- **MAJOR**: Breaking changes, API incompatibilities
+- **MINOR**: New features, backward compatible
+- **PATCH**: Bug fixes, backward compatible
+
+Current version: **0.1.0** (initial development release)
+
+### Release Process
+
+1. **Version Bump**: Update version in `pyproject.toml`
+2. **CHANGELOG**: Document changes in `CHANGELOG.md` using format:
+   ```markdown
+   ## [VERSION] - YYYY-MM-DD
+
+   ### Added
+   - New features
+
+   ### Changed
+   - Changes in existing functionality
+
+   ### Fixed
+   - Bug fixes
+
+   ### Removed
+   - Removed features
+   ```
+
+3. **Tag Release**: Create git tag `v[VERSION]`
+4. **Publish**: Build and publish to PyPI (future)
+
+### CHANGELOG Maintenance
+
+- Keep `CHANGELOG.md` updated with every PR that affects functionality
+- Use imperative mood for change descriptions
+- Group changes by type (Added, Changed, Fixed, Removed)
+- Reference issue/PR numbers when applicable
+
 ## Security
 
 LoquiLex is maintained with an automated security posture:
