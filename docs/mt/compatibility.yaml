@@ -1,0 +1,32 @@
+# Machine-Readable Compatibility Matrix
+providers:
+  - family: nllb
+    model_name: nllb-200-distilled-600M
+    tokenizer: NLLBTokenizerAdapter
+    directions:
+      - ["en","zh-Hans"]
+      - ["zh-Hans","en"]
+      - ["en","zh-Hant"]
+      - ["zh-Hant","en"]
+    requires_target_prefix: true
+    device_types: ["cpu","cuda"]
+    compute_types: ["int8","int8_float16","float16","float32"]
+    gpu_mem_gb_approx: 2.5
+    cpu_viable: true
+    notes: "Good baseline; fast on 8GB GPUs"
+    status: "working"
+  - family: m2m
+    model_name: m2m100_418M
+    tokenizer: M2MTokenizerAdapter
+    directions:
+      - ["en","zh-Hans"]
+      - ["zh-Hans","en"]
+      - ["en","zh-Hant"]
+      - ["zh-Hant","en"]
+    requires_target_prefix: true
+    device_types: ["cpu","cuda"]
+    compute_types: ["int8","int8_float16","float16","float32"]
+    gpu_mem_gb_approx: 1.8
+    cpu_viable: true
+    notes: "Hans strong; Hant initially experimental"
+    status: "working"
