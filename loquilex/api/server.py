@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 import os
 import re
 import time
@@ -15,6 +16,8 @@ from pydantic import BaseModel, Field
 
 from .model_discovery import list_asr_models, list_mt_models, mt_supported_languages
 from .supervisor import SessionConfig, SessionManager
+
+logger = logging.getLogger(__name__)
 
 """LoquiLex control-plane API (FastAPI) with WebSocket events.
 
@@ -327,8 +330,9 @@ async def get_session_metrics(sid: str) -> Dict[str, Any]:
         if metrics is None:
             raise HTTPException(status_code=503, detail="metrics not available")
         return metrics
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"metrics error: {e}")
+    except Exception:
+        logger.exception("metrics error")
+        raise HTTPException(status_code=500, detail="metrics error")
 
 
 @app.get("/sessions/{sid}/asr/snapshot")
@@ -362,10 +366,18 @@ async def get_snapshot(sid: str) -> Dict[str, Any]:
         except Exception:
             pass  # ASR snapshot is optional
 
+    # Determine status correctly for both regular and streaming sessions
+    if hasattr(sess, "_audio_thread") and sess._audio_thread is not None:
+        # Streaming session - check audio thread
+        status = "running" if sess._audio_thread.is_alive() else "stopped"
+    else:
+        # Regular session - check subprocess
+        status = "running" if (sess.proc and getattr(sess.proc, "poll", lambda: None)() is None) else "stopped"
+
     base_snapshot = {
         "sid": sid,
         "cfg": sess.cfg.__dict__,
-        "status": "running" if (sess.proc and sess.proc.poll() is None) else "stopped",
+        "status": status,
     }
 
     if asr_snapshot:

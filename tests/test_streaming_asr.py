@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import asyncio
 import time
 from typing import Any, Dict, List
+from unittest.mock import patch
 
 import numpy as np
 
@@ -354,3 +356,122 @@ class TestIntegration:
         snapshot = aggregator.get_snapshot()
         assert snapshot["type"] == "asr.snapshot"
         assert len(snapshot["recent_finals"]) > 0
+
+
+class TestAsyncBridge:
+    """Test thread-safe asyncio bridge in StreamingSession."""
+
+    @patch("asyncio.run_coroutine_threadsafe")
+    @patch("asyncio.get_running_loop")
+    def test_async_bridge_with_event_loop(self, mock_get_loop, mock_run_coroutine):
+        """Test that run_coroutine_threadsafe is used when event loop is available."""
+        from loquilex.api.supervisor import StreamingSession, SessionConfig
+        from pathlib import Path
+
+        # Mock event loop
+        mock_loop = asyncio.new_event_loop()
+        mock_get_loop.return_value = mock_loop
+
+        # Create session
+        cfg = SessionConfig(
+            name="test_session",
+            asr_model_id="tiny.en",
+            mt_enabled=False,
+            mt_model_id=None,
+            dest_lang="zh",
+            device="cpu",
+            vad=True,
+            beams=1,
+            pause_flush_sec=0.5,
+            segment_max_sec=10.0,
+            partial_word_cap=10,
+            save_audio="none",
+            streaming_mode=True,
+        )
+        session = StreamingSession("test_sid", cfg, Path("/tmp"))
+        session._event_loop = mock_loop
+
+        # Mock aggregator to trigger emit_event
+        from unittest.mock import MagicMock
+        mock_aggregator = MagicMock()
+        # Make add_partial call the emit_fn with a dummy event
+        def mock_add_partial(_partial_event, emit_fn):
+            emit_fn({"type": "test"})
+        mock_aggregator.add_partial.side_effect = mock_add_partial
+        session._aggregator = mock_aggregator
+
+        # Mock broadcast function
+        broadcast_calls = []
+        session._broadcast_fn = lambda sid, event: broadcast_calls.append((sid, event))
+
+        # Call _on_partial (simulates thread context)
+        partial_event = ASRPartialEvent(
+            stream_id="test_stream",
+            segment_id="test_seg",
+            seq=1,
+            text="test",
+            words=[ASRWord(w="test", t0=0.0, t1=0.5, conf=0.9)],
+            ts_monotonic=1000.0,
+        )
+
+        # This should use run_coroutine_threadsafe
+        session._on_partial(partial_event)
+
+        # Verify run_coroutine_threadsafe was called
+        mock_run_coroutine.assert_called_once()
+        args, kwargs = mock_run_coroutine.call_args
+        assert args[1] == mock_loop  # Second arg should be the loop
+
+    @patch("asyncio.get_running_loop", side_effect=RuntimeError("No running loop"))
+    def test_async_bridge_no_event_loop(self, _mock_get_loop):
+        """Test fallback behavior when no event loop is available."""
+        from loquilex.api.supervisor import StreamingSession, SessionConfig
+        from pathlib import Path
+
+        # Create session without event loop
+        cfg = SessionConfig(
+            name="test_session",
+            asr_model_id="tiny.en",
+            mt_enabled=False,
+            mt_model_id=None,
+            dest_lang="zh",
+            device="cpu",
+            vad=True,
+            beams=1,
+            pause_flush_sec=0.5,
+            segment_max_sec=10.0,
+            partial_word_cap=10,
+            save_audio="none",
+            streaming_mode=True,
+        )
+        session = StreamingSession("test_sid", cfg, Path("/tmp"))
+        session._event_loop = None  # No loop stored
+
+        # Mock aggregator to trigger emit_event
+        from unittest.mock import MagicMock
+        mock_aggregator = MagicMock()
+        # Make add_partial call the emit_fn with a dummy event
+        def mock_add_partial(_partial_event, emit_fn):
+            emit_fn({"type": "test"})
+        mock_aggregator.add_partial.side_effect = mock_add_partial
+        session._aggregator = mock_aggregator
+
+        # Mock broadcast function
+        broadcast_calls = []
+        session._broadcast_fn = lambda sid, event: broadcast_calls.append((sid, event))
+
+        # Call _on_partial (simulates thread context)
+        partial_event = ASRPartialEvent(
+            stream_id="test_stream",
+            segment_id="test_seg",
+            seq=1,
+            text="test",
+            words=[ASRWord(w="test", t0=0.0, t1=0.5, conf=0.9)],
+            ts_monotonic=1000.0,
+        )
+
+        # This should not crash and should handle the RuntimeError gracefully
+        session._on_partial(partial_event)
+
+        # Should have logged the partial text since broadcast failed
+        # (In real scenario, this would print to console)

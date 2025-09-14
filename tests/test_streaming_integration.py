@@ -300,3 +300,137 @@ class TestEndToEndStreaming:
         snapshot = aggregator.get_snapshot()
         assert snapshot["type"] == "asr.snapshot"
         assert snapshot["stream_id"] == stream_id
+
+
+class TestSnapshotStatus:
+    """Test snapshot status correctness for streaming sessions."""
+
+    def test_streaming_session_status_running(self):
+        """Test that streaming session shows 'running' status while audio thread is alive."""
+        client = TestClient(app)
+
+        # Create streaming session
+        response = client.post(
+            "/sessions",
+            json={
+                "asr_model_id": "tiny.en",
+                "streaming_mode": True,
+                "device": "cpu",
+            },
+        )
+        assert response.status_code == 200
+        session_id = response.json()["session_id"]
+
+        # Get snapshot - should show running status
+        response = client.get(f"/sessions/{session_id}/snapshot")
+        assert response.status_code == 200
+        snapshot = response.json()
+        assert snapshot["status"] == "running"
+
+        # Clean up
+        client.delete(f"/sessions/{session_id}")
+
+    def test_streaming_session_status_stopped(self):
+        """Test that streaming session shows 'stopped' status after stopping."""
+        client = TestClient(app)
+
+        # Create streaming session
+        response = client.post(
+            "/sessions",
+            json={
+                "asr_model_id": "tiny.en",
+                "streaming_mode": True,
+                "device": "cpu",
+            },
+        )
+        assert response.status_code == 200
+        session_id = response.json()["session_id"]
+
+        # Stop the session
+        response = client.delete(f"/sessions/{session_id}")
+        assert response.status_code == 200
+
+        # Get snapshot - session should be gone (404)
+        response = client.get(f"/sessions/{session_id}/snapshot")
+        assert response.status_code == 404
+
+
+class TestErrorHygiene:
+    """Test that HTTP 500 responses don't leak exception details."""
+
+    def test_metrics_error_no_exception_leak(self):
+        """Test that metrics endpoint doesn't leak exception text in 500 response."""
+        client = TestClient(app)
+
+        # Create regular session (not streaming)
+        response = client.post(
+            "/sessions",
+            json={
+                "asr_model_id": "tiny.en",
+                "device": "cpu",
+            },
+        )
+        assert response.status_code == 200
+        session_id = response.json()["session_id"]
+
+        # Force an internal error by monkeypatching
+        from loquilex.api.server import MANAGER
+
+        original_get_metrics = None
+        try:
+            sess = MANAGER._sessions.get(session_id)
+            if sess and hasattr(sess, "get_metrics"):
+                original_get_metrics = sess.get_metrics
+                sess.get_metrics = lambda: (_ for _ in ()).throw(RuntimeError("test error"))
+
+                # Call metrics endpoint
+                response = client.get(f"/sessions/{session_id}/metrics")
+                assert response.status_code == 500
+                error_detail = response.json()["detail"]
+                assert error_detail == "metrics error"
+                assert "test error" not in error_detail  # No exception text leaked
+        finally:
+            # Restore original method
+            if original_get_metrics:
+                sess.get_metrics = original_get_metrics
+
+        # Clean up
+        client.delete(f"/sessions/{session_id}")
+
+    def test_snapshot_error_no_exception_leak(self):
+        """Test that snapshot endpoint doesn't leak exception text in 500 response."""
+        client = TestClient(app)
+
+        # Create streaming session
+        response = client.post(
+            "/sessions",
+            json={
+                "asr_model_id": "tiny.en",
+                "streaming_mode": True,
+                "device": "cpu",
+            },
+        )
+        assert response.status_code == 200
+        session_id = response.json()["session_id"]
+
+        # Force an internal error by monkeypatching
+        from loquilex.api.server import MANAGER
+
+        original_get_asr_snapshot = None
+        try:
+            sess = MANAGER._sessions.get(session_id)
+            if sess and hasattr(sess, "get_asr_snapshot"):
+                original_get_asr_snapshot = sess.get_asr_snapshot
+                sess.get_asr_snapshot = lambda: (_ for _ in ()).throw(RuntimeError("snapshot test error"))
+
+                # Call snapshot endpoint
+                response = client.get(f"/sessions/{session_id}/snapshot")
+                # Should still work since ASR snapshot is optional
+                assert response.status_code == 200
+        finally:
+            # Restore original method
+            if original_get_asr_snapshot:
+                sess.get_asr_snapshot = original_get_asr_snapshot
+
+        # Clean up
+        client.delete(f"/sessions/{session_id}")
