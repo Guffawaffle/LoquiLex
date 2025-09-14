@@ -2,20 +2,22 @@
 
 from __future__ import annotations
 
+import os
 from ..core.types import Lang
 
 
 class M2MTokenizerAdapter:
     """Tokenizer adapter for M2M100 models."""
     
-    def __init__(self, name: str = "facebook/m2m100_418M"):
+    def __init__(self, name: str = None):
         # Lazy import to avoid heavy dependency on module load
         try:
             from transformers import AutoTokenizer
         except ImportError:
             raise ImportError("transformers package required for M2M tokenizer")
         
-        self._tok = AutoTokenizer.from_pretrained(name)
+        model_name = name or os.environ.get("M2M_MODEL_NAME", "facebook/m2m100_418M")
+        self._tok = AutoTokenizer.from_pretrained(model_name)
     
     def encode(self, text: str, src: Lang) -> list[str]:
         """Encode text with source language setting."""
