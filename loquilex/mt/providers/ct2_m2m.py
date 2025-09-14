@@ -23,7 +23,9 @@ class CT2M2MProvider:
         self._workers = int(os.getenv("LX_MT_WORKERS", "2"))
         
         if not self._model_dir:
-            raise MTModelLoadError("LX_MT_MODEL_DIR environment variable required")
+            raise MTModelLoadError(
+                "LX_MT_MODEL_DIR environment variable required: set to the path of the directory containing converted CTranslate2 model files"
+            )
     
     def _load_model(self):
         """Lazy load the CT2 model and tokenizer."""
