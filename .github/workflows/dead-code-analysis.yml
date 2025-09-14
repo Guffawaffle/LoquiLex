@@ -1,0 +1,68 @@
+name: Dead Code Analysis
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  dead-code-analysis:
+    name: Dead Code Detection
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Upgrade pip
+        run: python -m pip install -U pip
+
+      - name: Install dependencies
+        run: |
+          if [ -f requirements-ci.txt ]; then pip install -r requirements-ci.txt; fi
+          if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
+
+      - name: Run dead code analysis
+        run: |
+          make dead-code-analysis
+
+      # Uploading will happen after checks to avoid duplicate artifact names
+
+      - name: Check for dead code issues
+        run: |
+          # Make CI fail if high-confidence dead code is detected
+          if [ -f .artifacts/dead-code-reports/vulture-deadcode.txt ] && [ -s .artifacts/dead-code-reports/vulture-deadcode.txt ]; then
+            echo "❌ Dead code detected by Vulture:"
+            cat .artifacts/dead-code-reports/vulture-deadcode.txt
+            exit 1
+          fi
+
+          # Check for unused imports (not just arguments, which may be interface-required)
+          if .venv/bin/python -m ruff check loquilex tests --select=F401 --quiet; then
+            echo "✅ No unused imports detected"
+          else
+            echo "❌ Unused imports detected:"
+            .venv/bin/python -m ruff check loquilex tests --select=F401
+            exit 1
+          fi
+
+          echo "✅ Dead code analysis passed"
+
+      - name: Upload dead-code reports
+        if: always()  # still uploads even if earlier steps fail
+        uses: actions/upload-artifact@v4
+        with:
+          name: dead-code-reports
+          path: .artifacts/dead-code-reports/**
+          if-no-files-found: warn
+          retention-days: 30
