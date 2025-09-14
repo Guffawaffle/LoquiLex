@@ -34,7 +34,7 @@ def main() -> None:
     args = ap.parse_args()
 
     # Offline path: use faster-whisper directly for stability
-    from faster_whisper import WhisperModel  # type: ignore
+    from faster_whisper import WhisperModel
 
     device, _ = pick_device()
     # Prefer int8_float32 on CPU for better quality; fallback handled by faster-whisper if unsupported

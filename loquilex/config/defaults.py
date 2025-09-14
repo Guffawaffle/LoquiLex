@@ -110,7 +110,7 @@ def pick_device() -> tuple[str, str]:
     """
     pref = RT.device_preference
     try:
-        import torch  # type: ignore
+        import torch
 
         has_cuda = torch.cuda.is_available()
     except Exception:
