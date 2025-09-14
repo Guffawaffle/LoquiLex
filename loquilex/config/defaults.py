@@ -72,12 +72,21 @@ class SegmentationDefaults:
 
 @dataclass(frozen=True)
 class MTDefaults:
+    # Legacy HF model names (for backward compatibility)
     nllb_model: str = _env("LX_NLLB_MODEL", "facebook/nllb-200-distilled-600M")
     m2m_model: str = _env("LX_M2M_MODEL", "facebook/m2m100_418M")
     num_beams: int = _env_int("LX_MT_BEAMS", 1)
     no_repeat_ngram_size: int = _env_int("LX_MT_NO_REPEAT", 2)
     max_input_tokens: int = _env_int("LX_MT_MAX_INPUT", 96)
     max_new_tokens: int = _env_int("LX_MT_MAX_NEW", 96)
+    
+    # New CT2-based MT config
+    provider: str = _env("LX_MT_PROVIDER", "ct2-nllb")
+    model_dir: str = _env("LX_MT_MODEL_DIR", "")
+    device: str = _env("LX_MT_DEVICE", "auto")  
+    compute_type: str = _env("LX_MT_COMPUTE_TYPE", "int8_float16")
+    workers: int = _env_int("LX_MT_WORKERS", 2)
+    lang_variant_zh: str = _env("LX_LANG_VARIANT_ZH", "Hans")
 
 
 @dataclass(frozen=True)
