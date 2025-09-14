@@ -19,14 +19,14 @@ fi
 export HF_HUB_OFFLINE=1
 export TRANSFORMERS_OFFLINE=1
 export HF_HUB_DISABLE_TELEMETRY=1
-export LOQUILEX_OFFLINE=1
+export LX_OFFLINE=1
 
 # Determinism & quieter pip
 export PYTHONHASHSEED=0
 export PIP_DISABLE_PIP_VERSION_CHECK=1
 
 echo "=== Environment Variables ==="
-env | grep -E '^(HF_HUB_OFFLINE|TRANSFORMERS_OFFLINE|HF_HUB_DISABLE_TELEMETRY|LOQUILEX_OFFLINE|PYTHONHASHSEED)=' || true
+env | grep -E '^(HF_HUB_OFFLINE|TRANSFORMERS_OFFLINE|HF_HUB_DISABLE_TELEMETRY|LX_OFFLINE|PYTHONHASHSEED)=' || true
 
 echo "=== Installing Dependencies (CI-style) ==="
 python -m pip install -U pip

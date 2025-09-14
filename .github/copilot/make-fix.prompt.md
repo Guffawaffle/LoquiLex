@@ -8,7 +8,7 @@ Run the specified `make` target in the LoquiLex repo and fix failures methodical
 
 #environment
 - Python: 3.12.3
-- Offline-first: export HF_HUB_OFFLINE=1, TRANSFORMERS_OFFLINE=1, HF_HUB_DISABLE_TELEMETRY=1, LOQUILEX_OFFLINE=1
+- Offline-first: export HF_HUB_OFFLINE=1, TRANSFORMERS_OFFLINE=1, HF_HUB_DISABLE_TELEMETRY=1, LX_OFFLINE=1
 - Use Makefile targets as the source of truth (don’t run tools directly unless the target does so).
 - Respect repo rules in `AGENTS.md` (commit style, CI/lint/type/test requirements, minimal diffs).
 
