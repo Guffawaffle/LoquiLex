@@ -24,6 +24,7 @@ from fastapi import WebSocket
 from .ws_types import (
     AckData,
     ClientHelloData,
+    ResumeInfo,
     FlowControlData,
     HeartbeatConfig,
     HeartbeatData,
@@ -127,7 +128,7 @@ class WSProtocolManager:
         self._outbound_queues: Dict[WebSocket, BoundedQueue] = {}
 
         # Telemetry
-        self._metrics = {
+        self._metrics: Dict[str, Dict[str, Any]] = {
             "queue_depths": {},
             "drop_counts": {},
             "latency_metrics": {},
@@ -221,6 +222,17 @@ class WSProtocolManager:
 
         except Exception as e:
             await self._send_error(ws, "invalid_hello", str(e))
+
+    async def _handle_resume_request(self, ws: WebSocket, resume: ResumeInfo) -> None:
+        """Process a resume request coming from a ClientHello.resume field.
+
+        This is a small shim so both explicit SESSION_RESUME messages and
+        embedded resume requests in ClientHello share the same resume handling
+        implemented in `_handle_session_resume`.
+        """
+        # Construct a minimal envelope-like object to reuse existing handler
+        envelope = WSEnvelope(v=1, t=MessageType.SESSION_RESUME, sid=self.sid, id=None, seq=None, corr=None, t_wall=None, data=resume.model_dump())
+        await self._handle_session_resume(ws, envelope)
 
     async def _handle_session_resume(self, ws: WebSocket, envelope: WSEnvelope) -> None:
         """Handle session resume request."""
