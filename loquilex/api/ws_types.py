@@ -70,6 +70,8 @@ class WSEnvelope(BaseModel):
 
     def model_post_init(self, __context: Any) -> None:
         """Auto-generate message ID if not provided."""
+        if __context is not None:
+            pass  # pydantic v2 context, ignore for now
         if self.id is None and self.sid is not None:
             self.id = f"msg_{uuid.uuid4().hex[:8]}"
 

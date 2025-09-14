@@ -2,7 +2,7 @@
 
 This module implements the core WebSocket protocol logic including:
 - Envelope creation and validation
-- Heartbeat scheduling and monitoring  
+- Heartbeat scheduling and monitoring
 - Acknowledgement tracking and flow control
 - Resume/reconnect with replay buffer
 - Session lifecycle management
@@ -40,6 +40,21 @@ logger = logging.getLogger(__name__)
 
 
 class WSProtocolManager:
+    async def __aenter__(self):
+        """Support async context manager for automatic cleanup."""
+        return self
+
+    async def __aexit__(self, exc_type, exc, tb):
+        await self.close()
+
+    def __del__(self):
+        """Destructor to ensure cleanup if not already done."""
+        # If tasks are still running, schedule their cancellation
+        if self._hb_task and not self._hb_task.done():
+            self._hb_task.cancel()
+        if self._hb_timeout_task and not self._hb_timeout_task.done():
+            self._hb_timeout_task.cancel()
+
     """Manages WebSocket protocol for a single session."""
 
     def __init__(
@@ -286,14 +301,24 @@ class WSProtocolManager:
         self._hb_timeout_task = asyncio.create_task(self._heartbeat_timeout())
 
     async def _stop_heartbeat(self) -> None:
-        """Stop heartbeat scheduling."""
+        """Stop heartbeat scheduling and await tasks."""
+        tasks = []
         if self._hb_task:
             self._hb_task.cancel()
+            tasks.append(self._hb_task)
             self._hb_task = None
 
         if self._hb_timeout_task:
             self._hb_timeout_task.cancel()
+            tasks.append(self._hb_timeout_task)
             self._hb_timeout_task = None
+
+        # Await cancelled tasks to ensure proper cleanup
+        for t in tasks:
+            try:
+                await t
+            except asyncio.CancelledError:
+                pass
 
     async def _heartbeat_loop(self) -> None:
         """Send periodic heartbeats."""
