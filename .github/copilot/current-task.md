@@ -1,108 +1,133 @@
-# Current Task — PR #27 Polish: docs accuracy, tiny test nit, and CI trigger hygiene
+# Task: PR #43 — Unblock container `make ci` (fix mypy-only blockers)
 
-> Branch: `chore/base-camp` (PR #27) → target `main`
-> Goal: Merge-ready with precise docs and zero paper cuts.
+**Timestamp:** 2025-09-14 10:32 CDT
+**Context:** Docker exec issues are resolved. The remaining failure for `make ci` inside the container is **mypy**. We will **only** address type-check errors that block CI (no behavioral changes).
+
+## Intent
+Make `make ci` pass **inside the Docker CI image** by fixing/cleaning typing issues: remove unused `# type: ignore` comments, replace invalid `any` annotations with `typing.Any`, add minimal missing annotations, and narrow union types at call sites. Do **not** change runtime semantics.
+
+## Branch
+Operate on the PR #43 head branch. If already on a working branch for this effort, continue there. Otherwise:
+```bash
+gh pr view 43 --json headRefName,url --jq '.headRefName + " ← " + .url'
+git fetch origin pull/43/head:pr-43 && git checkout pr-43
+git checkout -b fix/43-mypy-ci
+```
+
+## Constraints
+- **Scope**: Fix only mypy blockers reported by `make ci` inside the container. No feature changes.
+- **Offline-first**: Do not add any network/model downloads to tests.
+- **Minimal diffs**: Keep edits as small and local as possible.
+- **Commit style**: Imperative, focused commits.
+- **No repo settings changes**. If something requires UI-only changes, record as **Manual Step Required**.
 
 ---
 
-## Objectives (ranked)
-
-### Blocking
-1) **Fix duplicate import in `tests/test_compat_versions.py`**
-   Remove the stray `import httpx` when `import httpx, starlette, pytest` is present.
-
-2) **Correct docs that reference non-existent files**
-   In `.github/copilot/README.md`, either remove or add the referenced `rotate-task.sh` and `main.prompt.md` if they don't exist. Prefer removing refs for now to keep docs truthful.
-
-### Priority
-3) **Versioning doc accuracy**
-   Copilot README says: “Update version in `pyproject.toml`.” If the repo doesn’t have `pyproject.toml`, change to: “Update version in the project’s version source of truth (e.g., `loquilex/__init__.py`).” Keep references consistent across README and Copilot README.
-
-4) **CodeQL trigger clarity**
-   `on.push.branches: ['**']` is valid (all branches, including slashes). Alternatively, omit the filter to mean “all branches.” Choose one approach and keep it consistent across workflows. Ensure there are no empty `schedule:` stanzas.
-
-### QoL
-5) **`constraints.txt` commentary**
-   Keep the Path A (Keep Pin) rationale in comments and ensure the compatibility set is coherent. Clarify these pins are for **dev/CI determinism**, and that upgrades follow Path B (Coordinated Upgrade) when we choose to bump.
+## Baseline (record current state)
+Run and capture outputs (for deliverables):
+```bash
+docker build -t loquilex-ci -f Dockerfile.ci .
+docker run --rm -v "$(pwd)":/app -w /app --entrypoint /usr/bin/make loquilex-ci ci
+```
+Save the full mypy error list (file, line, error code) into the deliverables.
 
 ---
 
-## Patch Sketches
+## Changes to Apply (surgical)
 
-### `tests/test_compat_versions.py` — dedupe import
+### 1) Add mypy config for optional deps
+Create **`mypy.ini`** at repo root (or merge into existing config). This prevents code-level ignores for third-party stubs:
+```ini
+[mypy]
+python_version = 3.12
+warn_unused_ignores = True
+warn_redundant_casts = True
+warn_unreachable = True
+no_implicit_optional = True
 
-```diff
--from packaging.version import Version
--import httpx
--import starlette
--import httpx, starlette, pytest
-+from packaging.version import Version
-+import httpx, starlette, pytest
+[mypy.torch.*]
+ignore_missing_imports = True
+
+[mypy.transformers.*]
+ignore_missing_imports = True
 ```
+> If `pyproject.toml` already configures mypy, add the equivalent sections there instead of creating `mypy.ini`.
 
-### `.github/copilot/README.md` — remove non-existent tool refs (until added)
+### 2) Replace invalid `any` with `typing.Any` in **`loquilex/asr/metrics.py`**
+- `from typing import Any` (add to imports)
+- Change function annotations:
+  - `get_summary(self) -> Dict[str, Any]`
+  - `on_partial_event(self, event: Dict[str, Any]) -> None`
+  - `on_final_event(self, event: Dict[str, Any]) -> None`
+  - `_safe_get(self, d: Dict[str, Any], key: str, default: Any = None) -> Any`
 
-```diff
-- - `main.prompt.md` - **Agent instructions** (workflow rules)
-- - `rotate-task.sh` - **Task management script**
-+ <!-- If/when these files are added, re-introduce them here. -->
-```
+### 3) Minimal missing annotations
+- **`loquilex/asr/stream.py`**:
+  - `from typing import List`
+  - `words: List[ASRWord] = []` (use the project’s word type alias if different)
+- **`loquilex/asr/aggregator.py`**:
+  - `from typing import Set`
+  - `self.finalized_segment_ids: Set[str] = set()`
 
-### Copilot README — version source of truth
+### 4) Session typing & narrowing (no behavior change)
+- **`loquilex/api/supervisor.py`**
+  - `from typing import Optional, Union`
+  - Fields:
+    - `self.asr: Optional[StreamingASR] = None`
+    - `self.aggregator: Optional[PartialFinalAggregator] = None`
+    - `self._sessions: Dict[str, Union[Session, StreamingSession]] = {}`
+  - Guarded warmup:
+    - `if self.asr is not None: self.asr.warmup()`
+  - Narrow before calling session-specific methods:
+    - `if isinstance(sess, StreamingSession): ... else: raise HTTPException(status_code=400, detail="streaming session required")`
 
-```diff
--1. **Version Bump**: Update version in `pyproject.toml`
-+1. **Version Bump**: Update version in the project’s version source of truth (e.g., `loquilex/__init__.py`),
-+   and keep README + CHANGELOG in sync.
-```
+- **`loquilex/api/server.py`**
+  - Use `isinstance(sess, StreamingSession)` before calling `get_metrics()` / `get_asr_snapshot()`.
+  - For non-streaming sessions: `raise HTTPException(status_code=400, detail="streaming session required")`.
 
-### `.github/workflows/codeql.yml` — triggers (pick one style and stick to it)
+> Do **not** alter success payloads or existing test expectations.
 
-**Option A (explicit all branches):**
+### 5) Remove unused `# type: ignore` comments
+- Search in `loquilex/mt/translator.py`, `loquilex/api/supervisor.py`, and any files flagged by `warn_unused_ignores`.
+- If an ignore is still necessary, scope it (e.g., `# type: ignore[assignment]`).
 
-```yaml
-on:
-  push:
-    branches: ['**']
-  pull_request:
-    branches: [main]
-  # schedule:
-  #   - cron: '0 3 * * 1'  # (optional) weekly run
-```
-
-**Option B (implicit all branches by omitting filter):**
-
-```yaml
-on:
-  push:
-  pull_request:
-    branches: [main]
-```
-
-### `constraints.txt` — comment the policy (example snippet)
-
-```text
-# Path A (Keep Pin): deterministic dev/CI. Bump via Path B (Coordinated Upgrade)
-# when FastAPI/Starlette/httpx are upgraded together after local + E2E validation.
-```
+### 6) Tidy “unreachable code” patterns (no semantic change)
+- **CLI (`loquilex/cli/live_en_to_zh.py`)**:
+  ```py
+  if __name__ == "__main__":
+      raise SystemExit(main())
+  ```
+- If mypy flags statements after `return`/`raise`, restructure with `if/else`. For impossible branches, Python 3.12’s:
+  ```py
+  from typing import assert_never
+  ...
+  else:
+      assert_never(sess)
+  ```
 
 ---
+
+## Re-run & Verify
+Execute inside container and record outputs:
+```bash
+docker build -t loquilex-ci -f Dockerfile.ci .
+
+# Primary gate
+docker run --rm -v "$(pwd)":/app -w /app   --entrypoint /usr/bin/make loquilex-ci ci
+
+# Optional: dead-code report using container Python
+docker run --rm -v "$(pwd)":/app -w /app   -e VENV_PY=/opt/venv/bin/python   --entrypoint /usr/bin/make loquilex-ci dead-code-analysis
+```
+
+## Deliverables → `.github/copilot/current-task-deliverables.md`
+1. **Executive Summary**: what changed and outcome.
+2. **Steps Taken**: commands and brief rationale.
+3. **Evidence & Verification**: full mypy/ruff/pytest outputs from the container; list of files/lines fixed.
+4. **Final Results**: pass/fail against acceptance criteria.
+5. **Files Changed**: each file with purpose (types/annotations/config only).
 
 ## Acceptance Criteria
-
-- ✅ Duplicate import removed; tests still pass.
-- ✅ Copilot README doesn’t reference missing files; version bump instructions match repo reality.
-- ✅ CodeQL workflow triggers are valid YAML and intentional (no empty schedule). `actionlint` is clean.
-- ✅ `constraints.txt` clearly states the chosen pinning policy.
-
-## Commands
-
-```bash
-make fmt && make fmt-check
-make lint && make type && make test
-actionlint .github/workflows/codeql.yml
-```
-
-## Deliverables
-
-- Update `.github/copilot/current-task-deliverables.md` with a brief summary, the diffs, and a post-merge note.
+- `make ci` **passes inside the Docker container** (`loquilex-ci` image), with **zero** mypy errors.
+- No runtime behavior changes (tests remain green).
+- Changes limited to typing/config and unreachable-code tidying.
+- Commits are imperative and minimal; outputs captured in deliverables.

@@ -26,7 +26,7 @@ from loquilex.post.zh_text import post_process
 from loquilex.segmentation.aggregator import Aggregator
 
 
-def main() -> None:
+def main() -> int:
     ap = argparse.ArgumentParser()
     # Legacy flags (kept for compatibility with older docs)
     ap.add_argument("--out-prefix", default=f"{RT.out_dir}/live")
@@ -155,9 +155,9 @@ def main() -> None:
     # Track next SRT index for ZH
     srt_index_zh = 1
     # Start timing AFTER warmup and just before capture begins
-    session_t0_mono = None  # will set once first audio frame arrives (monotonic)
-    last_t1_mono = None  # monotonic time of latest captured audio end
-    audio_since_reset = 0.0  # seconds fed to engine since its last reset
+    session_t0_mono: float | None = None  # will set once first audio frame arrives (monotonic)
+    last_t1_mono: float | None = None  # monotonic time of latest captured audio end
+    audio_since_reset: float = 0.0  # seconds fed to engine since its last reset
     mt_dropped = 0  # Count of dropped translation requests due to backlog
 
     def on_partial(txt: str) -> None:
@@ -202,7 +202,8 @@ def main() -> None:
                 last_zh_partial_emit = now
 
     def on_final(a: float, b: float, txt: str) -> None:
-        assert session_t0_mono is not None
+        if session_t0_mono is None:
+            return
         rel_a = a - session_t0_mono
         rel_b = b - session_t0_mono
         cues.append((rel_a, rel_b, txt))
@@ -238,7 +239,10 @@ def main() -> None:
     def on_seg(seg: Segment) -> None:
         # Map model-relative times to wall clock using capture timing
         nonlocal audio_since_reset
-        assert session_t0_mono is not None and last_t1_mono is not None
+        if session_t0_mono is None:
+            return
+        if last_t1_mono is None:
+            return
         buf_sec = min(audio_since_reset, RT.max_buffer_sec)
         # Map ASR buffer-relative times (seg.start/end) to session-relative using monotonic clock
         seg_start_wall = last_t1_mono - (buf_sec - float(seg.start))
@@ -440,7 +444,7 @@ def main() -> None:
     shutdown = threading.Event()
     finalize_now = threading.Event()
 
-    def _on_signal(signum, _frame):  # type: ignore[no-untyped-def]
+    def _on_signal(signum, _frame) -> None:
         # Set shutdown flag; main loop will exit promptly
         if signum == signal.SIGUSR1:
             finalize_now.set()
@@ -511,7 +515,8 @@ def main() -> None:
             print(f"[cli] MT dropped={mt_dropped}")
 
     print("[cli] run complete")
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

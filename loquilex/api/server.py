@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 import os
 import re
 import time
@@ -14,7 +15,9 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from .model_discovery import list_asr_models, list_mt_models, mt_supported_languages
-from .supervisor import SessionConfig, SessionManager
+from .supervisor import SessionConfig, SessionManager, StreamingSession
+
+logger = logging.getLogger(__name__)
 
 """LoquiLex control-plane API (FastAPI) with WebSocket events.
 
@@ -77,6 +80,7 @@ class CreateSessionReq(BaseModel):
     segment_max_sec: float = Field(default=7.0)
     partial_word_cap: int = Field(default=10)
     save_audio: str = Field(default="off")  # off|wav|flac
+    streaming_mode: bool = Field(default=False)  # Enable new streaming ASR pipeline
 
 
 class CreateSessionResp(BaseModel):
@@ -202,6 +206,7 @@ async def create_session(req: CreateSessionReq) -> CreateSessionResp:
         segment_max_sec=req.segment_max_sec,
         partial_word_cap=req.partial_word_cap,
         save_audio=req.save_audio,
+        streaming_mode=req.streaming_mode,
     )
     try:
         sid = MANAGER.start_session(cfg)
@@ -310,16 +315,82 @@ async def finalize_session(sid: str) -> Dict[str, Any]:
     return {"ok": True}
 
 
+@app.get("/sessions/{sid}/metrics")
+async def get_session_metrics(sid: str) -> Dict[str, Any]:
+    """Get performance metrics for a streaming session."""
+    sess = MANAGER._sessions.get(sid)
+    if not sess:
+        raise HTTPException(status_code=404, detail="session not found")
+
+    if isinstance(sess, StreamingSession):
+        try:
+            metrics = sess.get_metrics()
+            if metrics is None:
+                raise HTTPException(status_code=503, detail="metrics not available")
+            return metrics
+        except Exception:
+            logger.exception("metrics error")
+            raise HTTPException(status_code=500, detail="metrics error")
+    else:
+        raise HTTPException(
+            status_code=400, detail="metrics not available for non-streaming session"
+        )
+
+
+@app.get("/sessions/{sid}/asr/snapshot")
+async def get_asr_snapshot(sid: str) -> Dict[str, Any]:
+    """Get ASR snapshot for reconnect scenarios (streaming sessions only)."""
+    sess = MANAGER._sessions.get(sid)
+    if not sess:
+        raise HTTPException(status_code=404, detail="session not found")
+
+    if isinstance(sess, StreamingSession):
+        snapshot = sess.get_asr_snapshot()
+        if snapshot is None:
+            raise HTTPException(status_code=503, detail="ASR snapshot not available")
+        return snapshot
+    else:
+        raise HTTPException(
+            status_code=400, detail="snapshot not available for non-streaming session"
+        )
+
+
 @app.get("/sessions/{sid}/snapshot")
 async def get_snapshot(sid: str) -> Dict[str, Any]:
     sess = MANAGER._sessions.get(sid)
     if not sess:
         raise HTTPException(status_code=404, detail="session not found")
-    return {
+
+    # Try to get ASR snapshot if session has streaming ASR
+    asr_snapshot = None
+    if hasattr(sess, "get_asr_snapshot"):
+        try:
+            asr_snapshot = sess.get_asr_snapshot()
+        except Exception:
+            pass  # ASR snapshot is optional
+
+    # Determine status correctly for both regular and streaming sessions
+    if hasattr(sess, "_audio_thread") and sess._audio_thread is not None:
+        # Streaming session - check audio thread
+        status = "running" if sess._audio_thread.is_alive() else "stopped"
+    else:
+        # Regular session - check subprocess
+        status = (
+            "running"
+            if (sess.proc and getattr(sess.proc, "poll", lambda: None)() is None)
+            else "stopped"
+        )
+
+    base_snapshot = {
         "sid": sid,
         "cfg": sess.cfg.__dict__,
-        "status": "running" if (sess.proc and sess.proc.poll() is None) else "stopped",
+        "status": status,
     }
+
+    if asr_snapshot:
+        base_snapshot["asr"] = asr_snapshot
+
+    return base_snapshot
 
 
 @app.websocket("/events/{sid}")

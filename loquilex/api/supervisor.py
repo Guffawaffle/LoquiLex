@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 import os
 import queue
 import signal
@@ -11,11 +12,208 @@ import time
 import uuid
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 from fastapi import WebSocket
 
 from .events import EventStamper
+
+logger = logging.getLogger(__name__)
+
+
+class StreamingSession:
+    """In-process streaming session using the new StreamingASR pipeline."""
+
+    def __init__(self, sid: str, cfg: SessionConfig, run_dir: Path) -> None:
+        from typing import Callable, Awaitable
+
+        self.sid = sid
+        self.cfg = cfg
+        self.run_dir = run_dir
+        self.proc = None  # No subprocess for streaming sessions
+        self._stop_evt = threading.Event()
+        self.stamper = EventStamper.new()
+        self.queue: "queue.Queue[str]" = queue.Queue(maxsize=1000)  # Add queue for compatibility
+
+        # Event loop reference for thread-safe asyncio calls
+        self._event_loop: Optional[asyncio.AbstractEventLoop] = None
+        self._broadcast_fn: Optional[Callable[[str, Dict[str, Any]], Awaitable[None]]] = None
+
+        # Streaming ASR components
+        self.asr: Optional[Any] = None  # StreamingASR
+        self.aggregator: Optional[Any] = None  # PartialFinalAggregator
+        self._audio_thread: Optional[threading.Thread] = None
+
+    def set_broadcast_fn(self, broadcast_fn) -> None:
+        """Set the broadcast function for emitting events."""
+        self._broadcast_fn = broadcast_fn
+
+    def _schedule_broadcast(self, event: Dict[str, Any]) -> None:
+        """Safely schedule a broadcast coroutine from any thread."""
+        if self._event_loop is None or self._broadcast_fn is None:
+            print("[StreamingSession] dropping event (no loop or broadcast_fn)")
+            return
+        # Ensure _broadcast_fn returns a coroutine
+        def coro():
+            return self._broadcast_fn(self.sid, event)
+        self._event_loop.call_soon_threadsafe(lambda: asyncio.create_task(coro()))
+
+    def start(self) -> None:
+        """Start the streaming ASR session."""
+        # Store event loop reference for thread-safe asyncio calls
+        try:
+            self._event_loop = asyncio.get_running_loop()
+        except RuntimeError:
+            self._event_loop = None  # Will be set later if needed
+        # Configure ASR environment
+        os.environ["LX_ASR_MODEL"] = self.cfg.asr_model_id
+        os.environ["LX_DEVICE"] = self.cfg.device
+        os.environ["LX_ASR_VAD"] = "1" if self.cfg.vad else "0"
+        os.environ["LX_ASR_BEAM"] = str(self.cfg.beams)
+        os.environ["LX_PAUSE_FLUSH_SEC"] = str(self.cfg.pause_flush_sec)
+        os.environ["LX_SEGMENT_MAX_SEC"] = str(self.cfg.segment_max_sec)
+
+        try:
+            # Import here to avoid circular imports and to get proper fake during tests
+            from loquilex.asr.stream import StreamingASR
+            from loquilex.asr.aggregator import PartialFinalAggregator
+
+            # Initialize streaming components
+            self.asr = StreamingASR(stream_id=self.sid)
+            self.aggregator = PartialFinalAggregator(self.sid)
+
+            # Warmup ASR
+            self.asr.warmup()
+
+            # Start audio processing thread
+            def audio_worker():
+                stop_capture = None
+                try:
+                    # Import audio capture
+                    from loquilex.audio.capture import capture_stream
+
+                    def on_audio_frame(frame):
+                        if self._stop_evt.is_set():
+                            return
+                        try:
+                            self.asr.process_audio_chunk(
+                                frame.data, self._on_partial, self._on_final
+                            )
+                        except Exception as e:
+                            print(f"[StreamingSession] Audio processing error: {e}")
+
+                    # Start audio capture
+                    stop_capture = capture_stream(on_audio_frame)
+
+                    # Broadcast ready status using safe scheduling
+                    self._schedule_broadcast(
+                        {
+                            "type": "status",
+                            "stage": "operational",
+                            "log": "Ready — start speaking now (streaming mode)",
+                        }
+                    )
+
+                    # Keep thread alive until stopped
+                    while not self._stop_evt.is_set():
+                        time.sleep(0.1)
+
+                except Exception as e:
+                    print(f"[StreamingSession] Audio worker error: {e}")
+                    self._schedule_broadcast(
+                        {
+                            "type": "status",
+                            "stage": "error",
+                            "log": f"Audio error: {e}",
+                        }
+                    )
+                finally:
+                    # Guarantee audio capture cleanup
+                    if stop_capture is not None:
+                        try:
+                            stop_capture()
+                        except Exception:
+                            logger.exception("stop_capture failed")
+
+            self._audio_thread = threading.Thread(target=audio_worker, daemon=True)
+            self._audio_thread.start()
+
+        except Exception as e:
+            print(f"[StreamingSession] Startup error: {e}")
+            raise
+
+    def _on_partial(self, partial_event) -> None:
+        """Handle partial ASR events."""
+        # Early-out if core pieces aren't ready
+        if self.aggregator is None or self._broadcast_fn is None or self._event_loop is None:
+            return
+
+        def emit_event(event_dict: Dict[str, Any]) -> None:
+            self._schedule_broadcast(event_dict)
+
+        try:
+            self.aggregator.add_partial(partial_event, emit_event)
+        except Exception as e:
+            print(f"[StreamingSession] Partial event error: {e}")
+
+    def _on_final(self, final_event) -> None:
+        """Handle final ASR events."""
+        # Early-out if core pieces aren't ready
+        if self.aggregator is None or self._broadcast_fn is None or self._event_loop is None:
+            return
+
+        def emit_event(event_dict: Dict[str, Any]) -> None:
+            self._schedule_broadcast(event_dict)
+
+        try:
+            self.aggregator.add_final(final_event, emit_event)
+        except Exception as e:
+            print(f"[StreamingSession] Final event error: {e}")
+
+    def stop(self) -> None:
+        """Stop the streaming session."""
+        self._stop_evt.set()
+        if self._audio_thread:
+            try:
+                self._audio_thread.join(timeout=2.0)
+            except Exception:
+                pass
+
+    def pause(self) -> None:
+        """Pause audio processing (placeholder)."""
+        # Could implement by pausing audio capture
+        pass
+
+    def resume(self) -> None:
+        """Resume audio processing (placeholder)."""
+        # Could implement by resuming audio capture
+        pass
+
+    def finalize_now(self) -> None:
+        """Force finalize current segment."""
+        if self.asr:
+            try:
+                self.asr.force_finalize(self._on_final)
+            except Exception as e:
+                print(f"[StreamingSession] Force finalize error: {e}")
+
+    def get_metrics(self) -> Optional[Dict[str, Any]]:
+        """Get performance metrics."""
+        if self.aggregator:
+            try:
+                return self.aggregator.get_metrics_summary()
+            except Exception as e:
+                print(f"[StreamingSession] Metrics error: {e}")
+        return None
+
+    def get_asr_snapshot(self) -> Optional[Dict[str, Any]]:
+        """Get ASR snapshot for reconnects."""
+        if self.aggregator:
+            try:
+                return self.aggregator.get_snapshot()
+            except Exception as e:
+                print(f"[StreamingSession] Snapshot error: {e}")
+        return None
 
 
 @dataclass
@@ -32,6 +230,8 @@ class SessionConfig:
     segment_max_sec: float
     partial_word_cap: int
     save_audio: str
+    # New streaming mode flag
+    streaming_mode: bool = False
 
 
 class Session:
@@ -93,14 +293,14 @@ class Session:
         if self.proc and self.proc.poll() is None:
             try:
                 try:
-                    os.killpg(self.proc.pid, signal.SIGTERM)  # type: ignore[arg-type]
+                    os.killpg(self.proc.pid, signal.SIGTERM)
                 except Exception:
                     self.proc.terminate()
                 try:
                     self.proc.wait(timeout=3)
                 except subprocess.TimeoutExpired:
                     try:
-                        os.killpg(self.proc.pid, signal.SIGKILL)  # type: ignore[arg-type]
+                        os.killpg(self.proc.pid, signal.SIGKILL)
                     except Exception:
                         self.proc.kill()
             except Exception:
@@ -116,28 +316,29 @@ class Session:
         # Send SIGSTOP to process group to pause audio ingest and decoding
         if self.proc and self.proc.poll() is None:
             try:
-                os.killpg(self.proc.pid, signal.SIGSTOP)  # type: ignore[arg-type]
+                os.killpg(self.proc.pid, signal.SIGSTOP)
             except Exception:
                 pass
 
     def resume(self) -> None:
         if self.proc and self.proc.poll() is None:
             try:
-                os.killpg(self.proc.pid, signal.SIGCONT)  # type: ignore[arg-type]
+                os.killpg(self.proc.pid, signal.SIGCONT)
             except Exception:
                 pass
 
     def finalize_now(self) -> None:
         if self.proc and self.proc.poll() is None:
             try:
-                os.killpg(self.proc.pid, signal.SIGUSR1)  # type: ignore[arg-type]
+                os.killpg(self.proc.pid, signal.SIGUSR1)
             except Exception:
                 pass
 
 
 class SessionManager:
     def __init__(self) -> None:
-        self._sessions: Dict[str, Session] = {}
+        # Holds both types; narrow at call sites.
+        self._sessions: Dict[str, Union[Session, StreamingSession]] = {}
         self._ws: Dict[str, List[WebSocket]] = {}
         self._bg_threads: List[threading.Thread] = []
         self._lock = threading.Lock()
@@ -157,14 +358,25 @@ class SessionManager:
                 running_cuda = sum(1 for s in self._sessions.values() if s.cfg.device == "cuda")
             if running_cuda >= self._max_cuda_sessions:
                 raise RuntimeError("GPU busy: maximum concurrent CUDA sessions reached")
+
         sid = str(uuid.uuid4())
         run_dir = Path("loquilex/out") / sid
         run_dir.mkdir(parents=True, exist_ok=True)
-        sess = Session(sid, cfg, run_dir)
+
+        # Choose session type based on streaming_mode flag
+        sess: Union[Session, StreamingSession]
+        if cfg.streaming_mode:
+            sess = StreamingSession(sid, cfg, run_dir)
+            sess.set_broadcast_fn(self._broadcast)
+        else:
+            sess = Session(sid, cfg, run_dir)
+
         sess.start()
+
         with self._lock:
             self._sessions[sid] = sess
             self._stampers[sid] = sess.stamper
+
         asyncio.create_task(self._broadcast(sid, {"type": "status", "stage": "initializing"}))
         return sid
 
@@ -396,11 +608,11 @@ class SessionManager:
         if not proc or proc.poll() is not None:
             return False
         try:
-            os.killpg(proc.pid, signal.SIGTERM)  # type: ignore[arg-type]
+            os.killpg(proc.pid, signal.SIGTERM)
             try:
                 proc.wait(timeout=3)
             except subprocess.TimeoutExpired:
-                os.killpg(proc.pid, signal.SIGKILL)  # type: ignore[arg-type]
+                os.killpg(proc.pid, signal.SIGKILL)
             return True
         except Exception:
             try:
