@@ -75,8 +75,9 @@ class TestWSProtocolManager:
         async with WSProtocolManager("test_session") as manager:
             assert manager.sid == "test_session"
             assert manager.state.sid == "test_session"
+            assert manager.state.epoch > 0  # Should have a valid epoch
             assert len(manager.connections) == 0
-            assert manager.hb_config.interval_ms == 10000  # Default
+            assert manager.hb_config.interval_ms == 5000  # New default from environment
             assert manager.limits.max_in_flight == 64  # Default
 
     async def test_custom_configuration(self):
