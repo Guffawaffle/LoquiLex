@@ -12,17 +12,17 @@ pytestmark = pytest.mark.usefixtures("forbid_network")
 def test_offline_network_guard_blocks_external():
     """Test that the network guard blocks outbound connections to non-local hosts."""
     # This should be blocked by the forbid_network fixture
-    with pytest.raises(RuntimeError, match="Blocked network access to"):
+    with pytest.raises(RuntimeError, match="Blocked outbound connection to"):
         socket.create_connection(("example.com", 80), timeout=1)
 
-    with pytest.raises(RuntimeError, match="Blocked network access to"):
+    with pytest.raises(RuntimeError, match="Blocked outbound connection to"):
         socket.create_connection(("8.8.8.8", 53), timeout=1)
 
 
 def test_offline_network_guard_allows_localhost():
     """Test that the network guard allows localhost connections."""
     # These should be allowed
-    allowed_hosts = ["127.0.0.1", "localhost"]
+    allowed_hosts = ["127.0.0.1", "::1", "localhost"]
 
     for host in allowed_hosts:
         try:

@@ -7,15 +7,9 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass
-from typing import Callable, TypeVar
+from typing import TypeVar
 
 T = TypeVar("T")
-
-
-def _coerce(val: str, caster: Callable[[str], T]) -> T:
-    return caster(val)
-def _env(name: str, default: str) -> str:
-    return os.getenv(name, default)
 
 
 def _env(name: str, default: str) -> str:

@@ -28,7 +28,7 @@ def is_truthy(value: str | None) -> bool:
 
 
 if is_truthy(os.getenv("LX_SKIP_MODEL_PREFETCH")):
-    print("[dev] LX_SKIP_MODEL_PREFETCH set — skipping model prefetch.")
+    print("[dev] Skipping model prefetch due to LX_SKIP_MODEL_PREFETCH=1")
     sys.exit(0)
 
 try:
