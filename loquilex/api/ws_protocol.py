@@ -13,6 +13,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import os
 import time
 import uuid
 from datetime import datetime, timezone
@@ -22,6 +23,7 @@ from fastapi import WebSocket
 
 from .ws_types import (
     AckData,
+    AckMode,
     ClientHelloData,
     FlowControlData,
     HeartbeatConfig,
@@ -371,7 +373,8 @@ class WSProtocolManager:
 
         envelope = self._create_envelope(event_type, data)
         
-        # Add to bounded replay buffer instead of session state buffer
+        # Add to both state and bounded replay buffer for compatibility
+        self.state.add_to_replay_buffer(envelope)
         if envelope.seq is not None:
             self._replay_buffer.add_message(envelope.seq, envelope)
 

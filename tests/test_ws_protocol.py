@@ -137,7 +137,9 @@ class TestWSProtocolManager:
             # Send some messages first to populate replay buffer
             await manager.send_domain_event(MessageType.ASR_PARTIAL, {"text": "hello"})
             await manager.send_domain_event(MessageType.ASR_FINAL, {"text": "hello world"})
+            # Check both the state and bounded replay buffer got populated
             assert len(manager.state.replay_buffer) == 2
+            assert manager._replay_buffer.size() == 2
             # Send ack for first message
             ack_envelope = WSEnvelope(
                 t=MessageType.CLIENT_ACK, data=AckData(ack_seq=1).model_dump()
@@ -145,7 +147,7 @@ class TestWSProtocolManager:
             await manager.handle_message(mock_ws, ack_envelope.model_dump_json())
             # Should have processed the ack
             assert manager.state.last_ack_seq == 1
-            # In cumulative mode, message 1 should be removed from replay buffer
+            # In cumulative mode, message 1 should be removed from state replay buffer
             assert 1 not in manager.state.replay_buffer
             assert 2 in manager.state.replay_buffer
 
@@ -198,25 +200,47 @@ class TestWSProtocolManager:
             await manager.send_domain_event(MessageType.ASR_PARTIAL, {"text": "msg3"})
             # Remove temporary connection
             await manager.remove_connection(temp_ws)
-            # New connection with resume request
+            
+            # New connection with resume request using new protocol
             mock_ws = MockWebSocket()
             await manager.add_connection(mock_ws)
             mock_ws.sent_messages.clear()  # Clear welcome
-            hello_envelope = WSEnvelope(
-                t=MessageType.CLIENT_HELLO,
-                data=ClientHelloData(
-                    agent="test-client/1.0", resume=ResumeInfo(sid="test_session", last_seq=1)
+            
+            # Import the new resume data type
+            from loquilex.api.ws_types import SessionResumeData
+            
+            resume_envelope = WSEnvelope(
+                t=MessageType.SESSION_RESUME,
+                data=SessionResumeData(
+                    session_id="test_session", 
+                    last_seq=1,
+                    epoch=manager.state.epoch
                 ).model_dump(),
             )
-            await manager.handle_message(mock_ws, hello_envelope.model_dump_json())
-            # Should have replayed messages 2 and 3
-            assert len(mock_ws.sent_messages) == 2
-            msg1 = json.loads(mock_ws.sent_messages[0])
-            msg2 = json.loads(mock_ws.sent_messages[1])
-            assert msg1["seq"] == 2
-            assert msg1["data"]["text"] == "msg2"
-            assert msg2["seq"] == 3
-            assert msg2["data"]["text"] == "msg3"
+            await manager.handle_message(mock_ws, resume_envelope.model_dump_json())
+            
+            # Should have sent:
+            # 1. Session snapshot response
+            # 2. Replayed message 2  
+            # 3. Replayed message 3
+            # 4. Session ack
+            assert len(mock_ws.sent_messages) == 4
+            
+            # Check snapshot response
+            snapshot_msg = json.loads(mock_ws.sent_messages[0])
+            assert snapshot_msg["t"] == "session.snapshot"
+            
+            # Check replayed messages  
+            replay_msg1 = json.loads(mock_ws.sent_messages[1])
+            replay_msg2 = json.loads(mock_ws.sent_messages[2])
+            assert replay_msg1["seq"] == 2
+            assert replay_msg1["data"]["text"] == "msg2"
+            assert replay_msg2["seq"] == 3
+            assert replay_msg2["data"]["text"] == "msg3"
+            
+            # Check session ack
+            ack_msg = json.loads(mock_ws.sent_messages[3])
+            assert ack_msg["t"] == "session.ack"
 
     async def test_resume_expired_error(self):
         """Test resume request with expired window."""
@@ -225,19 +249,25 @@ class TestWSProtocolManager:
             mock_ws = MockWebSocket()
             await manager.add_connection(mock_ws)
             mock_ws.sent_messages.clear()
-            # Try to resume
-            hello_envelope = WSEnvelope(
-                t=MessageType.CLIENT_HELLO,
-                data=ClientHelloData(
-                    agent="test-client/1.0", resume=ResumeInfo(sid="test_session", last_seq=0)
+            
+            from loquilex.api.ws_types import SessionResumeData
+            
+            # Try to resume with new protocol
+            resume_envelope = WSEnvelope(
+                t=MessageType.SESSION_RESUME,
+                data=SessionResumeData(
+                    session_id="test_session", 
+                    last_seq=0,
+                    epoch=manager.state.epoch
                 ).model_dump(),
             )
-            await manager.handle_message(mock_ws, hello_envelope.model_dump_json())
-            # Should have sent error
+            await manager.handle_message(mock_ws, resume_envelope.model_dump_json())
+            
+            # Should have sent session.new with resume_expired reason
             assert len(mock_ws.sent_messages) == 1
-            error_msg = mock_ws.get_last_message()
-            assert error_msg["t"] == MessageType.SERVER_ERROR
-            assert error_msg["data"]["code"] == "resume_expired"
+            response_msg = mock_ws.get_last_message()
+            assert response_msg["t"] == MessageType.SESSION_NEW
+            assert response_msg["data"]["reason"] == "resume_expired"
 
     @patch("asyncio.sleep")
     async def test_heartbeat_sending(self, mock_sleep):
@@ -363,20 +393,35 @@ class TestWSProtocolManager:
             await manager.send_domain_event(MessageType.ASR_PARTIAL, {"text": "msg2"})
             await manager.send_domain_event(MessageType.ASR_PARTIAL, {"text": "msg3"})
             await manager.remove_connection(temp_ws)
+            
             # Resume from seq=1 (should get 2,3 only)
             mock_ws = MockWebSocket()
             await manager.add_connection(mock_ws)
             mock_ws.sent_messages.clear()
-            hello_envelope = WSEnvelope(
-                t=MessageType.CLIENT_HELLO,
-                data=ClientHelloData(
-                    agent="test-client/1.0", resume=ResumeInfo(sid="test_session", last_seq=1)
+            
+            from loquilex.api.ws_types import SessionResumeData
+            
+            resume_envelope = WSEnvelope(
+                t=MessageType.SESSION_RESUME,
+                data=SessionResumeData(
+                    session_id="test_session", 
+                    last_seq=1,
+                    epoch=manager.state.epoch
                 ).model_dump(),
             )
-            await manager.handle_message(mock_ws, hello_envelope.model_dump_json())
-            # Should have replayed messages 2 and 3 only, no duplicates
-            assert len(mock_ws.sent_messages) == 2
-            msg1 = json.loads(mock_ws.sent_messages[0])
-            msg2 = json.loads(mock_ws.sent_messages[1])
-            assert msg1["seq"] == 2
-            assert msg2["seq"] == 3
+            await manager.handle_message(mock_ws, resume_envelope.model_dump_json())
+            
+            # Should have sent:
+            # 1. Session snapshot
+            # 2. Replayed message 2
+            # 3. Replayed message 3  
+            # 4. Session ack
+            assert len(mock_ws.sent_messages) == 4
+            
+            # Skip snapshot and ack, check the replayed messages
+            replay_msg1 = json.loads(mock_ws.sent_messages[1])
+            replay_msg2 = json.loads(mock_ws.sent_messages[2])
+            assert replay_msg1["seq"] == 2
+            assert replay_msg1["data"]["text"] == "msg2"
+            assert replay_msg2["seq"] == 3
+            assert replay_msg2["data"]["text"] == "msg3"
