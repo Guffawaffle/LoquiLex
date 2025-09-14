@@ -179,7 +179,7 @@ class StreamingSession:
     def _on_partial(self, partial_event) -> None:
         """Handle partial ASR events."""
         if self.aggregator is None or self._broadcast_fn is None:
-            return
+            pass
 
         def emit_event(event_dict):
             try:
@@ -193,15 +193,16 @@ class StreamingSession:
                     loop.create_task(self._broadcast_fn(self.sid, event_dict))
             except RuntimeError:
                 print(f"[StreamingSession] Partial: {event_dict.get('text', '')}")
-        try:
-            self.aggregator.add_partial(partial_event, emit_event)
-        except Exception as e:
-            print(f"[StreamingSession] Partial event error: {e}")
+        if self.aggregator is not None:
+            try:
+                self.aggregator.add_partial(partial_event, emit_event)
+            except Exception as e:
+                print(f"[StreamingSession] Partial event error: {e}")
 
     def _on_final(self, final_event) -> None:
         """Handle final ASR events."""
         if self.aggregator is None or self._broadcast_fn is None:
-            return
+            pass
 
         def emit_event(event_dict):
             try:
@@ -215,10 +216,11 @@ class StreamingSession:
                     loop.create_task(self._broadcast_fn(self.sid, event_dict))
             except RuntimeError:
                 print(f"[StreamingSession] Final: {event_dict.get('text', '')}")
-        try:
-            self.aggregator.add_final(final_event, emit_event)
-        except Exception as e:
-            print(f"[StreamingSession] Final event error: {e}")
+        if self.aggregator is not None:
+            try:
+                self.aggregator.add_final(final_event, emit_event)
+            except Exception as e:
+                print(f"[StreamingSession] Final event error: {e}")
 
     def stop(self) -> None:
         """Stop the streaming session."""
