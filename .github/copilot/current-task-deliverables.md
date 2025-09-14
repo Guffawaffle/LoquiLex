@@ -175,3 +175,32 @@ FAILED tests/test_mt_integration.py::test_mt_integration_error_handling - Failed
 - `loquilex/mt/providers/ct2_nllb.py`: Fix mypy ignore for ctranslate2 import.
 - `loquilex/mt/providers/ct2_m2m.py`: Fix mypy ignore for ctranslate2 import.
 - `requirements-dev.txt`: Ensure pytest-asyncio present for async test support.
+
+# --- Added: Mypy CI discrepancy fix (ctranslate2 missing stubs) ---
+## Context
+GitHub Actions CI reported mypy failures for `ctranslate2` imports in `ct2_nllb.py` and `ct2_m2m.py` (unused ignore + import-not-found) even though local run previously passed. Root cause: module-specific missing import handling not configured; code used `# type: ignore[import-untyped]` but CI error code was `import-not-found`, so the ignore was ineffective and flagged as unused.
+
+## Change
+Implemented configuration-level ignore for `ctranslate2`:
+```
+[mypy-ctranslate2]
+ignore_missing_imports = True
+[mypy-ctranslate2.*]
+ignore_missing_imports = True
+```
+Removed inline `# type: ignore[import-untyped]` comments from both provider files since config now suppresses missing type info cleanly and avoids `warn_unused_ignores` violations.
+
+## Verification
+Local `make typecheck` after change:
+```
+Success: no issues found in 42 source files
+```
+Only existing informational note about untyped function bodies remains.
+
+## Files Changed (this step)
+- `mypy.ini`: add ignore_missing_imports entries for ctranslate2.
+- `loquilex/mt/providers/ct2_nllb.py`: remove inline ignore on ctranslate2 import.
+- `loquilex/mt/providers/ct2_m2m.py`: remove inline ignore on ctranslate2 import.
+
+## Rationale
+Configuration approach centralizes handling of optional heavy dependency lacking stubs, aligns with existing pattern for `torch`, `transformers`, and keeps provider code clean/minimal.

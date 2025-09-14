@@ -34,7 +34,7 @@ class CT2M2MProvider:
 
         try:
             # Lazy import CT2 to avoid heavy dependency on module load
-            import ctranslate2 as ct2  # type: ignore[import-untyped]
+            import ctranslate2 as ct2
         except ImportError:
             raise ImportError("ctranslate2 package required for CT2 provider")
 
