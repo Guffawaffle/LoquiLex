@@ -361,16 +361,21 @@ class TestIntegration:
 class TestAsyncBridge:
     """Test thread-safe asyncio bridge in StreamingSession."""
 
-    @patch("asyncio.run_coroutine_threadsafe")
-    @patch("asyncio.get_running_loop")
-    def test_async_bridge_with_event_loop(self, mock_get_loop, mock_run_coroutine):
-        """Test that run_coroutine_threadsafe is used when event loop is available."""
+    def test_async_bridge_with_event_loop(self):
+        """Test that call_soon_threadsafe schedules broadcast on the event loop."""
         from loquilex.api.supervisor import StreamingSession, SessionConfig
         from pathlib import Path
+        from unittest.mock import MagicMock
 
-        # Mock event loop
-        mock_loop = asyncio.new_event_loop()
-        mock_get_loop.return_value = mock_loop
+        # Create a mock event loop with call_soon_threadsafe
+        class MockLoop:
+            def __init__(self):
+                self.scheduled = []
+            def call_soon_threadsafe(self, fn):
+                self.scheduled.append(fn)
+                fn()  # Immediately execute for test
+
+        mock_loop = MockLoop()
 
         # Create session
         cfg = SessionConfig(
@@ -392,9 +397,7 @@ class TestAsyncBridge:
         session._event_loop = mock_loop
 
         # Mock aggregator to trigger emit_event
-        from unittest.mock import MagicMock
         mock_aggregator = MagicMock()
-        # Make add_partial call the emit_fn with a dummy event
         def mock_add_partial(_partial_event, emit_fn):
             emit_fn({"type": "test"})
         mock_aggregator.add_partial.side_effect = mock_add_partial
@@ -414,13 +417,11 @@ class TestAsyncBridge:
             ts_monotonic=1000.0,
         )
 
-        # This should use run_coroutine_threadsafe
         session._on_partial(partial_event)
 
-        # Verify run_coroutine_threadsafe was called
-        mock_run_coroutine.assert_called_once()
-        args, kwargs = mock_run_coroutine.call_args
-        assert args[1] == mock_loop  # Second arg should be the loop
+        # Verify that call_soon_threadsafe was called and broadcast function was triggered
+        assert len(mock_loop.scheduled) == 1
+        assert broadcast_calls == [("test_sid", {"type": "test"})]
 
     @patch("asyncio.get_running_loop", side_effect=RuntimeError("No running loop"))
     def test_async_bridge_no_event_loop(self, _mock_get_loop):

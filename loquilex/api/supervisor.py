@@ -25,6 +25,7 @@ class StreamingSession:
     """In-process streaming session using the new StreamingASR pipeline."""
 
     def __init__(self, sid: str, cfg: SessionConfig, run_dir: Path) -> None:
+        from typing import Optional, Callable, Awaitable, Dict, Any
         self.sid = sid
         self.cfg = cfg
         self.run_dir = run_dir
@@ -35,16 +36,25 @@ class StreamingSession:
 
         # Event loop reference for thread-safe asyncio calls
         self._event_loop: Optional[asyncio.AbstractEventLoop] = None
+        self._broadcast_fn: Optional[Callable[[str, Dict[str, Any]], Awaitable[None]]] = None
 
         # Streaming ASR components
         self.asr: Optional[Any] = None  # StreamingASR
         self.aggregator: Optional[Any] = None  # PartialFinalAggregator
         self._audio_thread: Optional[threading.Thread] = None
-        self._broadcast_fn = None  # Set by manager
 
     def set_broadcast_fn(self, broadcast_fn) -> None:
         """Set the broadcast function for emitting events."""
         self._broadcast_fn = broadcast_fn
+
+    def _schedule_broadcast(self, event: Dict[str, Any]) -> None:
+        """Safely schedule a broadcast coroutine from any thread."""
+        if self._event_loop is None or self._broadcast_fn is None:
+            print("[StreamingSession] dropping event (no loop or broadcast_fn)")
+            return
+        self._event_loop.call_soon_threadsafe(
+            lambda: asyncio.create_task(self._broadcast_fn(self.sid, event))
+        )
 
     def start(self) -> None:
         """Start the streaming ASR session."""
@@ -93,37 +103,12 @@ class StreamingSession:
                     # Start audio capture
                     stop_capture = capture_stream(on_audio_frame)
 
-                    # Broadcast ready status - use thread-safe asyncio
-                    if self._broadcast_fn:
-                        try:
-                            if self._event_loop is not None:
-                                asyncio.run_coroutine_threadsafe(
-                                    self._broadcast_fn(
-                                        self.sid,
-                                        {
-                                            "type": "status",
-                                            "stage": "operational",
-                                            "log": "Ready — start speaking now (streaming mode)",
-                                        },
-                                    ),
-                                    self._event_loop
-                                )
-                            else:
-                                # Fallback: try to get loop in current context
-                                loop = asyncio.get_running_loop()
-                                loop.create_task(
-                                    self._broadcast_fn(
-                                        self.sid,
-                                        {
-                                            "type": "status",
-                                            "stage": "operational",
-                                            "log": "Ready — start speaking now (streaming mode)",
-                                        },
-                                    )
-                                )
-                        except RuntimeError:
-                            # No running loop - skip broadcast in thread context
-                            print("[StreamingSession] Ready — start speaking now (streaming mode)")
+                    # Broadcast ready status using safe scheduling
+                    self._schedule_broadcast({
+                        "type": "status",
+                        "stage": "operational",
+                        "log": "Ready — start speaking now (streaming mode)",
+                    })
 
                     # Keep thread alive until stopped
                     while not self._stop_evt.is_set():
@@ -131,36 +116,11 @@ class StreamingSession:
 
                 except Exception as e:
                     print(f"[StreamingSession] Audio worker error: {e}")
-                    if self._broadcast_fn:
-                        try:
-                            if self._event_loop is not None:
-                                asyncio.run_coroutine_threadsafe(
-                                    self._broadcast_fn(
-                                        self.sid,
-                                        {
-                                            "type": "status",
-                                            "stage": "error",
-                                            "log": f"Audio error: {e}",
-                                        },
-                                    ),
-                                    self._event_loop
-                                )
-                            else:
-                                # Fallback: try to get loop in current context
-                                loop = asyncio.get_running_loop()
-                                loop.create_task(
-                                    self._broadcast_fn(
-                                        self.sid,
-                                        {
-                                            "type": "status",
-                                            "stage": "error",
-                                            "log": f"Audio error: {e}",
-                                        },
-                                    )
-                                )
-                        except RuntimeError:
-                            # No running loop - just log
-                            print(f"[StreamingSession] Audio error: {e}")
+                    self._schedule_broadcast({
+                        "type": "status",
+                        "stage": "error",
+                        "log": f"Audio error: {e}",
+                    })
                 finally:
                     # Guarantee audio capture cleanup
                     if stop_capture is not None:
@@ -178,49 +138,31 @@ class StreamingSession:
 
     def _on_partial(self, partial_event) -> None:
         """Handle partial ASR events."""
-        if self.aggregator is None or self._broadcast_fn is None:
-            pass
+        # Early-out if core pieces aren't ready
+        if self.aggregator is None or self._broadcast_fn is None or self._event_loop is None:
+            return
 
-        def emit_event(event_dict):
-            try:
-                if self._event_loop is not None:
-                    asyncio.run_coroutine_threadsafe(
-                        self._broadcast_fn(self.sid, event_dict),
-                        self._event_loop
-                    )
-                else:
-                    loop = asyncio.get_running_loop()
-                    loop.create_task(self._broadcast_fn(self.sid, event_dict))
-            except RuntimeError:
-                print(f"[StreamingSession] Partial: {event_dict.get('text', '')}")
-        if self.aggregator is not None:
-            try:
-                self.aggregator.add_partial(partial_event, emit_event)
-            except Exception as e:
-                print(f"[StreamingSession] Partial event error: {e}")
+        def emit_event(event_dict: Dict[str, Any]) -> None:
+            self._schedule_broadcast(event_dict)
+
+        try:
+            self.aggregator.add_partial(partial_event, emit_event)
+        except Exception as e:
+            print(f"[StreamingSession] Partial event error: {e}")
 
     def _on_final(self, final_event) -> None:
         """Handle final ASR events."""
-        if self.aggregator is None or self._broadcast_fn is None:
-            pass
+        # Early-out if core pieces aren't ready
+        if self.aggregator is None or self._broadcast_fn is None or self._event_loop is None:
+            return
 
-        def emit_event(event_dict):
-            try:
-                if self._event_loop is not None:
-                    asyncio.run_coroutine_threadsafe(
-                        self._broadcast_fn(self.sid, event_dict),
-                        self._event_loop
-                    )
-                else:
-                    loop = asyncio.get_running_loop()
-                    loop.create_task(self._broadcast_fn(self.sid, event_dict))
-            except RuntimeError:
-                print(f"[StreamingSession] Final: {event_dict.get('text', '')}")
-        if self.aggregator is not None:
-            try:
-                self.aggregator.add_final(final_event, emit_event)
-            except Exception as e:
-                print(f"[StreamingSession] Final event error: {e}")
+        def emit_event(event_dict: Dict[str, Any]) -> None:
+            self._schedule_broadcast(event_dict)
+
+        try:
+            self.aggregator.add_final(final_event, emit_event)
+        except Exception as e:
+            print(f"[StreamingSession] Final event error: {e}")
 
     def stop(self) -> None:
         """Stop the streaming session."""

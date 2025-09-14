@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import anyio
 from unittest.mock import patch
 
 import pytest
@@ -101,7 +102,7 @@ class TestStreamingIntegration:
             # Clean up
             client.delete(f"/sessions/{session_id}")
 
-    @pytest.mark.asyncio
+    @pytest.mark.anyio
     async def test_websocket_streaming_events(self):
         """Test WebSocket events for streaming sessions (mock audio)."""
         from loquilex.asr.stream import ASRPartialEvent, ASRFinalEvent, ASRWord
@@ -128,7 +129,7 @@ class TestStreamingIntegration:
 
             try:
                 # Small delay for session initialization
-                await asyncio.sleep(0.1)
+                await anyio.sleep(0.1)
 
                 # Get the session from the manager to trigger events manually
                 from loquilex.api.server import MANAGER
@@ -166,7 +167,7 @@ class TestStreamingIntegration:
                     session._on_final(final_event)
 
                     # Allow events to propagate
-                    await asyncio.sleep(0.1)
+                    await anyio.sleep(0.1)
 
                 # Test passed if we reach here without errors
                 assert True
@@ -259,7 +260,7 @@ class TestStreamingConfiguration:
 class TestEndToEndStreaming:
     """End-to-end tests for streaming ASR (heavier tests)."""
 
-    @pytest.mark.asyncio
+    @pytest.mark.anyio
     async def test_full_streaming_pipeline(self):
         """Test the full streaming pipeline with realistic simulation."""
         # This test would use more realistic audio input
@@ -286,7 +287,7 @@ class TestEndToEndStreaming:
         for i in range(5):
             chunk = np.random.uniform(-0.1, 0.1, 1600).astype(np.float32)  # 0.1s at 16kHz
             asr.process_audio_chunk(chunk, on_partial, on_final)
-            await asyncio.sleep(0.01)  # Small delay
+            await anyio.sleep(0.01)  # Small delay
 
         # Should have received some events
         partial_events = [e for e in events_received if e.get("type") == "asr.partial"]
