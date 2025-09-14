@@ -8,6 +8,8 @@ import pytest
 
 pytestmark = pytest.mark.usefixtures("forbid_network")
 
+# Note: ::1 (IPv6 localhost) is allowed alongside 127.0.0.1 for macOS/Linux loopback compatibility
+
 
 def test_offline_network_guard_blocks_external():
     """Test that the network guard blocks outbound connections to non-local hosts."""
