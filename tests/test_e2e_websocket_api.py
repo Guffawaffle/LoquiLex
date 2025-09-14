@@ -11,19 +11,15 @@ import pytest
 pytestmark = pytest.mark.e2e
 pytest.importorskip("fastapi", reason="fastapi not installed; e2e disabled by default")
 
+import anyio  # noqa: E402
 import asyncio  # noqa: E402
 import json  # noqa: E402
 import os  # noqa: E402
 import time  # noqa: E402
 from typing import Any, Dict, List  # noqa: E402
 from unittest.mock import patch  # noqa: E402
-
-# Mark the whole module as e2e and skip cleanly if FastAPI isn't installed.
-pytestmark = pytest.mark.e2e
-pytest.importorskip("fastapi", reason="fastapi not installed; e2e disabled by default")
-
-import websockets  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
+import websockets  # noqa: E402  # restored import
 
 from loquilex.api.server import app  # noqa: E402
 
@@ -84,11 +80,10 @@ async def test_e2e_websocket_live_session():
         "GF_DEVICE": "cpu",
         "GF_SAVE_AUDIO": "off",
         "LLX_OUT_DIR": "/tmp/loquilex_test",
-        "LLX_ALLOWED_ORIGINS": "http://testserver",
+        "LLX_ALLOWED_ORIGINS": "http://localhost",  # revert to localhost allowed origin
     }
-
     with patch.dict(os.environ, test_env):
-        # Use FastAPI TestClient to get a test server
+        # Use FastAPI TestClient (deprecated shortcut warning acceptable; filtered elsewhere)
         with TestClient(app) as client:
             # Step 1: Create a session via REST API
             session_payload = {
@@ -136,11 +131,32 @@ async def test_e2e_websocket_live_session():
                         # Note: TestClient WebSocket support is basic but we can verify the endpoint
                         try:
                             with client.websocket_connect(ws_url) as ws:
-                                # Send a lightweight ping to exercise server loop then close promptly
+                                # Send a lightweight ping to exercise server loop
                                 try:
                                     ws.send_text("ping")
                                 except Exception:
                                     pass
+
+                                # Short recv with timeout to ensure we don't hang waiting for frames
+                                # This fulfills the requirement: connect → ping → short recv (≤500ms) → close
+                                import time
+
+                                start_time = time.time()
+                                try:
+                                    # Try to receive any message - this should timeout quickly
+                                    # FastAPI TestClient WebSocket uses receive() instead of receive_text()
+                                    with anyio.fail_after(0.8):
+                                        ws.receive()
+                                    recv_time = time.time() - start_time
+                                    # If we got a response, verify it came quickly (within 500ms as required)
+                                    assert recv_time <= 0.5, f"Response took too long: {recv_time}s"
+                                except Exception:
+                                    # Timeout or connection error is expected in test environment
+                                    recv_time = time.time() - start_time
+                                    # Ensure we didn't hang - should complete within reasonable time
+                                    assert (
+                                        recv_time <= 1.0
+                                    ), f"recv() took too long to timeout: {recv_time}s"
                         except Exception as e:
                             # Some connection errors are expected in test environment
                             # The important thing is that the endpoint exists

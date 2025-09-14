@@ -4,7 +4,7 @@ Prefetch only the smallest models for local dev to avoid large downloads.
  - Whisper tiny.en via faster-whisper (CTRANSLATE2)
 
 Environment:
-  GF_ASR_MODEL      (default: "tiny.en")
+    LX_ASR_MODEL      (default: "tiny.en")
   LLX_MODEL_DIR     (default: ".models")
 
 This script is safe to run repeatedly; it only ensures the local cache exists.
@@ -14,16 +14,18 @@ import os
 import sys
 from pathlib import Path
 
-ASR_MODEL = os.getenv("GF_ASR_MODEL", "tiny.en")
+ASR_MODEL = os.getenv("LX_ASR_MODEL", "tiny.en")
 DOWNLOAD_ROOT = Path(os.getenv("LLX_MODEL_DIR", ".models")).resolve()
 DOWNLOAD_ROOT.mkdir(parents=True, exist_ok=True)
 
 print(f"[dev] Prefetching ASR model: {ASR_MODEL} -> {DOWNLOAD_ROOT}")
 
+
 def is_truthy(value: str | None) -> bool:
     if value is None:
         return False
     return value.strip().lower() in {"1", "true", "yes", "on"}
+
 
 if is_truthy(os.getenv("LX_SKIP_MODEL_PREFETCH")):
     print("[dev] LX_SKIP_MODEL_PREFETCH set — skipping model prefetch.")

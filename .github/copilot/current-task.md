@@ -1,196 +1,222 @@
+# Current Task — Stabilize E2E WebSocket Tests & Enforce Offline-First Guards (PR #25 follow-up)
 
-# Task: Docs refresh — default to `make dev-minimal` and add `LX_SKIP_MODEL_PREFETCH` (Epic)
-
-**Source:** Epic “Dedupe tooling, remove dead code, and harden test infra.”
-Focus on Epic checklist item **2)** (Docs/book: switch dev setup to `make dev-minimal`; add opt-ins & `LX_SKIP_MODEL_PREFETCH`).
+> Branch: `copilot/fix-9` → target `main`
+> Scope: Tests, small config hardening, CI env consistency, and minor code nits.
+> Goal: Eliminate flakiness and ensure strict offline isolation while keeping tests fast (<1s/test).
 
 ---
 
-## Objective
+## Objectives (Do all of these)
 
-Make the lightweight, offline-first developer workflow the primary path. Update docs to default to `make dev-minimal`, provide optional ML paths, and introduce an explicit environment flag `LX_SKIP_MODEL_PREFETCH` that prevents any model downloads during setup. Ensure the Makefile and helper script(s) honor the flag.
-
-One PR = One Chat. Keep scope tight to **docs + minimal glue**. No CI changes in this PR.
+1. **Bound WebSocket receive operations with timeouts** in `tests/test_e2e_websocket_api.py` so no hang can occur in CI.
+2. **Make network-forbidding explicit** in isolation tests: apply `pytestmark = pytest.mark.usefixtures("forbid_network")` (or equivalent) so tests never hit the real network even if autouse drifts.
+3. **Harden offline env expectations** across test runners:
+   - Ensure `HF_HUB_OFFLINE=1`, `TRANSFORMERS_OFFLINE=1`, `HF_HUB_DISABLE_TELEMETRY=1`, `LOQUILEX_OFFLINE=1` are consistently set in CI and local `make test`.
+   - In tests, fail with a clear message **or** skip with rationale when envs are intentionally absent (configurable via mark).
+4. **Enforce LX-only env policy**: remove or strictly guard any generic `_env()` helper introduced in `loquilex/config/defaults.py` (allow only `LX_*` names to prevent backsliding to legacy prefixes).
+5. **Stabilize host allowances** in offline tests: only allow `127.0.0.1` and `localhost`. Do **not** rely on `testserver` DNS behavior.
+6. **Keep tests crisp**: move inline imports to module top, align docstring timing claims with asserted thresholds, and add minimal logging for clarity where helpful.
+7. **Pass CI** with green `ruff`, `mypy`, and `pytest` under offline constraints; all tests must complete < 90s total on CI runners.
 
 ---
 
 ## Acceptance Criteria
 
-- **README.md**
-  - Quickstart shows `make dev-minimal` as the default path.
-  - Clearly documents optional ML paths (brief mention) and defers details to `CI-TESTING.md`.
-  - Adds a short “Offline-first” note and documents `LX_SKIP_MODEL_PREFETCH=1`.
-
-- **CI-TESTING.md**
-  - Mentions `make run-ci-mode` (lightweight) and `make run-local-ci` (full), and how `LX_SKIP_MODEL_PREFETCH` interacts with local dev.
-  - States that model prefetch is **opt-in** and should be skipped when the flag is set.
-
-- **Makefile**
-  - If `dev-minimal` target is missing, add it. It must:
-    - Create/activate venv.
-    - Install **non-ML** base + dev dependencies.
-    - **Not** prefetch models.
-  - Ensure any dev setup that runs a prefetch script only does so when `LX_SKIP_MODEL_PREFETCH` is **unset** (or explicitly `0/false`).
-
-- **scripts/**
-  - If a model prefetch script exists (e.g., `scripts/dev_fetch_models.py`), gate it behind `LX_SKIP_MODEL_PREFETCH`. If it does not exist, create a tiny, offline-safe guard that bails when the flag is set.
-  - The guard should treat the following as “true”: `1`, `true`, `yes`, `on` (case-insensitive). Anything else is false.
-
-- **No code path should hard-fail** if the flag is set; prefetch is simply skipped with a clear log line.
-
-- **Docs & Makefile tested locally** via the verification steps below.
+- ✅ `pytest -q` passes locally and in CI with **no external network** access.
+- ✅ No test blocks longer than the specified timeout; WebSocket test completes under **1.0s** wall time (with an internal target ≈0.5–0.7s).
+- ✅ `ruff check .` reports **0** errors/warnings.
+- ✅ `mypy` passes at the repo’s configured strictness (no regressions).
+- ✅ `.github/copilot/current-task-deliverables.md` contains full logs and evidence (see Deliverables section).
 
 ---
 
-## Constraints & Conventions
+## Implementation Plan
 
-- Commit messages: **imperative mood** (e.g., “Update README to default to make dev-minimal”).
-- Do **not** edit CI workflows in this PR.
-- Offline-first: Assume no network access during `make dev-minimal`.
-- Keep diffs tight; prefer surgical edits over rewrites.
+### A) WebSocket test: bounded receive
+- Replace any raw `ws.receive()` calls with a bounded wait. Two acceptable approaches:
 
----
-
-## Planned Changes
-
-### 1) README.md (Quickstart & Env)
-
-- Replace the current Quickstart section with a minimal path:
-
-```md
-## Quickstart (lightweight, offline-first)
-
-```bash
-# Minimal dev (no ML downloads, fastest path)
-make dev-minimal
-
-# Run the fast, lightweight checks (matches CI's lightweight mode)
-make run-ci-mode
-```
-
-### Optional (full local CI with ML deps)
-```bash
-# Brings in ML dependencies and runs the full stack locally
-make run-local-ci
-```
-
-**Offline-first:** Set `LX_SKIP_MODEL_PREFETCH=1` to prevent any model downloads that helper scripts might attempt.
-```
-
-- Add a short table listing relevant env flags (keep it brief, link longer details to CI-TESTING.md):
-
-```md
-| Variable                | Purpose                                   | Default |
-|-------------------------|-------------------------------------------|---------|
-| LX_SKIP_MODEL_PREFETCH  | Skip any model prefetch during dev setup  | unset   |
-```
-
-- Keep the existing `LX_*` vs `GF_*` migration note intact.
-
-### 2) CI-TESTING.md
-
-Add/adjust sections to describe:
-
-- `make run-ci-mode` vs `make run-local-ci` and when to use each.
-- How `LX_SKIP_MODEL_PREFETCH=1` interacts with helper scripts (no model downloads).
-- A short “Verification” recipe (see below).
-
-### 3) Makefile
-
-- Add a `dev-minimal` target if missing. Pseudocode:
-
-```make
-.PHONY: dev-minimal
-dev-minimal:
-	python -m venv .venv
-	. .venv/bin/activate; pip install -U pip
-	# Install base + dev deps only (no ML)
-	. .venv/bin/activate; pip install -r requirements-dev.txt -c constraints.txt
-	@echo "Dev (minimal) ready. Models will NOT be prefetched. Use LX_SKIP_MODEL_PREFETCH=1 to enforce."
-```
-
-- Wherever model prefetch might be called (e.g., `dev` or `dev-ml` targets), ensure it is gated, for example:
-
-```make
-ifneq ($(shell echo $${LX_SKIP_MODEL_PREFETCH:-0} | tr '[:upper:]' '[:lower:]'),1)
-# or equivalent case-insensitive check executed in the shell
-	. .venv/bin/activate; python scripts/dev_fetch_models.py || true
-else
-	@echo "LX_SKIP_MODEL_PREFETCH set — skipping model prefetch."
-endif
-```
-
-### 4) scripts/dev_fetch_models.py (or new guard script)
-
-Implement a tiny guard at the top:
-
+**Option 1 (anyio):**
 ```python
-import os, sys
+import anyio
 
-def _istrue(v: str | None) -> bool:
-    if v is None:
-        return False
-    return v.strip().lower() in {"1", "true", "yes", "on"}
-
-if _istrue(os.getenv("LX_SKIP_MODEL_PREFETCH")):
-    print("LX_SKIP_MODEL_PREFETCH set — skipping model prefetch.")
-    sys.exit(0)
-
-# existing (or placeholder) logic continues here...
+with anyio.fail_after(0.8):  # hard cap (seconds)
+    msg = ws.receive()
 ```
 
-If there is no existing script, create this file with only the guard plus a friendly message like “No prefetch actions defined; nothing to do.” so calls are idempotent and harmless.
+**Option 2 (thread wrapper):**
+```python
+import queue, threading
+
+q: "queue.Queue[object]" = queue.Queue()
+
+def _recv():
+    try:
+        q.put(ws.receive())
+    except Exception as e:
+        q.put(e)
+
+t = threading.Thread(target=_recv, daemon=True)
+t.start()
+t.join(timeout=0.8)
+assert not t.is_alive(), "WebSocket receive hung >0.8s"
+obj = q.get_nowait()
+if isinstance(obj, Exception):
+    raise obj
+msg = obj
+```
+
+- Keep a **safety assertion** (`<=1.0s`) around the whole connect→ping→recv→close sequence.
+- Align comments/docstrings with the actual thresholds (don’t say “≤500ms” if asserting 1.0s).
+
+### B) Explicit offline guard in tests
+At the top of `tests/test_offline_isolation.py`:
+```python
+import pytest
+pytestmark = pytest.mark.usefixtures("forbid_network")
+```
+
+- If a `forbid_network` fixture does **not** exist yet, add one centrally (e.g., `tests/conftest.py`) that blocks non-loopback sockets (monkeypatch `socket.create_connection`, `socket.socket.connect`). Allow only `('127.0.0.1', *)` and `('::1', *)`.
+- The fixture must be **idempotent** and fast.
+
+### C) Offline env expectations
+- Ensure these are exported in CI and local commands:
+  - `HF_HUB_OFFLINE=1`
+  - `TRANSFORMERS_OFFLINE=1`
+  - `HF_HUB_DISABLE_TELEMETRY=1`
+  - `LOQUILEX_OFFLINE=1`
+- Update `Makefile` test target to export them for local runs.
+- In a dedicated test (`tests/test_offline_env.py`), assert they are set **or** skip with a clear reason if a mark `@pytest.mark.allow_missing_offline_envs` is present. Default behavior should be **strict** (fail) to catch drift in CI.
+
+### D) Enforce LX-only env policy
+- Remove or harden any new `_env()` helper in `loquilex/config/defaults.py`:
+  - If kept, implement:
+    ```python
+    def _env(name: str, default: str | None = None) -> str | None:
+        if not name.startswith("LX_"):
+            raise ValueError(f"Only LX_* env vars are allowed, got: {name}")
+        return os.getenv(name, default)
+    ```
+  - Prefer direct, explicit `os.getenv("LX_FOO")` in app code to reduce indirection.
+- Audit for prohibited legacy fallbacks (GF_*) — none should remain.
+
+### E) Host allowlist in tests
+- In the offline tests, only use `localhost` and `127.0.0.1` (and FastAPI’s in-proc `TestClient`). Remove `testserver` references.
+
+### F) Small QoL/Nits
+- Move any inline imports (`time`, etc.) to module top.
+- Add one-line info logs where it helps triage (e.g., resolved model path when `LX_SKIP_MODEL_PREFETCH=1`).
 
 ---
 
-## Verification Steps (local)
+## Patch Sketches (apply/adapt to actual file names)
+
+> **Note:** Treat these as templates; adjust line numbers as needed.
+
+**1) tests/test_e2e_websocket_api.py**
+```diff
+@@
+-    # receive without an explicit bound
+-    msg = ws.receive()
++    # Bounded receive to avoid CI hangs
++    with anyio.fail_after(0.8):
++        msg = ws.receive()
+@@
+-    # comment says ≤500ms but we assert <=1.0s later
+-    assert elapsed <= 1.0
++    # Target ~0.5–0.7s; hard cap 1.0s for safety
++    assert elapsed <= 1.0
+```
+
+**2) tests/test_offline_isolation.py**
+```diff
++import pytest
++pytestmark = pytest.mark.usefixtures("forbid_network")
+@@
+-    allowed = {"localhost", "127.0.0.1", "testserver"}
++    allowed = {"localhost", "127.0.0.1"}
+```
+
+**3) tests/conftest.py** (only if fixture missing or to standardize behavior)
+```diff
++import os, socket
++import pytest
++from contextlib import contextmanager
++
++@pytest.fixture(scope="session")
++def forbid_network(monkeypatch):
++    real_create_connection = socket.create_connection
++    def guarded(addr, *args, **kwargs):
++        host, *_ = addr
++        if host not in {"127.0.0.1", "::1", "localhost"}:
++            raise RuntimeError(f"External network blocked: {addr}")
++        return real_create_connection(addr, *args, **kwargs)
++    monkeypatch.setattr(socket, "create_connection", guarded, raising=True)
+```
+
+**4) loquilex/config/defaults.py** (enforce LX-only)
+```diff
+@@
+-def _env(name: str, default: str | None = None) -> str | None:
+-    return os.getenv(name, default)
++def _env(name: str, default: str | None = None) -> str | None:
++    if not name.startswith("LX_"):
++        raise ValueError(f"Only LX_* env vars are allowed, got: {name}")
++    return os.getenv(name, default)
+```
+
+**5) scripts/dev_fetch_models.py** (QoL echo)
+```diff
+@@
+ if os.getenv("LX_SKIP_MODEL_PREFETCH") == "1":
+-    sys.exit(0)
++    print("[dev_fetch_models] Skipping model prefetch due to LX_SKIP_MODEL_PREFETCH=1")
++    sys.exit(0)
+```
+
+**6) Makefile** (ensure offline envs in test target)
+```diff
+ test:
+-	pytest -q
++	HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 HF_HUB_DISABLE_TELEMETRY=1 LOQUILEX_OFFLINE=1 pytest -q
+```
+
+---
+
+## Commands to Run (local & CI parity)
 
 ```bash
-# 1) Fresh clone, no network (simulate) — ensure minimal dev works
-make dev-minimal
+# From repo root
+make fmt-check
+make lint        # ruff
+make type        # mypy
+make test        # ensures offline envs are set
+```
 
-# 2) Ensure fast checks pass
-make run-ci-mode
-
-# 3) Confirm flag behavior
-LX_SKIP_MODEL_PREFETCH=1 make dev           # Should not attempt any downloads
-LX_SKIP_MODEL_PREFETCH=1 python scripts/dev_fetch_models.py  # Script should exit 0 with a skip message
-
-# 4) Full stack (optional, with network)
-make run-local-ci
+If individual test debugging is needed:
+```bash
+HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 HF_HUB_DISABLE_TELEMETRY=1 LOQUILEX_OFFLINE=1 \
+pytest -vv tests/test_e2e_websocket_api.py::test_websocket_roundtrip
 ```
 
 ---
 
-## Deliverables
+## Deliverables (write all of this to `.github/copilot/current-task-deliverables.md`)
 
-- `README.md` and `CI-TESTING.md` updated.
-- `Makefile` updated to include (or preserve) `dev-minimal` without model prefetch.
-- `scripts/dev_fetch_models.py` (existing or new) honors `LX_SKIP_MODEL_PREFETCH` flag.
-- A concise CHANGELOG entry under “Unreleased → Added/Changed”.
+1. **Executive Summary** — what changed and why.
+2. **Steps Taken** — bullets with file edits and decisions.
+3. **Evidence & Verification** — include full outputs (no truncation):
+   - `ruff check .`
+   - `mypy`
+   - `pytest -vv` (show timing for WebSocket test)
+4. **Final Results** — did we meet all acceptance criteria?
+5. **Files Changed** — list each file and the type of change.
 
----
-
-## PR Title (example)
-
-```
-docs(dev): default to `make dev-minimal`; add `LX_SKIP_MODEL_PREFETCH` flag
-```
-
-## PR Description (example)
-
-- Make `dev-minimal` the primary Quickstart path (offline-first).
-- Document `LX_SKIP_MODEL_PREFETCH` to disable model prefetch during setup.
-- Gate any prefetch script behind the flag.
-- CI remains unchanged. Tight diffs; no behavior change for existing users unless they opt into the flag.
-
-**Verification:** See steps in this task. All checks should pass locally in lightweight mode.
+> Include any failure logs encountered along the way and how they were resolved.
 
 ---
 
-## Out of Scope (explicitly)
+## Notes / Constraints
 
-- Dependency pruning/renames (tracked separately in Epic items 4 & 7).
-- VS Code tasks consolidation (Epic item 3).
-- GPU enablement toggles and profiles.
-```
+- Prefer **no new runtime deps** in app code. `anyio` is already present via `httpx`/`starlette` (if available); otherwise use the thread wrapper.
+- Keep tests self-contained and fast. No sleeps > 50ms unless strictly necessary.
+- Do not touch deploy/secrets workflows in this task.

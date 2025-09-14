@@ -225,8 +225,8 @@ async def post_selftest(req: SelfTestReq) -> SelfTestResp:
 
     t0 = time.perf_counter()
     try:
-        os.environ["GF_ASR_MODEL"] = req.asr_model_id or os.getenv("GF_ASR_MODEL") or "small.en"
-        os.environ["GF_DEVICE"] = req.device
+        os.environ["LX_ASR_MODEL"] = req.asr_model_id or os.getenv("LX_ASR_MODEL") or "small.en"
+        os.environ["LX_DEVICE"] = req.device
         eng = WhisperEngine()
         eng.warmup()
         asr_ms = int((time.perf_counter() - t0) * 1000)
@@ -345,7 +345,7 @@ def main() -> None:
     # Entry point for `python -m loquilex.api.server`
     import uvicorn
 
-    port = int(os.getenv("GF_API_PORT", "8000"))
+    port = int(os.getenv("LX_API_PORT", "8000"))
     uvicorn.run("loquilex.api.server:app", host="0.0.0.0", port=port, reload=False)
 
 

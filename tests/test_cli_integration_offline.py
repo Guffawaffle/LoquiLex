@@ -24,7 +24,7 @@ def _install_fake_mt():
     sys.modules["greenfield.mt.translator"] = fake_mt
 
 
-def test_wav_to_vtt_offline_with_fake_asr(tmp_path: Path, monkeypatch):
+def test_wav_to_vtt_offline_with_fake_asr(tmp_path: Path, monkeypatch):  # noqa: ARG001
     _install_fake_faster_whisper()
     wav = tmp_path / "a.wav"
     out = tmp_path / "a.vtt"
@@ -44,7 +44,7 @@ def test_wav_to_vtt_offline_with_fake_asr(tmp_path: Path, monkeypatch):
     assert "hello" in text and "world" in text
 
 
-def test_vtt_to_zh_offline_with_fake_mt(tmp_path: Path, monkeypatch):
+def test_vtt_to_zh_offline_with_fake_mt(tmp_path: Path, monkeypatch):  # noqa: ARG001
     # Create a tiny VTT
     vtt = tmp_path / "a.vtt"
     vtt.write_text(
@@ -78,7 +78,7 @@ def test_vtt_to_zh_offline_with_fake_mt(tmp_path: Path, monkeypatch):
     assert "[zh]" in zh_text or any(ord(c) > 127 for c in zh_text), f"Unexpected output: {zh_text}"
 
 
-def test_output_boundary_respected(tmp_path: Path, monkeypatch):
+def test_output_boundary_respected(tmp_path: Path, monkeypatch):  # noqa: ARG001
     # Ensure we can guard paths within GF_OUT_DIR in tests using helper
     from loquilex.output.paths import ensure_out_path
 

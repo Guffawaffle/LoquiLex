@@ -47,7 +47,7 @@ def capture_stream(callback: Callable[[AudioFrame], None]) -> Callable[[], None]
 
         q: queue.Queue[np.ndarray] = queue.Queue(maxsize=10)
 
-        def on_audio(indata: np.ndarray, frames: int, time_info, status) -> None:  # type: ignore
+        def on_audio(indata: np.ndarray, _frames: int, _time_info, status) -> None:  # type: ignore
             if status:
                 _log(f"sounddevice status: {status}")
             q.put(indata.copy())

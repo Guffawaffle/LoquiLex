@@ -31,7 +31,7 @@ def test_dtype_kwargs_version_switch(monkeypatch):
 
 def test_pick_device_cpu(monkeypatch):
     # Force cpu path
-    monkeypatch.setenv("GF_DEVICE", "cpu")
+    monkeypatch.setenv("LX_DEVICE", "cpu")
     # Reload defaults to pick up env
     import importlib
 

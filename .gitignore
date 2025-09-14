@@ -1,6 +1,9 @@
 .models/
 coverage_html/
 reports/
+# Analysis artifacts  
+.artifacts/
+
 # Egg-info
 *.egg-info
 loquilex.egg-info/
@@ -34,3 +37,6 @@ __pycache__/
 .pytest_cache/
 .coverage
 htmlcov/
+
+# CI outputs
+.artifacts/

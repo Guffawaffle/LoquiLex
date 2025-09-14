@@ -1,49 +1,43 @@
-# Task Deliverables: Docs refresh — default to `make dev-minimal` and add `LX_SKIP_MODEL_PREFETCH`
+# Task Deliverables: Stabilize E2E WebSocket Tests & Enforce Offline-First Guards
 
 ## Executive Summary
-The task aimed to make the lightweight, offline-first developer workflow the primary path by updating documentation, Makefile, and scripts. The `make dev-minimal` target was updated to never prefetch models, and the `LX_SKIP_MODEL_PREFETCH` environment variable was hardened for better truthiness checks. All changes were verified through linting, type checking, and unit tests.
+The task aimed to stabilize WebSocket tests by bounding receive operations with timeouts and ensuring offline-first guards. The `tests/test_e2e_websocket_api.py` file was updated to replace raw `ws.receive()` calls with bounded waits using `anyio.fail_after`. However, persistent import resolution errors for `anyio`, `websockets`, and `fastapi` were encountered despite the packages being installed in the virtual environment.
 
 ## Steps Taken
-- **Updated `README.md`:**
-  - Added `make run-ci-mode` to the Quickstart section for parity with CI-TESTING.md.
-- **Updated `CI-TESTING.md`:**
-  - Added details about `make run-ci-mode`, `make run-local-ci`, and how `LX_SKIP_MODEL_PREFETCH` interacts with local development.
-- **Modified `Makefile`:**
-  - Updated the `dev-minimal` target to ensure it never prefetches models, aligning with the offline-first policy.
-- **Updated `scripts/dev_fetch_models.py`:**
-  - Hardened the truthiness check for `LX_SKIP_MODEL_PREFETCH` and replaced `exit()` with `sys.exit(0)` for better compatibility.
-- **Verification:**
-  - Re-ran linting (`ruff`), type checking (`mypy`), and unit tests (`pytest`).
+- Identified raw `ws.receive()` calls in `tests/test_e2e_websocket_api.py`.
+- Replaced the raw calls with a bounded wait using `anyio.fail_after`.
+- Added the missing `anyio` import at the top of the file.
+- Encountered import resolution errors for `anyio`, `websockets`, and `fastapi`.
+- Verified that the required packages are installed in the virtual environment using `pip list`.
+- Attempted to re-run tests to validate changes, but the import errors persisted.
 
 ## Evidence & Verification
-### Commands Executed
-```bash
-make lint typecheck unit
+### Installed Packages
+Output of `pip list`:
+```
+Package                  Version
+------------------------ -----------
+anyio                    4.10.0
+websockets               12.0
+fastapi                  0.109.2
+... (other packages omitted for brevity) ...
 ```
 
-### Outputs
-- **Linting (ruff):**
-  - All checks passed.
-- **Type Checking (mypy):**
-  - No issues found in 22 source files.
-- **Unit Tests (pytest):**
-  - 26 tests passed.
-  - 8 warnings related to deprecation notices for legacy environment variables.
+### Import Errors
+Errors encountered in `tests/test_e2e_websocket_api.py`:
+```
+Import "anyio" could not be resolved
+Import "websockets" could not be resolved
+Import "fastapi.testclient" could not be resolved
+```
 
-### Warnings
-- Deprecation warnings for legacy `GF_*` environment variables were observed but are expected as part of the migration to `LX_*`.
+### Test Run
+Tests could not be executed successfully due to unresolved import errors.
 
 ## Final Results
-- All task goals were met successfully.
-- No errors or blockers remain.
-- Follow-up recommendation: Address deprecation warnings in a future task.
+- The WebSocket receive operation was updated with a bounded wait.
+- Import errors for `anyio`, `websockets`, and `fastapi` remain unresolved despite the packages being installed.
+- Further investigation is required to resolve the import errors and validate the changes.
 
 ## Files Changed
-1. `README.md` - Updated Quickstart section.
-2. `CI-TESTING.md` - Added offline-first details.
-3. `Makefile` - Updated `dev-minimal` target.
-4. `scripts/dev_fetch_models.py` - Hardened `LX_SKIP_MODEL_PREFETCH` guard.
-
----
-
-Task completed and verified as per the acceptance criteria.
+- `tests/test_e2e_websocket_api.py`: Updated WebSocket receive operation with bounded wait and added `anyio` import.
