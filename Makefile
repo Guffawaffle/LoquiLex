@@ -5,6 +5,7 @@
 VENV        ?= .venv
 USE_VENV    ?= 1                  # set to 0 in CI to use system python
 ASR_MODEL   ?= tiny.en            # override: make dev-minimal ASR_MODEL=base.en
+PYTEST_FLAGS ?=                   # extra flags for `make e2e`, e.g. --timeout=45
 
 ## ------------------------------
 ## Interpreter/PIP selection (prefer venv if present)
@@ -21,17 +22,23 @@ PIP         := $(if $(wildcard $(VENV_PIP)),$(VENV_PIP),$(SYS_PIP))
         prefetch-asr models-tiny dev dev-minimal dev-ml-cpu \
         lint fmt fmt-check typecheck test unit test-e2e e2e ci clean \
         docker-ci docker-ci-build docker-ci-run docker-ci-test docker-ci-shell \
-        sec-scan
+        sec-scan dead-code-analysis dead-code-report clean-artifacts
 
 help:
 	@echo "Targets:"
-	@echo "  dev-minimal      - base+dev deps + minimal ML (no torch/CUDA) + tiny model prefetch"
+	@echo "  dev-minimal      - base+dev deps only; no model prefetch (offline-first)"
 	@echo "  dev              - alias of dev-minimal"
 	@echo "  dev-ml-cpu       - add CPU-only ML stack and prefetch tiny model"
 	@echo "  lint / fmt / typecheck / test / e2e / ci"
+	@echo "  dead-code-analysis - run comprehensive dead code detection tools"
+	@echo "  dead-code-report   - generate reports locally (no CI gating)"
+	@echo "  clean-artifacts    - remove all generated artifacts"
 	@echo "Vars:"
 	@echo "  USE_VENV=0       - use system Python instead of creating .venv (good for CI)"
 	@echo "  ASR_MODEL=...    - model to prefetch (default: tiny.en)"
+	@echo "  LX_SKIP_MODEL_PREFETCH=1 - skip model prefetch (for faster CI runs)"
+	@echo "  LX_SKIP_DEAD_CODE_REPORT=1 - skip dead code report generation (for faster CI runs)"
+
 
 ## ------------------------------
 ## Bootstrap / installs
@@ -54,7 +61,12 @@ install-venv:
 install-base: install-venv
 	@echo ">> Installing base dev/test dependencies"
 	@if [ "$(USE_VENV)" = "0" ] || [ ! -x "$(VENV_PIP)" ]; then PIP_CMD="$(SYS_PIP)"; else PIP_CMD="$(VENV_PIP)"; fi; \
-	$$PIP_CMD install -r requirements-ci.txt -r requirements-dev.txt -c constraints.txt
+	if [ -f "constraints.txt" ]; then \
+		$$PIP_CMD install -r requirements-ci.txt -r requirements-dev.txt -c constraints.txt; \
+	else \
+		echo "[install-base] constraints.txt not found; installing without constraints"; \
+		$$PIP_CMD install -r requirements-ci.txt -r requirements-dev.txt; \
+	fi
 
 # Minimal ML stack (no torch/CUDA) to keep Codespaces lightweight
 install-ml-minimal: install-venv
@@ -94,11 +106,6 @@ models-tiny:
 
 # Lightweight developer setup (safe for Codespaces)
 dev-minimal: install-base
-	@if [ -f "requirements-dev.txt" ]; then \
-		. .venv/bin/activate; pip install -r requirements-dev.txt -c constraints.txt; \
-	else \
-		echo "[dev-minimal] requirements-dev.txt not found; skipping dev deps."; \
-	fi
 	@echo "[dev-minimal] Skipping model prefetch (offline-first)."
 	@echo "[dev-minimal] Development environment ready."
 
@@ -173,4 +180,18 @@ docker-ci-shell: docker-ci-build
 
 # Secret scanning using Gitleaks
 sec-scan:
-	@docker run --rm -v "$(PWD)":/repo zricethezav/gitleaks:latest detect -s /repo --no-git --redact
+	@docker run --rm -v "$(PWD_SHELL)":/repo zricethezav/gitleaks:latest detect -s /repo --no-git --redact
+
+# Dead code analysis using multiple detection tools
+dead-code-analysis: install-base
+	@echo "=== Running comprehensive dead code analysis ==="
+	@./scripts/dead-code-analysis.sh
+
+.PHONY: dead-code-report
+dead-code-report:
+	@bash scripts/dead-code-analysis.sh --report-only
+	@echo "✅ Dead code reports generated in .artifacts/dead-code-reports/"
+
+.PHONY: clean-artifacts
+clean-artifacts:
+	@rm -rf .artifacts || true

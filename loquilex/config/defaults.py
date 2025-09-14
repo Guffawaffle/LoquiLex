@@ -39,8 +39,6 @@ def _env_lx_or_gf(name_lx: str, name_gf: str, default: str) -> str:
         return v
     return default
 
-    return default
-
 
 def _env_bool(name_lx: str, name_gf: str, default: bool) -> bool:
     raw = _env_lx_or_gf(name_lx, name_gf, str(default))
