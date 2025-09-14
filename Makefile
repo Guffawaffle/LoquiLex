@@ -138,6 +138,9 @@ typecheck: install-base
 test:
 	HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 HF_HUB_DISABLE_TELEMETRY=1 LX_OFFLINE=1 pytest -q
 
+test-online:
+	HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 HF_HUB_DISABLE_TELEMETRY=1 LX_OFFLINE=0 pytest -q
+
 unit: test
 
 test-e2e: install-base
