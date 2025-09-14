@@ -1,74 +1,57 @@
 #instruction
-Run the specified `make` target in the LoquiLex repo and fix failures methodically until the target succeeds.
+Run the full repository test suite via Makefile targets (CI-equivalent), diagnose failures, and fix them iteratively with minimal diffs until all checks pass.
 
-#parameters
-- TARGET: <REPLACE with the exact make target, e.g., `test`, `streaming-tests`, `ci`, `lint`, `typecheck`>
-- MAKE_FLAGS (optional): <extra flags, e.g., `-k`, `V=1`>
-- ISSUE_REF (optional): <e.g., `#29`>
+#environment OFFLINE
+- (.venv)
+- Offline-first env: export HF_HUB_OFFLINE=1, TRANSFORMERS_OFFLINE=1, HF_HUB_DISABLE_TELEMETRY=1, LX_OFFLINE=1
+- Work from repo root. Use Makefile targets as the source of truth. Follow `AGENTS.md` conventions.
 
-#environment
-- Python: 3.12.3 via (.venv)
-- Offline-first: export HF_HUB_OFFLINE=1, TRANSFORMERS_OFFLINE=1, HF_HUB_DISABLE_TELEMETRY=1, LX_OFFLINE=1
-- Use Makefile targets as the source of truth (don’t run tools directly unless the target does so).
-- Respect repo rules in `AGENTS.md` (commit style, CI/lint/type/test requirements, minimal diffs).
+#environment ONNLINE
+- (.venv)
+- Offline-first env: export HF_HUB_OFFLINE=1, TRANSFORMERS_OFFLINE=1, HF_HUB_DISABLE_TELEMETRY=1, LX_OFFLINE=0
+- Work from repo root. Use Makefile targets as the source of truth. Follow `AGENTS.md` conventions.
+
+#discovery
+1) Try to identify the canonical “full suite” target in this priority order:
+   - `ci`, `verify`, `check`, `test-all`, `tests`, `test`, `dead-code-anlysis`, `typecheck`, `lint`
+2) Use:
+   - `make help || true` (if available)
+   - `make -qp | sed -n 's/^\([a-zA-Z0-9][a-zA-Z0-9._-]*\):.*/\1/p' | sort -u`
+3) If `run-ci-mode` exists, run it first to prep the env.
 
 #process
-1. **Dry run**
-   - If supported, run: `make -n ${TARGET} ${MAKE_FLAGS}` to preview steps.
-   - Then run: `make ${TARGET} ${MAKE_FLAGS}` and capture full stdout/stderr.
-
-2. **Triage the FIRST blocking error**
-   - Identify the root cause (not just the symptom).
-   - Propose the smallest viable fix (code/tests/config) that aligns with project principles (offline-first, transparency, minimal diffs).
-   - Avoid broad refactors; prefer surgical edits. Do not bypass checks (no `-k` to skip tests unless explicitly passed via MAKE_FLAGS).
-
-3. **Apply fix and re-run**
-   - Edit files as needed.
-   - Re-run `make ${TARGET} ${MAKE_FLAGS}`.
-   - Repeat triage → minimal fix → re-run until the target exits 0 or a genuine blocker is reached.
-
-4. **Quality gates**
-   - If the target doesn’t run all gates, also run: `make lint`, `make typecheck`, and `make test -k` as appropriate.
-   - Ensure `ruff` passes, `mypy` is clean (or strictly improved), and tests pass locally.
-   - Keep commit messages **imperative** (e.g., `fix(streaming): …`). Reference ISSUE_REF if provided.
-
-5. **Makefile/CI edits (only if necessary)**
-   - If a target is broken by definition, fix the Makefile minimally.
-   - If CI config must change, justify the necessity and keep the diff minimal.
-
-#deliverable-format
-Write **only** the following report to `.github/copilot/current-task-deliverables.md`:
-
-1. **Executive Summary**
-   - What target was run, the main failures found, key changes made, and the outcome.
-
-2. **Steps Taken**
-   - Bullet list of each attempt: command(s) run, diagnosis, and edits applied.
-
-3. **Evidence & Verification**
-   - Paste full command outputs for failing → passing runs (`make …`, `ruff`, `mypy`, `pytest`).
-   - Include before/after diffs or code snippets for all changes.
-
-4. **Final Results**
-   - Explicit pass/fail for the target.
-   - Residual warnings, TODOs, or follow-ups (if any).
-
-5. **Files Changed**
-   - List each modified file with a brief note (tests, implementation, Makefile, CI, docs).
+1) **Dry-run & execute**
+   - `make -n <FULL_TARGET>` to preview
+   - `make <FULL_TARGET>` and capture full stdout/stderr
+2) **Triage first blocking error**
+   - Identify true root cause (not just the symptom).
+   - Propose and apply the smallest viable fix (code/tests/config) aligned with LoquiLex principles (offline-first, transparency, minimal diffs).
+   - Never delete or skip tests to “go green.” No broad refactors.
+3) **Re-run & iterate** until `<FULL_TARGET>` exits 0.
+4) **Gate checks** (if not already covered by `<FULL_TARGET>`):
+   - `make lint`
+   - `make typecheck`
+   - `make test -k` (only if the suite target didn’t run tests)
+5) **CI parity sanity**
+   - If the suite target proved incomplete/broken, minimally fix the Makefile target(s) and justify changes.
+   - Keep changes tight; no disabling of checks.
 
 #constraints
-- Do not delete tests or disable checks to “make it green.”
-- Keep diffs tight and well-justified.
-- Maintain offline determinism; no network calls in tests.
-- Prefer `anyio`-compatible async patterns in tests.
+- Maintain offline determinism (no network in tests).
+- Prefer `anyio`-compatible async usage in tests.
+- Keep commit messages **imperative**; reference ISSUE_REF if provided.
+
+#deliverable-format
+Write **only** this report to `.github/copilot/current-task-deliverables.md`:
+1. **Executive Summary** – Which target(s) ran, failures found, key changes, outcome.
+2. **Steps Taken** – Bullet list of commands, diagnoses, and edits (per iteration).
+3. **Evidence & Verification** – Full command outputs for failing→passing runs; relevant diffs/snippets.
+4. **Final Results** – Explicit pass/fail and any residual warnings/TODOs.
+5. **Files Changed** – Each file + brief reason (tests, impl, Makefile, CI, docs).
 
 #output
-- Commit changes with imperative messages (e.g., `fix(asr): prevent loop mismatch in thread handoff`).
-- Produce `.github/copilot/current-task-deliverables.md` exactly as specified.
+- Commit with imperative messages (e.g., `fix(streaming): ensure thread-to-loop handoff on FastAPI loop`), optionally appending ISSUE_REF.
 
 #run
-- TARGET: [dead-code-analysis]
-- MAKE_FLAGS: <optional>
+- FULL_TARGET: (auto-discover using #discovery; prefer `ci` if present)
 - ISSUE_REF: 31
-- PR_REF: 48
-- BRANCH_REF: copilot/fix-31

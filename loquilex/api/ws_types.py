@@ -68,7 +68,7 @@ class WSEnvelope(BaseModel):
     )
     data: Dict[str, Any] = Field(default_factory=dict, description="Type-specific payload")
 
-    def model_post_init(self) -> None:
+    def model_post_init(self, __context: Any) -> None:
         """Auto-generate message ID if not provided."""
         if self.id is None and self.sid is not None:
             self.id = f"msg_{uuid.uuid4().hex[:8]}"
