@@ -48,7 +48,7 @@ class WhisperEngine:
         # word-level tracking
         self._words_emitted: int = 0
         try:
-            from faster_whisper import WhisperModel
+            from faster_whisper import WhisperModel  # type: ignore
         except Exception as e:
             raise RuntimeError("faster-whisper not installed") from e
 

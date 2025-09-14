@@ -7,10 +7,15 @@ from typing import TYPE_CHECKING
 from loquilex.config.defaults import MT, pick_device
 
 
-try:  # optional dependency
-    import torch
-except Exception:  # torch might not be installed in test env
-    torch = None
+
+from typing import Any
+if TYPE_CHECKING:
+    torch: Any
+else:
+    try:  # optional dependency
+        import torch
+    except Exception:  # torch might not be installed in test env
+        torch = None
 
 if TYPE_CHECKING:  # only for typing; avoid runtime hard dep
     pass
