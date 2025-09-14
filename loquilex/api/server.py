@@ -15,7 +15,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from .model_discovery import list_asr_models, list_mt_models, mt_supported_languages
-from .supervisor import SessionConfig, SessionManager
+from .supervisor import SessionConfig, SessionManager, StreamingSession
 
 logger = logging.getLogger(__name__)
 
@@ -322,17 +322,17 @@ async def get_session_metrics(sid: str) -> Dict[str, Any]:
     if not sess:
         raise HTTPException(status_code=404, detail="session not found")
 
-    if not hasattr(sess, "get_metrics"):
-        raise HTTPException(status_code=400, detail="session does not support metrics")
-
-    try:
-        metrics = sess.get_metrics()
-        if metrics is None:
-            raise HTTPException(status_code=503, detail="metrics not available")
-        return metrics
-    except Exception:
-        logger.exception("metrics error")
-        raise HTTPException(status_code=500, detail="metrics error")
+    if isinstance(sess, StreamingSession):
+        try:
+            metrics = sess.get_metrics()
+            if metrics is None:
+                raise HTTPException(status_code=503, detail="metrics not available")
+            return metrics
+        except Exception:
+            logger.exception("metrics error")
+            raise HTTPException(status_code=500, detail="metrics error")
+    else:
+        raise HTTPException(status_code=400, detail="metrics not available for non-streaming session")
 
 
 @app.get("/sessions/{sid}/asr/snapshot")
@@ -342,14 +342,13 @@ async def get_asr_snapshot(sid: str) -> Dict[str, Any]:
     if not sess:
         raise HTTPException(status_code=404, detail="session not found")
 
-    if not hasattr(sess, "get_asr_snapshot"):
+    if isinstance(sess, StreamingSession):
+        snapshot = sess.get_asr_snapshot()
+        if snapshot is None:
+            raise HTTPException(status_code=503, detail="ASR snapshot not available")
+        return snapshot
+    else:
         raise HTTPException(status_code=400, detail="session does not support ASR snapshots")
-
-    snapshot = sess.get_asr_snapshot()
-    if snapshot is None:
-        raise HTTPException(status_code=503, detail="ASR snapshot not available")
-
-    return snapshot
 
 
 @app.get("/sessions/{sid}/snapshot")

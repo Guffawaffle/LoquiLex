@@ -14,3 +14,7 @@ logs/
 *.wav
 *.mp3
 *.mp4
+.coverage
+htmlcov/
+dist/
+build/

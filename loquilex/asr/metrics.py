@@ -5,7 +5,7 @@ from __future__ import annotations
 import time
 from collections import deque
 from dataclasses import dataclass, field
-from typing import Deque, Dict, Optional
+from typing import Any, Deque, Dict, Optional
 
 __all__ = ["ASRMetrics"]
 
@@ -74,7 +74,7 @@ class ASRMetrics:
         self.last_partial_time: Optional[float] = None
         self.segment_start_time: Optional[float] = None
 
-    def on_partial_event(self, event_dict: Dict[str, any]) -> None:
+    def on_partial_event(self, event_dict: Dict[str, Any]) -> None:
         """Record partial event for metrics."""
         current_time = time.monotonic()
         self.partial_count += 1
@@ -101,7 +101,7 @@ class ASRMetrics:
             },
         )
 
-    def on_final_event(self, event_dict: Dict[str, any]) -> None:
+    def on_final_event(self, event_dict: Dict[str, Any]) -> None:
         """Record final event for metrics."""
         current_time = time.monotonic()
         self.final_count += 1
@@ -136,7 +136,7 @@ class ASRMetrics:
         self.last_partial_time = None
         self.segment_start_time = None
 
-    def _log_event(self, event_type: str, details: Dict[str, any]) -> None:
+    def _log_event(self, event_type: str, details: Dict[str, Any]) -> None:
         """Log structured event with metrics."""
         log_data = {
             "type": f"asr_metrics.{event_type}",
@@ -150,13 +150,11 @@ class ASRMetrics:
         # In production, this could send to proper logging infrastructure
         print(f"[ASR_METRICS] {log_data}")
 
-    def get_summary(self) -> Dict[str, any]:
-        """Get comprehensive metrics summary."""
+    def get_summary(self) -> Dict[str, Any]:
+        """Generate a summary of all metrics."""
         session_duration = time.monotonic() - self.start_time
-
-        summary = {
+        summary: Dict[str, Any] = {
             "stream_id": self.stream_id,
-            "session_duration_sec": session_duration,
             "events": {
                 "partial_count": self.partial_count,
                 "final_count": self.final_count,
@@ -177,7 +175,7 @@ class ASRMetrics:
         partial_stats = self.partial_intervals.get_stats()
         final_stats = self.final_latency.get_stats()
 
-        performance = {}
+        performance: Dict[str, bool] = {}
         if "p50" in partial_stats:
             performance["partial_p50_target"] = partial_stats["p50"] <= 200  # < 200ms target
             performance["partial_p95_target"] = partial_stats.get("p95", 0) <= 300  # < 300ms target

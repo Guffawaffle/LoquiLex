@@ -12,7 +12,7 @@ import time
 import uuid
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 from fastapi import WebSocket
 
@@ -37,8 +37,8 @@ class StreamingSession:
         self._event_loop: Optional[asyncio.AbstractEventLoop] = None
 
         # Streaming ASR components
-        self._streaming_asr = None
-        self._aggregator = None
+        self.asr: Optional[Any] = None  # StreamingASR
+        self.aggregator: Optional[Any] = None  # PartialFinalAggregator
         self._audio_thread: Optional[threading.Thread] = None
         self._broadcast_fn = None  # Set by manager
 
@@ -67,11 +67,11 @@ class StreamingSession:
             from loquilex.asr.aggregator import PartialFinalAggregator
 
             # Initialize streaming components
-            self._streaming_asr = StreamingASR(stream_id=self.sid)
-            self._aggregator = PartialFinalAggregator(self.sid)
+            self.asr = StreamingASR(stream_id=self.sid)
+            self.aggregator = PartialFinalAggregator(self.sid)
 
             # Warmup ASR
-            self._streaming_asr.warmup()
+            self.asr.warmup()
 
             # Start audio processing thread
             def audio_worker():
@@ -84,7 +84,7 @@ class StreamingSession:
                         if self._stop_evt.is_set():
                             return
                         try:
-                            self._streaming_asr.process_audio_chunk(
+                            self.asr.process_audio_chunk(
                                 frame.data, self._on_partial, self._on_final
                             )
                         except Exception as e:
@@ -163,7 +163,7 @@ class StreamingSession:
                             print(f"[StreamingSession] Audio error: {e}")
                 finally:
                     # Guarantee audio capture cleanup
-                    if stop_capture:
+                    if stop_capture is not None:
                         try:
                             stop_capture()
                         except Exception:
@@ -178,53 +178,47 @@ class StreamingSession:
 
     def _on_partial(self, partial_event) -> None:
         """Handle partial ASR events."""
-        if self._aggregator and self._broadcast_fn:
+        if self.aggregator is None or self._broadcast_fn is None:
+            return
+
+        def emit_event(event_dict):
             try:
-
-                def emit_event(event_dict):
-                    # Use thread-safe asyncio call
-                    try:
-                        if self._event_loop is not None:
-                            asyncio.run_coroutine_threadsafe(
-                                self._broadcast_fn(self.sid, event_dict),
-                                self._event_loop
-                            )
-                        else:
-                            # Fallback: try to get loop in current context
-                            loop = asyncio.get_running_loop()
-                            loop.create_task(self._broadcast_fn(self.sid, event_dict))
-                    except RuntimeError:
-                        # No running loop - skip broadcast in thread context
-                        print(f"[StreamingSession] Partial: {event_dict.get('text', '')}")
-
-                self._aggregator.add_partial(partial_event, emit_event)
-            except Exception as e:
-                print(f"[StreamingSession] Partial event error: {e}")
+                if self._event_loop is not None:
+                    asyncio.run_coroutine_threadsafe(
+                        self._broadcast_fn(self.sid, event_dict),
+                        self._event_loop
+                    )
+                else:
+                    loop = asyncio.get_running_loop()
+                    loop.create_task(self._broadcast_fn(self.sid, event_dict))
+            except RuntimeError:
+                print(f"[StreamingSession] Partial: {event_dict.get('text', '')}")
+        try:
+            self.aggregator.add_partial(partial_event, emit_event)
+        except Exception as e:
+            print(f"[StreamingSession] Partial event error: {e}")
 
     def _on_final(self, final_event) -> None:
         """Handle final ASR events."""
-        if self._aggregator and self._broadcast_fn:
+        if self.aggregator is None or self._broadcast_fn is None:
+            return
+
+        def emit_event(event_dict):
             try:
-
-                def emit_event(event_dict):
-                    # Use thread-safe asyncio call
-                    try:
-                        if self._event_loop is not None:
-                            asyncio.run_coroutine_threadsafe(
-                                self._broadcast_fn(self.sid, event_dict),
-                                self._event_loop
-                            )
-                        else:
-                            # Fallback: try to get loop in current context
-                            loop = asyncio.get_running_loop()
-                            loop.create_task(self._broadcast_fn(self.sid, event_dict))
-                    except RuntimeError:
-                        # No running loop - skip broadcast in thread context
-                        print(f"[StreamingSession] Final: {event_dict.get('text', '')}")
-
-                self._aggregator.add_final(final_event, emit_event)
-            except Exception as e:
-                print(f"[StreamingSession] Final event error: {e}")
+                if self._event_loop is not None:
+                    asyncio.run_coroutine_threadsafe(
+                        self._broadcast_fn(self.sid, event_dict),
+                        self._event_loop
+                    )
+                else:
+                    loop = asyncio.get_running_loop()
+                    loop.create_task(self._broadcast_fn(self.sid, event_dict))
+            except RuntimeError:
+                print(f"[StreamingSession] Final: {event_dict.get('text', '')}")
+        try:
+            self.aggregator.add_final(final_event, emit_event)
+        except Exception as e:
+            print(f"[StreamingSession] Final event error: {e}")
 
     def stop(self) -> None:
         """Stop the streaming session."""
@@ -247,26 +241,26 @@ class StreamingSession:
 
     def finalize_now(self) -> None:
         """Force finalize current segment."""
-        if self._streaming_asr:
+        if self.asr:
             try:
-                self._streaming_asr.force_finalize(self._on_final)
+                self.asr.force_finalize(self._on_final)
             except Exception as e:
                 print(f"[StreamingSession] Force finalize error: {e}")
 
     def get_metrics(self) -> Optional[Dict[str, Any]]:
         """Get performance metrics."""
-        if self._aggregator:
+        if self.aggregator:
             try:
-                return self._aggregator.get_metrics_summary()
+                return self.aggregator.get_metrics_summary()
             except Exception as e:
                 print(f"[StreamingSession] Metrics error: {e}")
         return None
 
     def get_asr_snapshot(self) -> Optional[Dict[str, Any]]:
         """Get ASR snapshot for reconnects."""
-        if self._aggregator:
+        if self.aggregator:
             try:
-                return self._aggregator.get_snapshot()
+                return self.aggregator.get_snapshot()
             except Exception as e:
                 print(f"[StreamingSession] Snapshot error: {e}")
         return None
@@ -349,14 +343,14 @@ class Session:
         if self.proc and self.proc.poll() is None:
             try:
                 try:
-                    os.killpg(self.proc.pid, signal.SIGTERM)  # type: ignore[arg-type]
+                    os.killpg(self.proc.pid, signal.SIGTERM)
                 except Exception:
                     self.proc.terminate()
                 try:
                     self.proc.wait(timeout=3)
                 except subprocess.TimeoutExpired:
                     try:
-                        os.killpg(self.proc.pid, signal.SIGKILL)  # type: ignore[arg-type]
+                        os.killpg(self.proc.pid, signal.SIGKILL)
                     except Exception:
                         self.proc.kill()
             except Exception:
@@ -372,28 +366,29 @@ class Session:
         # Send SIGSTOP to process group to pause audio ingest and decoding
         if self.proc and self.proc.poll() is None:
             try:
-                os.killpg(self.proc.pid, signal.SIGSTOP)  # type: ignore[arg-type]
+                os.killpg(self.proc.pid, signal.SIGSTOP)
             except Exception:
                 pass
 
     def resume(self) -> None:
         if self.proc and self.proc.poll() is None:
             try:
-                os.killpg(self.proc.pid, signal.SIGCONT)  # type: ignore[arg-type]
+                os.killpg(self.proc.pid, signal.SIGCONT)
             except Exception:
                 pass
 
     def finalize_now(self) -> None:
         if self.proc and self.proc.poll() is None:
             try:
-                os.killpg(self.proc.pid, signal.SIGUSR1)  # type: ignore[arg-type]
+                os.killpg(self.proc.pid, signal.SIGUSR1)
             except Exception:
                 pass
 
 
 class SessionManager:
     def __init__(self) -> None:
-        self._sessions: Dict[str, Session] = {}
+        # Holds both types; narrow at call sites.
+        self._sessions: Dict[str, Union[Session, StreamingSession]] = {}
         self._ws: Dict[str, List[WebSocket]] = {}
         self._bg_threads: List[threading.Thread] = []
         self._lock = threading.Lock()
@@ -419,6 +414,7 @@ class SessionManager:
         run_dir.mkdir(parents=True, exist_ok=True)
 
         # Choose session type based on streaming_mode flag
+        sess: Union[Session, StreamingSession]
         if cfg.streaming_mode:
             sess = StreamingSession(sid, cfg, run_dir)
             sess.set_broadcast_fn(self._broadcast)
@@ -662,11 +658,11 @@ class SessionManager:
         if not proc or proc.poll() is not None:
             return False
         try:
-            os.killpg(proc.pid, signal.SIGTERM)  # type: ignore[arg-type]
+            os.killpg(proc.pid, signal.SIGTERM)
             try:
                 proc.wait(timeout=3)
             except subprocess.TimeoutExpired:
-                os.killpg(proc.pid, signal.SIGKILL)  # type: ignore[arg-type]
+                os.killpg(proc.pid, signal.SIGKILL)
             return True
         except Exception:
             try:

@@ -147,6 +147,9 @@ e2e: install-base
 ci: lint typecheck test
 	@echo "✓ CI checks passed locally"
 
+.PHONY: run-ci-mode
+run-ci-mode: ci
+
 ## ------------------------------
 ## Cleanup
 

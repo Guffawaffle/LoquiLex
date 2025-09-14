@@ -398,7 +398,7 @@ class TestAsyncBridge:
         def mock_add_partial(_partial_event, emit_fn):
             emit_fn({"type": "test"})
         mock_aggregator.add_partial.side_effect = mock_add_partial
-        session._aggregator = mock_aggregator
+        session.aggregator = mock_aggregator
 
         # Mock broadcast function
         broadcast_calls = []
@@ -454,7 +454,7 @@ class TestAsyncBridge:
         def mock_add_partial(_partial_event, emit_fn):
             emit_fn({"type": "test"})
         mock_aggregator.add_partial.side_effect = mock_add_partial
-        session._aggregator = mock_aggregator
+        session.aggregator = mock_aggregator
 
         # Mock broadcast function
         broadcast_calls = []

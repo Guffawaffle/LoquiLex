@@ -5,7 +5,7 @@ from __future__ import annotations
 import time
 from collections import deque
 from dataclasses import dataclass
-from typing import Any, Callable, Deque, Dict, List, Optional
+from typing import Any, Callable, Deque, Dict, List, Optional, Set
 
 from .stream import ASRPartialEvent, ASRFinalEvent
 from .metrics import ASRMetrics
@@ -69,7 +69,7 @@ class PartialFinalAggregator:
 
         # Final segments (keep recent for snapshots)
         self.recent_finals: Deque[FinalSegment] = deque()
-        self.finalized_segment_ids = set()  # prevent duplicate finals
+        self.finalized_segment_ids: Set[str] = set()  # prevent duplicate finals
 
         # Live partial for snapshots
         self.current_partial: Optional[PartialState] = None

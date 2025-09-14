@@ -159,7 +159,7 @@ class StreamingASR:
 
     def _extract_words(self, segments: List[Any]) -> List[ASRWord]:
         """Extract word-level information from segments."""
-        words = []
+        words: List[ASRWord] = []
 
         if not ASR.word_timestamps:
             return words

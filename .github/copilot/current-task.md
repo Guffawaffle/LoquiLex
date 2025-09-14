@@ -1,87 +1,109 @@
+# Task: Fix Docker exec (126) — ensure image arch & shell correctness (PR #43 support)
 
-# Task: PR #43 — Final Polish & Merge Readiness (Streaming ASR)
-
-**Timestamp:** 2025-09-14 09:12:21 CDT
+**Timestamp:** 2025-09-14 14:43:39
 
 ## Intent
-Put PR #43 over the finish line: finalize behavior, tighten tests, update docs, and ensure CI parity. Keep diffs minimal and scoped to this PR.
+Resolve container runtime errors like `cannot execute binary file` when running `bash`, `make`, or `python` inside `loquilex-ci`. Target the most probable causes: image architecture mismatch and shell/tooling availability. Keep diffs minimal.
 
 ## Branch
-Use the **PR #43 head branch** (do **not** work on `main`). If needed:
+Use the PR #43 head branch (do **not** work on `main`). Create a short-lived branch if desired:
 ```bash
 gh pr view 43 --json headRefName,url --jq '.headRefName + " ← " + .url'
 git fetch origin pull/43/head:pr-43 && git checkout pr-43
-git checkout -b fix/43-polish
+git checkout -b fix/43-docker-exec-126
 ```
 
-## Goals
-1) Verify corrected streaming snapshot status & metrics error hygiene (no exception text leaks).
-2) Strengthen unit/integration coverage around streaming sessions (status, metrics, event flow).
-3) Document the new endpoints and event schema (dev-facing readme).
-4) Confirm CI parity locally (ruff, mypy, pytest, dead-code) and via docker-ci image.
-
-## Constraints
-- **Offline-first**: tests must not hit the network or download models (use fakes).
-- Commit messages **imperative**; diffs **minimal** and focused.
-- No CI/repo-settings/secrets edits unless explicitly required here.
-
----
-
-## Tasks
-
-### 1) Verify behavior (manual checks via tests)
-- Ensure `/sessions/{sid}/snapshot` returns `status: running` while the streaming audio thread is alive and `stopped` after stopping.
-- Ensure metrics endpoint returns 500 with `detail: "metrics error"` when forced to error, without leaking exception text.
-
-### 2) Tests (targeted, offline, fast)
-- **Snapshot status test**: Assert running→stopped transitions using a short-lived streaming session and thread liveness.
-- **Error hygiene test**: Monkeypatch a metrics internal call to raise; assert 500 with generic detail.
-- **Metrics happy-path test**: Minimal end-to-end of `on_partial_event`/`on_final_event` flowing into a `get_summary()` call.
-- Ensure mocking uses real float seeds for monotonic/time arithmetic (avoid MagicMock math).
-
-### 3) Documentation
-Update `API/README.md` (or create if missing) with:
-- **Endpoints**
-  - `GET /sessions/{sid}/metrics` — returns summary stats (fields + example).
-  - `GET /sessions/{sid}/snapshot` — returns `status`, `cfg`, optional `last_event` details.
-- **Event Schema** (wire format used by streaming):
-  - `asr.partial`: `type`, `text`, `words`, `seq`, `segment_id`.
-  - `asr.final`: `type`, `text`, `words`, `eou_reason`, `segment_id`.
-- **Client Snippet**: Example showing how to consume partials/finals and periodically query metrics/snapshot.
-- Note offline-first posture and fakes used in tests.
-
-### 4) CI parity / local validation
+## Diagnosis steps (run & record outputs)
 ```bash
-ruff check .
-python -m mypy
-pytest -q
-make dead-code-analysis  # vulture output empty; no ruff F401
-# Optional dockerized parity:
-docker build -t loquilex-ci -f ci/Dockerfile .
-docker run --rm -v "$(pwd)":/app -w /app loquilex-ci make run-ci-mode
-docker run --rm -v "$(pwd)":/app -w /app loquilex-ci make dead-code-analysis
+# 1) Confirm the image arch & OS
+docker inspect --format '{{.Os}}/{{.Architecture}}' loquilex-ci
+
+# 2) Confirm the base image arch (the tag you use in Dockerfile.ci)
+docker image inspect python:3.12-slim --format '{{.Os}}/{{.Architecture}}'
+
+# 3) Try a shell that should always exist
+docker run --rm --entrypoint /bin/sh loquilex-ci -c 'uname -a && which sh && /bin/sh -c "echo sh-ok"'
+# If this fails identically, it's an arch/exec format problem, not just missing bash.
+
+# 4) Inspect critical binaries
+docker run --rm --entrypoint /usr/bin/file loquilex-ci /bin/sh /bin/bash /usr/bin/make /opt/venv/bin/python || true
 ```
 
-### 5) Commit & push
+## Required fixes
+
+### A) Make the Dockerfile arch-agnostic & shell-agnostic
+- **Remove any `--platform=$BUILDPLATFORM` usage.** If you must specify, prefer `--platform=$TARGETPLATFORM` or omit entirely to let Docker pick the native arch.
+- **Do not require bash.** Use `/bin/sh` for build RUNs and for local debug.
+
+**Dockerfile.ci (minimal, robust)**
+```dockerfile
+# Use native target by default; avoid BUILDPLATFORM pinning
+FROM python:3.12-slim
+
+SHELL ["/bin/sh", "-lc"]
+
+# Basic tooling; keep small
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    make \
+    git \
+  && rm -rf /var/lib/apt/lists/*
+
+# Virtualenv
+RUN python -m venv /opt/venv
+ENV VIRTUAL_ENV=/opt/venv
+ENV PATH="/opt/venv/bin:${PATH}"
+
+WORKDIR /app
+
+# Install deps first for layer caching
+COPY requirements*.txt constraints*.txt /app/ 2>/dev/null || true
+RUN if [ -f requirements-ci.txt ]; then \
+      if [ -f constraints.txt ]; then \
+        pip install --upgrade pip && pip install -r requirements-ci.txt -r requirements-dev.txt --constraint constraints.txt; \
+      else \
+        pip install --upgrade pip && pip install -r requirements-ci.txt -r requirements-dev.txt; \
+      fi; \
+    fi
+
+# Copy source
+COPY . /app
+```
+
+### B) `.dockerignore` — prevent host leakage
+```
+.git
+.venv
+.direnv
+__pycache__/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+dist/
+build/
+```
+
+### C) Rerun with explicit native arch (only if needed)
+If Docker Desktop/WSL cross-builds by default, force native at build/run time:
 ```bash
-git add -A
-git commit -m "docs(api): document streaming metrics/snapshot and event schema"
-git commit -m "test(stream): add status + error-hygiene tests; tighten metrics coverage"
-git push -u origin HEAD
-```
+docker build -t loquilex-ci -f Dockerfile.ci .
+# or, if needed on ARM host for x86 runner parity:
+# docker build --platform=linux/amd64 -t loquilex-ci -f Dockerfile.ci .
 
----
+docker run --rm -v "$(pwd)":/app -w /app loquilex-ci /bin/sh -lc 'python -V && which python && which make && make --version'
+docker run --rm -v "$(pwd)":/app -w /app loquilex-ci /bin/sh -lc 'make run-ci-mode && make dead-code-analysis'
+```
 
 ## Acceptance Criteria
-- Snapshot endpoint reports correct `running`/`stopped` states for streaming sessions.
-- Metrics/snapshot endpoints never leak exception text in 500 responses.
-- API docs updated with endpoints, schemas, and a minimal client example.
-- `pytest -q`, `ruff check .`, `mypy`, and `make dead-code-analysis` pass locally and under docker-ci.
-- No model downloads or external network calls in tests.
+- `docker inspect --format '{{.Os}}/{{.Architecture}}' loquilex-ci` shows expected `linux/amd64` (or native host arch).
+- `docker run ... /bin/sh -lc 'python -V'` works (no `cannot execute binary file` errors).
+- `docker run ... make run-ci-mode` and `... make dead-code-analysis` succeed.
+- No dependence on `bash` at runtime (shell-agnostic).
 
 ## Deliverables → `.github/copilot/current-task-deliverables.md`
-1. **Executive Summary**: what changed and the outcome.
-2. **Steps Taken**: commands, edits, manual steps (if any).
-3. **Evidence & Verification**: full outputs (pytest/ruff/mypy/dead-code), GH Actions links/IDs, environment details.
-4. **Final Results**: explicit pass/fail against goals.
-5. **Files Changed**: list with purpose.
+1. **Executive Summary** of the fix.
+2. **Steps Taken** with commands and outputs.
+3. **Evidence & Verification** (inspects, file(1) results, successful run logs).
+4. **Final Results** stating pass/fail vs acceptance criteria.
+5. **Files Changed** (Dockerfile.ci, .dockerignore, and any docs).
