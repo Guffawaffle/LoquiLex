@@ -1,3 +1,130 @@
+# 1. Executive Summary
+Target(s) executed: lint, fmt, typecheck, test, e2e, ci.
+All targets passed without requiring code changes. Lint (ruff), formatting (black), mypy type checking, unit tests, e2e tests, and aggregate ci target all succeeded on first run. No blocking failures encountered; only non-fatal warnings (DeprecationWarning from httpx 'app' shortcut; pytest warnings about unnecessary @pytest.mark.asyncio on sync tests). No modifications were applied since gates were green.
+
+# 2. Steps Taken
+- Dry run commands: `make -n lint fmt typecheck test e2e ci` to inspect planned actions.
+- Ran `make lint` – ruff reported: All checks passed.
+- Ran `make fmt` – black reported no changes (72 files left unchanged).
+- Ran `make typecheck` – mypy succeeded (note about untyped function bodies; no errors).
+- Ran `make test` – 80 passed, 2 skipped, 18 warnings (offline skips expected for MT integration; warnings noted).
+- Ran `make e2e` – 6 selected e2e tests passed; same warning set.
+- Ran `make ci` – revalidated lint, typecheck, unit tests; all green; same warnings.
+- Determined no code changes necessary; proceeded to prepare deliverables.
+
+# 3. Evidence & Verification
+## Dry Run
+```
+$ make -n lint fmt typecheck test e2e ci
+... (abridged to essential commands) ...
+.venv/bin/python -m ruff check loquilex tests
+.venv/bin/python -m black loquilex tests
+.venv/bin/python -m mypy loquilex
+HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 HF_HUB_DISABLE_TELEMETRY=1 LOQUILEX_OFFLINE=1 pytest -q
+.venv/bin/python -m pytest -m e2e -vv -rA
+```
+
+## Lint
+```
+$ make lint
+All checks passed!
+```
+
+## Format
+```
+$ make fmt
+All done! ✨ 🍰 ✨
+72 files left unchanged.
+```
+
+## Typecheck
+```
+$ make typecheck
+Success: no issues found in 42 source files
+(note) loquilex/cli/live_en_to_zh.py:425: By default the bodies of untyped functions are not checked
+```
+
+## Unit Tests
+```
+$ make test
+80 passed, 2 skipped, 18 warnings in ~5s
+Skips: offline MT integration tests
+Warnings: DeprecationWarning (httpx app shortcut), PytestWarning for @pytest.mark.asyncio on sync tests
+```
+
+## E2E Tests
+```
+$ make e2e
+6 passed, 76 deselected, 6 warnings in <1s
+Warnings mirror the subset above.
+```
+
+## Aggregate CI
+```
+$ make ci
+(re-runs lint, typecheck, test)
+✓ CI checks passed locally
+```
+
+## Warnings (Representative Snippets)
+```
+DeprecationWarning: The 'app' shortcut is now deprecated. Use the explicit style 'transport=WSGITransport(app=...)' instead.
+PytestWarning: test_* marked with '@pytest.mark.asyncio' but is not an async function.
+```
+
+# 4. Final Results
+- Target status: All specified targets succeeded (exit code 0) first-run.
+- No fixes required; repository currently green for the requested gates.
+- Follow-ups (optional improvements, not required to pass now):
+  - Replace deprecated httpx `app=` usage with explicit `transport=WSGITransport(app=...)` in tests/helpers to silence deprecation before future removal.
+  - Remove unnecessary `@pytest.mark.asyncio` markers from synchronous e2e tests to eliminate PytestWarning noise.
+  - Consider enabling `--check-untyped-defs` in mypy for stricter coverage if desired.
+
+# 5. Files Changed
+- None (no changes necessary; working tree unchanged).
+# 1. Executive Summary
+- Target run: `make ci` (ISSUE_REF: 30)
+- Initial failure: ruff lint error (ARG002 unused argument in test_mt_registry.py)
+- Fix: Added `# noqa: ARG002` inline to suppress warning for unused 'quality' argument.
+- Outcome: All CI checks pass; only non-blocking warnings remain.
+
+# 2. Steps Taken
+- Ran `make -n ci` to preview steps.
+- Ran `make ci` and captured ruff lint error (ARG002 unused argument).
+- Edited `tests/test_mt_registry.py` to add `# noqa: ARG002` inline to 'quality' argument.
+- Re-ran `make ci` to confirm all checks pass.
+
+# 3. Evidence & Verification
+## Failing run (ruff lint):
+```
+ARG002 Unused method argument: `quality`
+  --> tests/test_mt_registry.py:16:51
+	|
+15 |     def translate_text(
+16 |         self, text: str, src: Lang, tgt: Lang, *, quality: QualityMode = "realtime"
+	|                                                   ^^^^^^^
+17 |     ) -> str:  # noqa: ARG002
+18 |         return f"mock-{src}-{tgt}-{text}"
+	|
+Found 1 error.
+make: *** [Makefile:127: lint] Error 1
+```
+## Passing run (after fix):
+```
+80 passed, 2 skipped, 19 warnings in 4.71s
+✓ CI checks passed locally
+```
+## Diff:
+- `tests/test_mt_registry.py`: moved `# noqa: ARG002` inline to the 'quality' argument in `translate_text`.
+
+# 4. Final Results
+- Target `make ci` passes.
+- Residual warnings: Pytest warnings about `@pytest.mark.asyncio` on non-async functions, DeprecationWarnings, and RuntimeWarnings (non-blocking, can be cleaned up separately).
+- No test skips or disables; offline mode respected.
+
+# 5. Files Changed
+- `tests/test_mt_registry.py`: Suppress ruff ARG002 unused argument warning for 'quality'.
+
 
 # 1. Executive Summary
 - Ran full CI suite via `make ci` (canonical target).
