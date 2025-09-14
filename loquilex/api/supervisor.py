@@ -256,7 +256,9 @@ class SessionManager:
 
     # Download management
     def start_download_job(self, job_id: str, repo_id: str, _typ: str) -> None:
-        t = threading.Thread(target=self._download_worker, args=(job_id, repo_id, _typ), daemon=True)
+        t = threading.Thread(
+            target=self._download_worker, args=(job_id, repo_id, _typ), daemon=True
+        )
         t.start()
         self._bg_threads.append(t)
 

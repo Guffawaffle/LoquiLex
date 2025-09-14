@@ -132,8 +132,8 @@ fmt-check: install-base
 typecheck: install-base
 	$(PY) -m mypy loquilex
 
-test: install-base
-	$(PY) -m pytest -q
+test:
+	HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 HF_HUB_DISABLE_TELEMETRY=1 LOQUILEX_OFFLINE=1 pytest -q
 
 unit: test
 
