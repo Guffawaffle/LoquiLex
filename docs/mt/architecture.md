@@ -107,7 +107,7 @@ def create(name: str) -> MTProvider:
     try:
         return _registry[name]()
     except KeyError:
-        raise ValueError(f"Unknown MT provider: {{name}}")
+        raise ValueError(f"Unknown MT provider: {name}")
 ```
 
 - CT2 providers call `register_provider("ct2-nllb", factory)` / `register_provider("ct2-m2m", factory)` at import time.
