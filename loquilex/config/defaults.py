@@ -55,7 +55,12 @@ class ASRDefaults:
     condition_on_previous_text: bool = _env_bool("LX_ASR_COND_PREV", False)
     sample_rate: int = _env_int("LX_ASR_SAMPLE_RATE", 16000)
     cpu_threads: int = _env_int("LX_ASR_CPU_THREADS", max(1, (os.cpu_count() or 2) - 1))
-    word_timestamps: bool = _env_bool("LX_ASR_WORD_TS", False)
+    word_timestamps: bool = _env_bool("LX_ASR_WORD_TS", True)
+    # Streaming-specific settings
+    silence_ms: int = _env_int("LX_ASR_SILENCE_MS", 300)
+    max_seg_ms: int = _env_int("LX_ASR_MAX_SEG_MS", 10000)
+    punctuation: str = _env("LX_ASR_PUNCTUATION", ".?!;:")
+    max_partials: int = _env_int("LX_ASR_MAX_PARTIALS", 100)
 
 
 @dataclass(frozen=True)
@@ -105,7 +110,7 @@ def pick_device() -> tuple[str, str]:
     """
     pref = RT.device_preference
     try:
-        import torch  # type: ignore
+        import torch
 
         has_cuda = torch.cuda.is_available()
     except Exception:

@@ -6,9 +6,9 @@ and asserts we receive status/partial/final events in the expected order.
 
 from __future__ import annotations
 
-import pytest
 
-pytestmark = pytest.mark.e2e
+import pytest
+pytestmark = [pytest.mark.e2e, pytest.mark.asyncio]
 pytest.importorskip("fastapi", reason="fastapi not installed; e2e disabled by default")
 
 import asyncio  # noqa: E402
