@@ -57,4 +57,4 @@ Write ONLY this report to `.github/copilot/current-task-deliverables.md`:
 
 #run
 - FULL_TARGET: auto-discover using #discovery; prefer `ci` if present (treat `run-ci-mode` as an alias).
-- ISSUE_REF: <optional>
+- ISSUE_REF: 31

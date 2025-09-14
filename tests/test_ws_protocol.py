@@ -332,3 +332,50 @@ class TestWSProtocolManager:
             # Connection should be closed and removed
             assert mock_ws.closed is True
             assert len(manager.connections) == 0
+
+    async def test_ack_spoof_protection(self):
+        """Client cannot ack beyond latest delivered seq."""
+        async with WSProtocolManager("test_session") as manager:
+            mock_ws = MockWebSocket()
+            await manager.add_connection(mock_ws)
+            # Send two domain events
+            await manager.send_domain_event(MessageType.ASR_PARTIAL, {"text": "msg1"})
+            await manager.send_domain_event(MessageType.ASR_FINAL, {"text": "msg2"})
+            # Try to ack seq beyond latest delivered (should trigger error)
+            ack_envelope = WSEnvelope(
+                t=MessageType.CLIENT_ACK, data=AckData(ack_seq=99).model_dump()
+            )
+            await manager.handle_message(mock_ws, ack_envelope.model_dump_json())
+            # Should have sent error message
+            err = mock_ws.get_last_message()
+            assert err["t"] == MessageType.SERVER_ERROR
+            assert err["data"]["code"] == "invalid_ack"
+
+    async def test_resume_with_gaps(self):
+        """On resume, server delivers only missing frames once, ignores duplicates."""
+        async with WSProtocolManager("test_session") as manager:
+            temp_ws = MockWebSocket()
+            await manager.add_connection(temp_ws)
+            temp_ws.sent_messages.clear()
+            # Send 3 domain events
+            await manager.send_domain_event(MessageType.ASR_PARTIAL, {"text": "msg1"})
+            await manager.send_domain_event(MessageType.ASR_PARTIAL, {"text": "msg2"})
+            await manager.send_domain_event(MessageType.ASR_PARTIAL, {"text": "msg3"})
+            await manager.remove_connection(temp_ws)
+            # Resume from seq=1 (should get 2,3 only)
+            mock_ws = MockWebSocket()
+            await manager.add_connection(mock_ws)
+            mock_ws.sent_messages.clear()
+            hello_envelope = WSEnvelope(
+                t=MessageType.CLIENT_HELLO,
+                data=ClientHelloData(
+                    agent="test-client/1.0", resume=ResumeInfo(sid="test_session", last_seq=1)
+                ).model_dump(),
+            )
+            await manager.handle_message(mock_ws, hello_envelope.model_dump_json())
+            # Should have replayed messages 2 and 3 only, no duplicates
+            assert len(mock_ws.sent_messages) == 2
+            msg1 = json.loads(mock_ws.sent_messages[0])
+            msg2 = json.loads(mock_ws.sent_messages[1])
+            assert msg1["seq"] == 2
+            assert msg2["seq"] == 3

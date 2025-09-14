@@ -81,7 +81,12 @@ Get performance metrics for a session.
 
 ### WebSocket Events
 
+
 **New in v1:** LoquiLex now uses a **versioned envelope protocol** for all WebSocket messages with heartbeats, acknowledgements, and resume functionality.
+
+**Note:**
+- Message type (`t`) is strictly validated using an Enum (`MessageType`) covering all v1 types.
+- Errors use a structured payload with an `ErrorCode` enum (`code`, `detail`, optional `retry_after_ms`).
 
 #### Connection
 Connect to `/events/{sid}` for real-time streaming events with the new envelope protocol.
@@ -126,13 +131,13 @@ Sent by client after connection to announce capabilities:
 }
 ```
 
-##### Server Welcome  
+##### Server Welcome
 Sent by server after client connection:
 
 ```json
 {
   "v": 1,
-  "t": "server.welcome", 
+  "t": "server.welcome",
   "sid": "sess_8Gm6...",
   "seq": 0,
   "data": {
@@ -164,7 +169,7 @@ Server and client exchange heartbeats to detect liveness:
   "data": {
     "ts": "2025-09-14T18:03:30.000Z",
     "q_out": 0,                    // Server outbound queue depth
-    "q_in": 0,                     // Server inbound queue depth  
+    "q_in": 0,                     // Server inbound queue depth
     "latency_ms_est": 48           // Estimated latency
   }
 }
@@ -213,7 +218,7 @@ Sent when a complete segment is finalized:
 ```json
 {
   "v": 1,
-  "t": "asr.final", 
+  "t": "asr.final",
   "sid": "sess_123",
   "seq": 2,
   "t_wall": "2025-09-14T18:03:28.512Z",
@@ -234,7 +239,7 @@ Sent when machine translation of a finalized ASR segment is complete:
 {
   "v": 1,
   "t": "mt.final",
-  "sid": "sess_123", 
+  "sid": "sess_123",
   "seq": 3,
   "corr": "msg_asr_final",           // Links to source ASR message
   "t_wall": "2025-09-14T18:03:29.512Z",
@@ -255,7 +260,7 @@ Sent for session status updates:
   "v": 1,
   "t": "status",
   "sid": "sess_123",
-  "seq": 4, 
+  "seq": 4,
   "t_wall": "2025-09-14T18:03:30.512Z",
   "t_mono_ms": 5678,
   "data": {
@@ -301,17 +306,17 @@ class LoquiLexClient:
         self.session_id = session_id
         self.last_ack_seq = 0
         self.websocket = None
-        
+
     async def connect(self):
         """Connect and handle the envelope protocol."""
         uri = f"ws://localhost:8000/events/{self.session_id}"
         self.websocket = await websockets.connect(uri)
-        
+
         # Wait for welcome message
         welcome_raw = await self.websocket.recv()
         welcome = json.loads(welcome_raw)
         print(f"Connected! Welcome: {welcome['t']}")
-        
+
         # Send client hello
         hello = {
             "v": 1,
@@ -324,29 +329,29 @@ class LoquiLexClient:
             }
         }
         await self.websocket.send(json.dumps(hello))
-        
+
         # Acknowledge welcome
         await self.send_ack(welcome["seq"])
-        
+
     async def send_ack(self, seq: int):
         """Send acknowledgement for received messages."""
         if seq > self.last_ack_seq:
             ack = {
                 "v": 1,
-                "t": "client.ack", 
+                "t": "client.ack",
                 "sid": self.session_id,
                 "data": {"ack_seq": seq}
             }
             await self.websocket.send(json.dumps(ack))
             self.last_ack_seq = seq
-        
+
     async def listen(self):
         """Listen for messages and handle them."""
         while True:
             try:
                 message_raw = await self.websocket.recv()
                 envelope = json.loads(message_raw)
-                
+
                 # Handle different message types
                 if envelope["t"] == "asr.partial":
                     print(f"Partial: {envelope['data']['text']}")
@@ -358,11 +363,11 @@ class LoquiLexClient:
                     print(f"Status: {envelope['data']['stage']}")
                 elif envelope["t"] == "server.hb":
                     print("❤️ Heartbeat received")
-                    
+
                 # Acknowledge non-control messages
                 if envelope["t"] not in ["server.hb", "server.welcome", "server.ack"]:
                     await self.send_ack(envelope["seq"])
-                    
+
             except websockets.exceptions.ConnectionClosed:
                 print("Connection closed")
                 break
@@ -381,7 +386,7 @@ asyncio.run(main())
 WebSocket behavior can be configured via environment variables:
 
 - `LX_WS_HB_INTERVAL_MS`: Heartbeat interval in milliseconds (default: 10000)
-- `LX_WS_HB_TIMEOUT_MS`: Heartbeat timeout in milliseconds (default: 30000)  
+- `LX_WS_HB_TIMEOUT_MS`: Heartbeat timeout in milliseconds (default: 30000)
 - `LX_WS_MAX_IN_FLIGHT`: Maximum sliding window size (default: 64)
 - `LX_WS_MAX_MSG_BYTES`: Maximum message size in bytes (default: 131072)
 ```

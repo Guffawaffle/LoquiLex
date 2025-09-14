@@ -18,35 +18,69 @@ import time
 import uuid
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class MessageType(str, Enum):
     """Standard message types for the WebSocket protocol."""
 
-    # Connection control
     CLIENT_HELLO = "client.hello"
     SERVER_WELCOME = "server.welcome"
     SERVER_ERROR = "server.error"
-
-    # Heartbeats
     CLIENT_HB = "client.hb"
     SERVER_HB = "server.hb"
-
-    # Acknowledgements
     CLIENT_ACK = "client.ack"
     SERVER_ACK = "server.ack"
-
-    # Flow control
     CLIENT_FLOW = "client.flow"
-
-    # Domain events
     ASR_PARTIAL = "asr.partial"
     ASR_FINAL = "asr.final"
     MT_FINAL = "mt.final"
     STATUS = "status"
+
+
+# Strict type for envelope 't' field (v1 surface)
+MessageTypeLiteral = Literal[
+    "client.hello",
+    "server.welcome",
+    "server.error",
+    "client.hb",
+    "server.hb",
+    "client.ack",
+    "server.ack",
+    "client.flow",
+    "asr.partial",
+    "asr.final",
+    "mt.final",
+    "status",
+]
+
+
+# ErrorCode enum for structured error payloads
+class ErrorCode(str, Enum):
+    INTERNAL = "internal"
+    BAD_REQUEST = "bad_request"
+    UNAUTHORIZED = "unauthorized"
+    NOT_FOUND = "not_found"
+    RATE_LIMIT = "rate_limit"
+    INVALID_ACK = "invalid_ack"
+    RESUME_GAP = "resume_gap"
+    # Additional codes used elsewhere
+    UNKNOWN = "unknown"
+    INVALID_TYPE = "invalid_type"
+    INVALID_SEQ = "invalid_seq"
+    INVALID_CORR = "invalid_corr"
+    # Codes expected by tests and protocol
+    INVALID_MESSAGE = "invalid_message"
+    RESUME_EXPIRED = "resume_expired"
+
+
+# Structured error payload
+class ErrorPayload(BaseModel):
+    code: ErrorCode
+    detail: str
+    retry_after_ms: Optional[int] = None
 
 
 class WSEnvelope(BaseModel):
@@ -68,12 +102,32 @@ class WSEnvelope(BaseModel):
     )
     data: Dict[str, Any] = Field(default_factory=dict, description="Type-specific payload")
 
-    def model_post_init(self, __context: Any) -> None:
-        """Auto-generate message ID if not provided."""
-        if __context is not None:
-            pass  # pydantic v2 context, ignore for now
-        if self.id is None and self.sid is not None:
+    @model_validator(mode="after")
+    def _post_validate(self) -> "WSEnvelope":
+        # Ensure message id exists for server messages when sid provided
+        if getattr(self, "id", None) is None and getattr(self, "sid", None) is not None:
             self.id = f"msg_{uuid.uuid4().hex[:8]}"
+
+        # 1. corr present only on replies/acks
+        if self.corr is not None:
+            allowed = {
+                MessageType.SERVER_ACK,
+                MessageType.SERVER_ERROR,
+                MessageType.MT_FINAL,
+                MessageType.ASR_FINAL,
+            }
+            if self.t not in allowed:
+                raise ValueError(f"corr is only allowed on replies/acks, got t={self.t}")
+
+        # 2. seq non-negative for server-emitted messages
+        if self.seq is not None and self.seq < 0:
+            raise ValueError("seq must be non-negative")
+
+        # Note: `sid` is not strictly required when constructing envelopes in
+        # unit tests or for client-side messages. Session enforcement is handled
+        # at the protocol layer where connections and welcome messages are managed.
+
+        return self
 
 
 class AckMode(str, Enum):
@@ -155,11 +209,12 @@ class FlowControlData(BaseModel):
     max_in_flight: int = Field(description="New maximum in-flight messages")
 
 
-class ServerErrorData(BaseModel):
-    """Server error payload."""
+class ServerErrorData(ErrorPayload):
+    """Server error payload (inherits structured ErrorPayload)."""
 
-    code: str = Field(description="Error code")
+    code: ErrorCode = Field(description="Error code")
     detail: str = Field(description="Error detail message")
+    retry_after_ms: Optional[int] = Field(default=None, description="Optional retry-after in ms")
 
 
 # Domain event payloads

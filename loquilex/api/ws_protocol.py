@@ -29,7 +29,6 @@ from .ws_types import (
     MessageType,
     ResumeInfo,
     ResumeWindow,
-    ServerErrorData,
     ServerLimits,
     ServerWelcomeData,
     SessionState,
@@ -182,6 +181,22 @@ class WSProtocolManager:
         """Handle client acknowledgement."""
         try:
             ack_data = AckData.model_validate(envelope.data)
+            # Protect against ack spoofing: client cannot ack beyond latest delivered seq
+            if ack_data.ack_seq > self.state.seq:
+                logger.warning(
+                    f"Client ack beyond latest seq: {ack_data.ack_seq} > {self.state.seq}"
+                )
+                # Send structured error back to client
+                # Find a connection to reply on (use first connection)
+                ws = next(iter(self.connections), None)
+                if ws:
+                    await self._send_error(
+                        ws,
+                        "invalid_ack",
+                        f"Ack {ack_data.ack_seq} beyond latest delivered seq {self.state.seq}",
+                    )
+                return
+
             self.state.process_ack(ack_data.ack_seq)
             logger.debug(f"Processed ack for seq {ack_data.ack_seq}")
 
@@ -284,11 +299,22 @@ class WSProtocolManager:
             logger.warning(f"Failed to send to connection: {e}")
             self.connections.discard(ws)
 
-    async def _send_error(self, ws: WebSocket, code: str, detail: str) -> None:
+    async def _send_error(
+        self, ws: WebSocket, code: str, detail: str, retry_after_ms: Optional[int] = None
+    ) -> None:
         """Send error message to specific connection."""
+        from .ws_types import ErrorCode, ServerErrorData
+
+        # Accept code as str or ErrorCode
+        try:
+            code_enum = ErrorCode(code)
+        except ValueError:
+            code_enum = ErrorCode.INTERNAL
         error_envelope = self._create_envelope(
             MessageType.SERVER_ERROR,
-            ServerErrorData(code=code, detail=detail).model_dump(),
+            ServerErrorData(
+                code=code_enum, detail=detail, retry_after_ms=retry_after_ms
+            ).model_dump(),
         )
         await self._send_to_connection(ws, error_envelope)
 
