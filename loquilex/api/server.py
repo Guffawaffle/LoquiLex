@@ -318,10 +318,10 @@ async def get_session_metrics(sid: str) -> Dict[str, Any]:
     sess = MANAGER._sessions.get(sid)
     if not sess:
         raise HTTPException(status_code=404, detail="session not found")
-    
-    if not hasattr(sess, 'get_metrics'):
+
+    if not hasattr(sess, "get_metrics"):
         raise HTTPException(status_code=400, detail="session does not support metrics")
-    
+
     try:
         metrics = sess.get_metrics()
         if metrics is None:
@@ -337,14 +337,14 @@ async def get_asr_snapshot(sid: str) -> Dict[str, Any]:
     sess = MANAGER._sessions.get(sid)
     if not sess:
         raise HTTPException(status_code=404, detail="session not found")
-    
-    if not hasattr(sess, 'get_asr_snapshot'):
+
+    if not hasattr(sess, "get_asr_snapshot"):
         raise HTTPException(status_code=400, detail="session does not support ASR snapshots")
-    
+
     snapshot = sess.get_asr_snapshot()
     if snapshot is None:
         raise HTTPException(status_code=503, detail="ASR snapshot not available")
-        
+
     return snapshot
 
 
@@ -353,24 +353,24 @@ async def get_snapshot(sid: str) -> Dict[str, Any]:
     sess = MANAGER._sessions.get(sid)
     if not sess:
         raise HTTPException(status_code=404, detail="session not found")
-    
+
     # Try to get ASR snapshot if session has streaming ASR
     asr_snapshot = None
-    if hasattr(sess, 'get_asr_snapshot'):
+    if hasattr(sess, "get_asr_snapshot"):
         try:
             asr_snapshot = sess.get_asr_snapshot()
         except Exception:
             pass  # ASR snapshot is optional
-    
+
     base_snapshot = {
         "sid": sid,
         "cfg": sess.cfg.__dict__,
         "status": "running" if (sess.proc and sess.proc.poll() is None) else "stopped",
     }
-    
+
     if asr_snapshot:
         base_snapshot["asr"] = asr_snapshot
-        
+
     return base_snapshot
 
 

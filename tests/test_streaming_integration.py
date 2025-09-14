@@ -3,11 +3,8 @@
 from __future__ import annotations
 
 import asyncio
-import json
-from typing import Any, Dict, List
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
-import httpx
 import pytest
 from fastapi.testclient import TestClient
 
@@ -20,53 +17,60 @@ class TestStreamingIntegration:
     def test_create_streaming_session(self):
         """Test creating a streaming ASR session."""
         client = TestClient(app)
-        
-        response = client.post("/sessions", json={
-            "asr_model_id": "tiny.en",
-            "streaming_mode": True,
-            "device": "cpu",
-            "vad": True,
-            "beams": 1,
-        })
-        
+
+        response = client.post(
+            "/sessions",
+            json={
+                "asr_model_id": "tiny.en",
+                "streaming_mode": True,
+                "device": "cpu",
+                "vad": True,
+                "beams": 1,
+            },
+        )
+
         assert response.status_code == 200
         data = response.json()
         assert "session_id" in data
         session_id = data["session_id"]
-        
+
         # Clean up
         client.delete(f"/sessions/{session_id}")
 
     def test_asr_snapshot_endpoint(self):
         """Test ASR snapshot endpoint for streaming sessions."""
         client = TestClient(app)
-        
+
         # Create streaming session
-        response = client.post("/sessions", json={
-            "asr_model_id": "tiny.en",
-            "streaming_mode": True,
-            "device": "cpu",
-        })
+        response = client.post(
+            "/sessions",
+            json={
+                "asr_model_id": "tiny.en",
+                "streaming_mode": True,
+                "device": "cpu",
+            },
+        )
         assert response.status_code == 200
         session_id = response.json()["session_id"]
-        
+
         try:
             # Small delay to let session initialize
             import time
+
             time.sleep(0.1)
-            
+
             # Try to get ASR snapshot
             response = client.get(f"/sessions/{session_id}/asr/snapshot")
             # Should either succeed with snapshot or fail gracefully
             assert response.status_code in [200, 503]  # 503 if not ready yet
-            
+
             if response.status_code == 200:
                 snapshot = response.json()
                 assert snapshot["type"] == "asr.snapshot"
                 assert "stream_id" in snapshot
                 assert "recent_finals" in snapshot
                 assert "live_partial" in snapshot
-                
+
         finally:
             # Clean up
             client.delete(f"/sessions/{session_id}")
@@ -74,22 +78,25 @@ class TestStreamingIntegration:
     def test_regular_session_no_asr_snapshot(self):
         """Test that regular sessions don't support ASR snapshots."""
         client = TestClient(app)
-        
+
         # Create regular (non-streaming) session
-        response = client.post("/sessions", json={
-            "asr_model_id": "tiny.en",
-            "streaming_mode": False,  # Regular session
-            "device": "cpu",
-        })
+        response = client.post(
+            "/sessions",
+            json={
+                "asr_model_id": "tiny.en",
+                "streaming_mode": False,  # Regular session
+                "device": "cpu",
+            },
+        )
         assert response.status_code == 200
         session_id = response.json()["session_id"]
-        
+
         try:
             # Try to get ASR snapshot - should fail
             response = client.get(f"/sessions/{session_id}/asr/snapshot")
             assert response.status_code == 400
             assert "does not support ASR snapshots" in response.json()["detail"]
-            
+
         finally:
             # Clean up
             client.delete(f"/sessions/{session_id}")
@@ -97,35 +104,38 @@ class TestStreamingIntegration:
     @pytest.mark.asyncio
     async def test_websocket_streaming_events(self):
         """Test WebSocket events for streaming sessions (mock audio)."""
-        from loquilex.api.supervisor import StreamingSession
         from loquilex.asr.stream import ASRPartialEvent, ASRFinalEvent, ASRWord
         import time
-        
+
         # Mock the audio capture to avoid needing real microphone
-        with patch('loquilex.audio.capture.capture_stream') as mock_capture:
+        with patch("loquilex.audio.capture.capture_stream") as mock_capture:
             # Mock audio capture returns a stop function
             mock_capture.return_value = lambda: None
-            
+
             client = TestClient(app)
-            
+
             # Create streaming session
-            response = client.post("/sessions", json={
-                "asr_model_id": "tiny.en", 
-                "streaming_mode": True,
-                "device": "cpu",
-            })
+            response = client.post(
+                "/sessions",
+                json={
+                    "asr_model_id": "tiny.en",
+                    "streaming_mode": True,
+                    "device": "cpu",
+                },
+            )
             assert response.status_code == 200
             session_id = response.json()["session_id"]
-            
+
             try:
                 # Small delay for session initialization
                 await asyncio.sleep(0.1)
-                
+
                 # Get the session from the manager to trigger events manually
                 from loquilex.api.server import MANAGER
+
                 session = MANAGER._sessions.get(session_id)
-                
-                if session and hasattr(session, '_on_partial'):
+
+                if session and hasattr(session, "_on_partial"):
                     # Manually trigger ASR events to test the pipeline
                     partial_event = ASRPartialEvent(
                         stream_id=session_id,
@@ -138,7 +148,7 @@ class TestStreamingIntegration:
                         ],
                         ts_monotonic=time.monotonic(),
                     )
-                    
+
                     final_event = ASRFinalEvent(
                         stream_id=session_id,
                         segment_id="test_seg",
@@ -150,17 +160,17 @@ class TestStreamingIntegration:
                         ts_monotonic=time.monotonic(),
                         eou_reason="punctuation",
                     )
-                    
+
                     # Trigger the events
                     session._on_partial(partial_event)
                     session._on_final(final_event)
-                    
+
                     # Allow events to propagate
                     await asyncio.sleep(0.1)
-                
+
                 # Test passed if we reach here without errors
                 assert True
-                
+
             finally:
                 # Clean up
                 client.delete(f"/sessions/{session_id}")
@@ -172,37 +182,43 @@ class TestStreamingConfiguration:
     def test_streaming_config_validation(self):
         """Test validation of streaming configuration parameters."""
         client = TestClient(app)
-        
+
         # Test with valid streaming config
-        response = client.post("/sessions", json={
-            "asr_model_id": "tiny.en",
-            "streaming_mode": True,
-            "device": "cpu",
-            "vad": True,
-            "beams": 1,
-            "pause_flush_sec": 0.5,
-            "segment_max_sec": 8.0,
-        })
+        response = client.post(
+            "/sessions",
+            json={
+                "asr_model_id": "tiny.en",
+                "streaming_mode": True,
+                "device": "cpu",
+                "vad": True,
+                "beams": 1,
+                "pause_flush_sec": 0.5,
+                "segment_max_sec": 8.0,
+            },
+        )
         assert response.status_code == 200
         session_id = response.json()["session_id"]
-        
+
         # Clean up
         client.delete(f"/sessions/{session_id}")
 
     def test_model_id_validation(self):
         """Test ASR model ID validation."""
         client = TestClient(app)
-        
+
         # Test with various model IDs (should all be accepted)
         model_ids = ["tiny.en", "small.en", "base.en", "medium.en"]
-        
+
         for model_id in model_ids:
-            response = client.post("/sessions", json={
-                "asr_model_id": model_id,
-                "streaming_mode": True,
-                "device": "cpu",
-            })
-            
+            response = client.post(
+                "/sessions",
+                json={
+                    "asr_model_id": model_id,
+                    "streaming_mode": True,
+                    "device": "cpu",
+                },
+            )
+
             if response.status_code == 200:
                 session_id = response.json()["session_id"]
                 client.delete(f"/sessions/{session_id}")
@@ -211,23 +227,29 @@ class TestStreamingConfiguration:
     def test_device_selection(self):
         """Test device selection for streaming sessions."""
         client = TestClient(app)
-        
+
         # Test CPU device (should always work)
-        response = client.post("/sessions", json={
-            "asr_model_id": "tiny.en",
-            "streaming_mode": True,
-            "device": "cpu",
-        })
+        response = client.post(
+            "/sessions",
+            json={
+                "asr_model_id": "tiny.en",
+                "streaming_mode": True,
+                "device": "cpu",
+            },
+        )
         assert response.status_code == 200
         session_id = response.json()["session_id"]
         client.delete(f"/sessions/{session_id}")
-        
+
         # Test auto device (should work)
-        response = client.post("/sessions", json={
-            "asr_model_id": "tiny.en", 
-            "streaming_mode": True,
-            "device": "auto",
-        })
+        response = client.post(
+            "/sessions",
+            json={
+                "asr_model_id": "tiny.en",
+                "streaming_mode": True,
+                "device": "auto",
+            },
+        )
         assert response.status_code == 200
         session_id = response.json()["session_id"]
         client.delete(f"/sessions/{session_id}")
@@ -242,38 +264,38 @@ class TestEndToEndStreaming:
         """Test the full streaming pipeline with realistic simulation."""
         # This test would use more realistic audio input
         # For now, just ensure the components integrate properly
-        
+
         from loquilex.asr.stream import StreamingASR
         from loquilex.asr.aggregator import PartialFinalAggregator
         import numpy as np
-        
+
         # Test component integration
         stream_id = "e2e_test"
         asr = StreamingASR(stream_id)
         aggregator = PartialFinalAggregator(stream_id)
-        
+
         events_received = []
-        
+
         def on_partial(partial):
             aggregator.add_partial(partial, events_received.append)
-            
+
         def on_final(final):
             aggregator.add_final(final, events_received.append)
-        
+
         # Process several chunks of fake audio
         for i in range(5):
             chunk = np.random.uniform(-0.1, 0.1, 1600).astype(np.float32)  # 0.1s at 16kHz
             asr.process_audio_chunk(chunk, on_partial, on_final)
             await asyncio.sleep(0.01)  # Small delay
-            
+
         # Should have received some events
         partial_events = [e for e in events_received if e.get("type") == "asr.partial"]
         final_events = [e for e in events_received if e.get("type") == "asr.final"]
-        
+
         # With fake ASR, we should get predictable results
         assert len(partial_events) >= 0  # May or may not get partials
-        assert len(final_events) >= 0   # May or may not get finals
-        
+        assert len(final_events) >= 0  # May or may not get finals
+
         # Test snapshot
         snapshot = aggregator.get_snapshot()
         assert snapshot["type"] == "asr.snapshot"

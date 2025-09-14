@@ -74,6 +74,7 @@ def _patch_streaming_asr() -> None:
     """Patch StreamingASR to use fake for offline testing."""
     try:
         import loquilex.asr.stream as asr_stream
+
         asr_stream.StreamingASR = FakeStreamingASR
     except ImportError:
         # Module might not exist yet during early tests
@@ -84,6 +85,7 @@ def _patch_audio_capture() -> None:
     """Patch audio capture to use fake for offline testing."""
     try:
         import loquilex.audio.capture as audio_capture
+
         audio_capture.capture_stream = fake_capture_stream
     except ImportError:
         # Module might not exist yet during early tests
