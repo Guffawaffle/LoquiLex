@@ -204,3 +204,8 @@ Only existing informational note about untyped function bodies remains.
 
 ## Rationale
 Configuration approach centralizes handling of optional heavy dependency lacking stubs, aligns with existing pattern for `torch`, `transformers`, and keeps provider code clean/minimal.
+
+### Hardening Comments Added (follow-up)
+- Inserted a clearly delimited "Type Hint Hardening Notes" section in `mypy.ini` above the `ctranslate2` ignore blocks.
+- Purpose: prevent accidental removal or broadening of ignores; document acceptance criteria for future changes (availability of stubs, custom stub package ownership, or explicit inline justification).
+- Explicit rationale for `ctranslate2` recorded (heavy optional binary, no stubs, prior inline ignore instability causing `warn_unused_ignores` friction).
