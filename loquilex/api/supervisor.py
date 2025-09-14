@@ -255,12 +255,12 @@ class SessionManager:
                         loop.create_task(self._broadcast(sid, payload))
 
     # Download management
-    def start_download_job(self, job_id: str, repo_id: str, typ: str) -> None:
-        t = threading.Thread(target=self._download_worker, args=(job_id, repo_id, typ), daemon=True)
+    def start_download_job(self, job_id: str, repo_id: str, _typ: str) -> None:
+        t = threading.Thread(target=self._download_worker, args=(job_id, repo_id, _typ), daemon=True)
         t.start()
         self._bg_threads.append(t)
 
-    def _download_worker(self, job_id: str, repo_id: str, typ: str) -> None:
+    def _download_worker(self, job_id: str, repo_id: str, _typ: str) -> None:
         chan = f"_download/{job_id}"
         try:
             asyncio.run(

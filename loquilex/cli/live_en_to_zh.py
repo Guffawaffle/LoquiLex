@@ -440,7 +440,7 @@ def main() -> None:
     shutdown = threading.Event()
     finalize_now = threading.Event()
 
-    def _on_signal(signum, frame):  # type: ignore[no-untyped-def]
+    def _on_signal(signum, _frame):  # type: ignore[no-untyped-def]
         # Set shutdown flag; main loop will exit promptly
         if signum == signal.SIGUSR1:
             finalize_now.set()

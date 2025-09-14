@@ -126,6 +126,22 @@
         "command": "make docker-ci-test",
         "group": "test",
         "problemMatcher": []
+    },
+    {
+        "label": "report: dead-code",
+        "type": "shell",
+        "command": "make",
+        "args": ["dead-code-report"],
+        "problemMatcher": [],
+        "presentation": { "reveal": "always", "panel": "dedicated", "clear": true }
+    },
+    {
+        "label": "clean: artifacts",
+        "type": "shell",
+        "command": "make",
+        "args": ["clean-artifacts"],
+        "problemMatcher": [],
+        "presentation": { "reveal": "always", "panel": "dedicated", "clear": true }
     }
   ]
 }
