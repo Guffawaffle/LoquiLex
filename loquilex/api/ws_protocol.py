@@ -231,7 +231,16 @@ class WSProtocolManager:
         implemented in `_handle_session_resume`.
         """
         # Construct a minimal envelope-like object to reuse existing handler
-        envelope = WSEnvelope(v=1, t=MessageType.SESSION_RESUME, sid=self.sid, id=None, seq=None, corr=None, t_wall=None, data=resume.model_dump())
+        envelope = WSEnvelope(
+            v=1,
+            t=MessageType.SESSION_RESUME,
+            sid=self.sid,
+            id=None,
+            seq=None,
+            corr=None,
+            t_wall=None,
+            data=resume.model_dump(),
+        )
         await self._handle_session_resume(ws, envelope)
 
     async def _handle_session_resume(self, ws: WebSocket, envelope: WSEnvelope) -> None:
