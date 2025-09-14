@@ -2,13 +2,23 @@ from __future__ import annotations
 
 import contextlib
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 from loquilex.config.defaults import MT, pick_device
 
-try:
-    import torch  # type: ignore
-except Exception:  # torch might not be installed in test env
-    torch = None  # type: ignore
+
+
+from typing import Any
+if TYPE_CHECKING:
+    torch: Any
+else:
+    try:  # optional dependency
+        import torch
+    except Exception:  # torch might not be installed in test env
+        torch = None
+
+if TYPE_CHECKING:  # only for typing; avoid runtime hard dep
+    pass
 
 
 def _log(msg: str) -> None:
@@ -20,7 +30,7 @@ def _dtype_kwargs(torch_mod, device_str: str):
 
     Newer transformers deprecate torch_dtype in favor of dtype. Choose based on version.
     """
-    import transformers as tr  # type: ignore
+    import transformers as tr  # soft dependency
 
     try:
         major, minor, *_ = (int(x) for x in tr.__version__.split("."))
@@ -44,20 +54,19 @@ class Translator:
     def __init__(self) -> None:
         device, _ = pick_device()
         self.device_str = device
+        is_cuda = False
         if torch is not None and device == "cuda":
             try:
                 is_cuda = torch.cuda.is_available()
             except Exception:
                 is_cuda = False
-        else:
-            is_cuda = False
         self.torch_device = "cuda" if is_cuda else "cpu"
         self._nllb = None
         self._m2m = None
 
     def _load_nllb(self):
         if self._nllb is None:
-            from transformers import AutoModelForSeq2SeqLM, AutoTokenizer  # type: ignore
+            from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
 
             tok = AutoTokenizer.from_pretrained(MT.nllb_model, use_safetensors=True)
             model = AutoModelForSeq2SeqLM.from_pretrained(
@@ -72,7 +81,7 @@ class Translator:
 
     def _load_m2m(self):
         if self._m2m is None:
-            from transformers import M2M100ForConditionalGeneration, M2M100Tokenizer  # type: ignore
+            from transformers import M2M100ForConditionalGeneration, M2M100Tokenizer
 
             tok = M2M100Tokenizer.from_pretrained(MT.m2m_model, use_safetensors=True)
             model = M2M100ForConditionalGeneration.from_pretrained(

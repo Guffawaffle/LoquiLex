@@ -1,3 +1,6 @@
+# Alias used by GitHub Actions to run the full CI pipeline
+.PHONY: run-ci-mode
+run-ci-mode: ci
 # Lightweight dev profile: installs only base+dev deps and prefetches tiny model.
 
 ## ------------------------------
@@ -146,6 +149,9 @@ e2e: install-base
 
 ci: lint typecheck test
 	@echo "✓ CI checks passed locally"
+
+.PHONY: run-ci-mode
+run-ci-mode: ci
 
 ## ------------------------------
 ## Cleanup
