@@ -7,14 +7,14 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass
-from typing import Callable, TypeVar
+from typing import TypeVar
 
 T = TypeVar("T")
 
 
-def _coerce(val: str, caster: Callable[[str], T]) -> T:
-    return caster(val)
 def _env(name: str, default: str) -> str:
+    if not name.startswith("LX_"):
+        raise ValueError(f"Only LX_* env vars are allowed, got: {name}")
     return os.getenv(name, default)
 
 

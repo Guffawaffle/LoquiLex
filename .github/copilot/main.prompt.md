@@ -1,9 +1,8 @@
 #instruction
 Execute the task described in `.github/copilot/current-task.md` while adhering to all project rules and guidance defined in `AGENTS.md`.
 
-#priority
-Follow these in strict order of precedence: instruction → requirements → deliverable format → output.
-
+# .github/copilot/current-task-deliverables.md
+# LoquiLex Current Task Deliverables
 #requirements
 - Perform the task exactly as written in `current-task.md`.
 - Use the branch specified in `current-task.md`. Do not work on `main`.

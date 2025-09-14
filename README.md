@@ -1,7 +1,5 @@
 # LoquiLex
 
-History-preserving extraction of the `greenfield` module from rt-whisper, renamed to `loquilex`.
-
 ## Quickstart
 
 ```bash

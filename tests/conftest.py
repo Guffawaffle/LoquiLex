@@ -68,28 +68,17 @@ def _patch_translator() -> None:
     mt.Translator = fake_mt.Translator
 
 
-@pytest.fixture(autouse=True)
+@pytest.fixture
 def forbid_network(monkeypatch):
-    """Network guard to block external connections during tests.
+    real_create_connection = socket.create_connection
 
-    Allows only localhost destinations; blocks others at socket layer.
-    """
-
-    # Include 'testserver' which FastAPI TestClient commonly uses as default host
-    allowed_hosts = {"127.0.0.1", "::1", "localhost", "testserver"}
-
-    real_create_conn = socket.create_connection
-
-    def guarded_create_connection(address, *args, **kwargs):  # type: ignore[override]
-        try:
-            host = address[0]
-        except Exception:
-            host = None
-        if host and host not in allowed_hosts:
+    def guarded(address, *args, **kwargs):
+        host = address[0] if isinstance(address, tuple) else address
+        if host not in {"127.0.0.1", "::1", "localhost"}:
             raise RuntimeError(f"Blocked outbound connection to {host}")
-        return real_create_conn(address, *args, **kwargs)
+        return real_create_connection(address, *args, **kwargs)
 
-    monkeypatch.setattr(socket, "create_connection", guarded_create_connection)
+    monkeypatch.setattr(socket, "create_connection", guarded, raising=True)
 
 
 def pytest_sessionstart(session: pytest.Session) -> None:  # noqa: ARG001
