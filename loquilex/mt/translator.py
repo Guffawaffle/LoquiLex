@@ -7,8 +7,8 @@ from typing import TYPE_CHECKING
 from loquilex.config.defaults import MT, pick_device
 
 
-
 from typing import Any
+
 if TYPE_CHECKING:
     torch: Any
 else:

@@ -2,7 +2,7 @@
 set -euo pipefail
 
 echo "=== Environment (offline flags) ==="
-env | grep -E '^(HF_HUB_OFFLINE|TRANSFORMERS_OFFLINE|HF_HUB_DISABLE_TELEMETRY|LOQUILEX_OFFLINE)=' || true
+env | grep -E '^(HF_HUB_OFFLINE|TRANSFORMERS_OFFLINE|HF_HUB_DISABLE_TELEMETRY|LX_OFFLINE)=' || true
 
 echo "=== Ruff ==="
 ruff check .

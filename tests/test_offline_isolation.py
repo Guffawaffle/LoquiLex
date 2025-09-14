@@ -50,7 +50,7 @@ def test_offline_env_vars_set():
         "HF_HUB_OFFLINE": "1",
         "TRANSFORMERS_OFFLINE": "1",
         "HF_HUB_DISABLE_TELEMETRY": "1",
-        "LOQUILEX_OFFLINE": "1",
+        "LX_OFFLINE": "1",
     }
 
     for var, expected_value in expected_offline_vars.items():

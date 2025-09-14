@@ -147,6 +147,42 @@ Periodic performance metrics broadcast.
 }
 ```
 
+##### MT Final Event
+Sent when machine translation of a finalized ASR segment is complete.
+
+```json
+{
+  "type": "mt.final",
+  "stream_id": "session_123",
+  "segment_id": "seg001",
+  "seq": 3,
+  "text": "你好，世界，这是一个测试。",
+  "src_text": "Hello world this is a test.",
+  "src_lang": "en",
+  "tgt_lang": "zh-Hans",
+  "provider": "ct2-nllb",
+  "quality": "realtime",
+  "ts_server": 1234567890.123,
+  "ts_session": 12.345
+}
+```
+
+##### MT Error Event
+Sent when machine translation fails.
+
+```json
+{
+  "type": "mt.error",
+  "stream_id": "session_123",
+  "segment_id": "seg001",
+  "seq": 4,
+  "error": "Translation model not available",
+  "src_text": "Hello world",
+  "ts_server": 1234567890.123,
+  "ts_session": 12.345
+}
+```
+
 ## Client Example
 
 Here's a minimal Python client example showing how to consume streaming events:
@@ -161,6 +197,8 @@ import requests
 response = requests.post("http://localhost:8000/sessions", json={
     "asr_model_id": "tiny.en",
     "streaming_mode": True,
+    "mt_enabled": True,
+    "dest_lang": "zh-Hans",
     "device": "cpu"
 })
 session_id = response.json()["session_id"]
@@ -174,6 +212,10 @@ async def consume_events():
                 print(f"Partial: {event['text']}")
             elif event["type"] == "asr.final":
                 print(f"Final: {event['text']}")
+            elif event["type"] == "mt.final":
+                print(f"Translation: {event['text']} (from: {event['src_text']})")
+            elif event["type"] == "mt.error":
+                print(f"Translation error: {event['error']}")
 
 # Run the consumer
 asyncio.run(consume_events())

@@ -44,18 +44,27 @@ class StreamingSession:
         self.aggregator: Optional[Any] = None  # PartialFinalAggregator
         self._audio_thread: Optional[threading.Thread] = None
 
+        # MT integration
+        self.mt_integration: Optional[Any] = None  # MTIntegration
+
     def set_broadcast_fn(self, broadcast_fn) -> None:
         """Set the broadcast function for emitting events."""
         self._broadcast_fn = broadcast_fn
+
+        # Also set broadcast function for MT integration
+        if self.mt_integration:
+            self.mt_integration.set_broadcast_fn(broadcast_fn)
 
     def _schedule_broadcast(self, event: Dict[str, Any]) -> None:
         """Safely schedule a broadcast coroutine from any thread."""
         if self._event_loop is None or self._broadcast_fn is None:
             print("[StreamingSession] dropping event (no loop or broadcast_fn)")
             return
+
         # Ensure _broadcast_fn returns a coroutine
         def coro():
             return self._broadcast_fn(self.sid, event)
+
         self._event_loop.call_soon_threadsafe(lambda: asyncio.create_task(coro()))
 
     def start(self) -> None:
@@ -81,6 +90,22 @@ class StreamingSession:
             # Initialize streaming components
             self.asr = StreamingASR(stream_id=self.sid)
             self.aggregator = PartialFinalAggregator(self.sid)
+
+            # Initialize MT integration if enabled
+            if self.cfg.mt_enabled:
+                try:
+                    from loquilex.mt.integration import MTIntegration
+
+                    self.mt_integration = MTIntegration(
+                        session_id=self.sid,
+                        mt_enabled=self.cfg.mt_enabled,
+                        dest_lang=self.cfg.dest_lang,
+                    )
+                    if self._broadcast_fn:
+                        self.mt_integration.set_broadcast_fn(self._broadcast_fn)
+                except Exception as e:
+                    print(f"[StreamingSession] MT initialization failed: {e}")
+                    self.mt_integration = None
 
             # Warmup ASR
             self.asr.warmup()
@@ -165,6 +190,27 @@ class StreamingSession:
         def emit_event(event_dict: Dict[str, Any]) -> None:
             self._schedule_broadcast(event_dict)
 
+            # Trigger MT translation for final ASR events
+            if (
+                event_dict.get("type") == "asr.final"
+                and self.mt_integration
+                and event_dict.get("text")
+            ):
+
+                async def translate_and_emit():
+                    await self.mt_integration.translate_and_emit(
+                        text=event_dict["text"],
+                        segment_id=event_dict.get("segment_id", "unknown"),
+                        is_final=True,
+                        src_lang="en",
+                    )
+
+                # Schedule translation in event loop
+                if self._event_loop:
+                    self._event_loop.call_soon_threadsafe(
+                        lambda: asyncio.create_task(translate_and_emit())
+                    )
+
         try:
             self.aggregator.add_final(final_event, emit_event)
         except Exception as e:
@@ -214,6 +260,17 @@ class StreamingSession:
             except Exception as e:
                 print(f"[StreamingSession] Snapshot error: {e}")
         return None
+
+    def get_mt_status(self) -> Dict[str, Any]:
+        """Get MT integration status."""
+        if self.mt_integration:
+            try:
+                return self.mt_integration.get_status()
+            except Exception as e:
+                print(f"[StreamingSession] MT status error: {e}")
+                return {"enabled": False, "error": str(e)}
+
+        return {"enabled": self.cfg.mt_enabled, "available": False, "dest_lang": self.cfg.dest_lang}
 
 
 @dataclass

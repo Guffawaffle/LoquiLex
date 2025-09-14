@@ -32,7 +32,7 @@ make docker-ci
    ```dockerfile
    FROM python:3.12-slim AS base
 
-   ENV PYTHONDONTWRITEBYTECODE=1        PYTHONUNBUFFERED=1        PIP_NO_CACHE_DIR=1        VENV=/opt/venv        PATH="/opt/venv/bin:$PATH"        HF_HUB_OFFLINE=1        TRANSFORMERS_OFFLINE=1        HF_HUB_DISABLE_TELEMETRY=1        LOQUILEX_OFFLINE=1
+   ENV PYTHONDONTWRITEBYTECODE=1        PYTHONUNBUFFERED=1        PIP_NO_CACHE_DIR=1        VENV=/opt/venv        PATH="/opt/venv/bin:$PATH"        HF_HUB_OFFLINE=1        TRANSFORMERS_OFFLINE=1        HF_HUB_DISABLE_TELEMETRY=1        LX_OFFLINE=1
 
    RUN apt-get update && apt-get install -y --no-install-recommends          git build-essential &&        rm -rf /var/lib/apt/lists/*
 
@@ -58,7 +58,7 @@ make docker-ci
    set -euo pipefail
 
    echo "=== Environment (offline flags) ==="
-   env | grep -E '^(HF_HUB_OFFLINE|TRANSFORMERS_OFFLINE|HF_HUB_DISABLE_TELEMETRY|LOQUILEX_OFFLINE)=' || true
+   env | grep -E '^(HF_HUB_OFFLINE|TRANSFORMERS_OFFLINE|HF_HUB_DISABLE_TELEMETRY|LX_OFFLINE)=' || true
 
    echo "=== Ruff ==="
    ruff check .

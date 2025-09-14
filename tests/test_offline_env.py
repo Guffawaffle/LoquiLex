@@ -8,7 +8,7 @@ import pytest
         "HF_HUB_OFFLINE",
         "TRANSFORMERS_OFFLINE",
         "HF_HUB_DISABLE_TELEMETRY",
-        "LOQUILEX_OFFLINE",
+        "LX_OFFLINE",
     ],
 )
 def test_offline_env_vars_set(env_var):
