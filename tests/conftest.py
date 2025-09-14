@@ -10,6 +10,8 @@ import types
 import pytest
 
 from tests.fakes import fake_mt, fake_whisper
+from tests.fakes.fake_streaming_asr import FakeStreamingASR
+from tests.fakes.fake_audio import fake_capture_stream
 
 
 def _install_fakes() -> None:
@@ -68,6 +70,26 @@ def _patch_translator() -> None:
     mt.Translator = fake_mt.Translator
 
 
+def _patch_streaming_asr() -> None:
+    """Patch StreamingASR to use fake for offline testing."""
+    try:
+        import loquilex.asr.stream as asr_stream
+        asr_stream.StreamingASR = FakeStreamingASR
+    except ImportError:
+        # Module might not exist yet during early tests
+        pass
+
+
+def _patch_audio_capture() -> None:
+    """Patch audio capture to use fake for offline testing."""
+    try:
+        import loquilex.audio.capture as audio_capture
+        audio_capture.capture_stream = fake_capture_stream
+    except ImportError:
+        # Module might not exist yet during early tests
+        pass
+
+
 @pytest.fixture
 def forbid_network(monkeypatch):
     real_create_connection = socket.create_connection
@@ -88,7 +110,11 @@ def pytest_sessionstart(session: pytest.Session) -> None:  # noqa: ARG001
       1) enforce offline env
       2) install fake modules (faster_whisper, transformers)
       3) patch the Translator to the fake
+      4) patch StreamingASR to the fake
+      5) patch audio capture to the fake
     """
     _set_offline_env()
     _install_fakes()
     _patch_translator()
+    _patch_streaming_asr()
+    _patch_audio_capture()

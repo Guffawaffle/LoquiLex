@@ -18,6 +18,186 @@ from fastapi import WebSocket
 from .events import EventStamper
 
 
+class StreamingSession:
+    """In-process streaming session using the new StreamingASR pipeline."""
+    
+    def __init__(self, sid: str, cfg: SessionConfig, run_dir: Path) -> None:
+        self.sid = sid
+        self.cfg = cfg
+        self.run_dir = run_dir
+        self.proc = None  # No subprocess for streaming sessions
+        self._stop_evt = threading.Event()
+        self.stamper = EventStamper.new()
+        self.queue: "queue.Queue[str]" = queue.Queue(maxsize=1000)  # Add queue for compatibility
+        
+        # Streaming ASR components
+        self._streaming_asr = None
+        self._aggregator = None
+        self._audio_thread: Optional[threading.Thread] = None
+        self._broadcast_fn = None  # Set by manager
+        
+    def set_broadcast_fn(self, broadcast_fn) -> None:
+        """Set the broadcast function for emitting events."""
+        self._broadcast_fn = broadcast_fn
+        
+    def start(self) -> None:
+        """Start the streaming ASR session."""
+        # Configure ASR environment
+        os.environ["LX_ASR_MODEL"] = self.cfg.asr_model_id
+        os.environ["LX_DEVICE"] = self.cfg.device
+        os.environ["LX_ASR_VAD"] = "1" if self.cfg.vad else "0"
+        os.environ["LX_ASR_BEAM"] = str(self.cfg.beams)
+        os.environ["LX_PAUSE_FLUSH_SEC"] = str(self.cfg.pause_flush_sec)
+        os.environ["LX_SEGMENT_MAX_SEC"] = str(self.cfg.segment_max_sec)
+        
+        try:
+            # Import here to avoid circular imports and to get proper fake during tests
+            from loquilex.asr.stream import StreamingASR
+            from loquilex.asr.aggregator import PartialFinalAggregator
+            
+            # Initialize streaming components
+            self._streaming_asr = StreamingASR(stream_id=self.sid)
+            self._aggregator = PartialFinalAggregator(self.sid)
+            
+            # Warmup ASR
+            self._streaming_asr.warmup()
+            
+            # Start audio processing thread
+            def audio_worker():
+                try:
+                    # Import audio capture
+                    from loquilex.audio.capture import capture_stream
+                    
+                    def on_audio_frame(frame):
+                        if self._stop_evt.is_set():
+                            return
+                        try:
+                            self._streaming_asr.process_audio_chunk(
+                                frame.data,
+                                self._on_partial,
+                                self._on_final
+                            )
+                        except Exception as e:
+                            print(f"[StreamingSession] Audio processing error: {e}")
+                    
+                    # Start audio capture
+                    stop_capture = capture_stream(on_audio_frame)
+                    
+                    # Broadcast ready status - fix asyncio context
+                    if self._broadcast_fn:
+                        try:
+                            # Try to get existing event loop
+                            loop = asyncio.get_running_loop()
+                            loop.create_task(self._broadcast_fn(self.sid, {
+                                "type": "status", 
+                                "stage": "operational",
+                                "log": "Ready — start speaking now (streaming mode)"
+                            }))
+                        except RuntimeError:
+                            # No running loop - skip broadcast in thread context
+                            print("[StreamingSession] Ready — start speaking now (streaming mode)")
+                    
+                    # Keep thread alive until stopped
+                    while not self._stop_evt.is_set():
+                        time.sleep(0.1)
+                        
+                    # Stop audio capture
+                    if stop_capture:
+                        stop_capture()
+                        
+                except Exception as e:
+                    print(f"[StreamingSession] Audio worker error: {e}")
+                    if self._broadcast_fn:
+                        try:
+                            # Try to get existing event loop
+                            loop = asyncio.get_running_loop()
+                            loop.create_task(self._broadcast_fn(self.sid, {
+                                "type": "status",
+                                "stage": "error", 
+                                "log": f"Audio error: {e}"
+                            }))
+                        except RuntimeError:
+                            # No running loop - just log
+                            print(f"[StreamingSession] Audio error: {e}")
+            
+            self._audio_thread = threading.Thread(target=audio_worker, daemon=True)
+            self._audio_thread.start()
+            
+        except Exception as e:
+            print(f"[StreamingSession] Startup error: {e}")
+            raise
+    
+    def _on_partial(self, partial_event) -> None:
+        """Handle partial ASR events."""
+        if self._aggregator and self._broadcast_fn:
+            try:
+                def emit_event(event_dict):
+                    # Handle asyncio context properly
+                    try:
+                        loop = asyncio.get_running_loop()
+                        loop.create_task(self._broadcast_fn(self.sid, event_dict))
+                    except RuntimeError:
+                        # No running loop - skip broadcast in thread context
+                        print(f"[StreamingSession] Partial: {event_dict.get('text', '')}")
+                
+                self._aggregator.add_partial(partial_event, emit_event)
+            except Exception as e:
+                print(f"[StreamingSession] Partial event error: {e}")
+    
+    def _on_final(self, final_event) -> None:
+        """Handle final ASR events.""" 
+        if self._aggregator and self._broadcast_fn:
+            try:
+                def emit_event(event_dict):
+                    # Handle asyncio context properly
+                    try:
+                        loop = asyncio.get_running_loop()
+                        loop.create_task(self._broadcast_fn(self.sid, event_dict))
+                    except RuntimeError:
+                        # No running loop - skip broadcast in thread context
+                        print(f"[StreamingSession] Final: {event_dict.get('text', '')}")
+                
+                self._aggregator.add_final(final_event, emit_event)
+            except Exception as e:
+                print(f"[StreamingSession] Final event error: {e}")
+    
+    def stop(self) -> None:
+        """Stop the streaming session."""
+        self._stop_evt.set()
+        if self._audio_thread:
+            try:
+                self._audio_thread.join(timeout=2.0)
+            except Exception:
+                pass
+                
+    def pause(self) -> None:
+        """Pause audio processing (placeholder)."""
+        # Could implement by pausing audio capture
+        pass
+        
+    def resume(self) -> None:
+        """Resume audio processing (placeholder).""" 
+        # Could implement by resuming audio capture
+        pass
+        
+    def finalize_now(self) -> None:
+        """Force finalize current segment."""
+        if self._streaming_asr:
+            try:
+                self._streaming_asr.force_finalize(self._on_final)
+            except Exception as e:
+                print(f"[StreamingSession] Force finalize error: {e}")
+    
+    def get_asr_snapshot(self) -> Optional[Dict[str, Any]]:
+        """Get ASR snapshot for reconnects."""
+        if self._aggregator:
+            try:
+                return self._aggregator.get_snapshot()
+            except Exception as e:
+                print(f"[StreamingSession] Snapshot error: {e}")
+        return None
+
+
 @dataclass
 class SessionConfig:
     name: str
@@ -32,6 +212,8 @@ class SessionConfig:
     segment_max_sec: float
     partial_word_cap: int
     save_audio: str
+    # New streaming mode flag
+    streaming_mode: bool = False
 
 
 class Session:
@@ -157,14 +339,24 @@ class SessionManager:
                 running_cuda = sum(1 for s in self._sessions.values() if s.cfg.device == "cuda")
             if running_cuda >= self._max_cuda_sessions:
                 raise RuntimeError("GPU busy: maximum concurrent CUDA sessions reached")
+        
         sid = str(uuid.uuid4())
         run_dir = Path("loquilex/out") / sid
         run_dir.mkdir(parents=True, exist_ok=True)
-        sess = Session(sid, cfg, run_dir)
+        
+        # Choose session type based on streaming_mode flag
+        if cfg.streaming_mode:
+            sess = StreamingSession(sid, cfg, run_dir)
+            sess.set_broadcast_fn(self._broadcast)
+        else:
+            sess = Session(sid, cfg, run_dir)
+            
         sess.start()
+        
         with self._lock:
             self._sessions[sid] = sess
             self._stampers[sid] = sess.stamper
+            
         asyncio.create_task(self._broadcast(sid, {"type": "status", "stage": "initializing"}))
         return sid
 
