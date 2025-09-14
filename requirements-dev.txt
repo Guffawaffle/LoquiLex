@@ -19,3 +19,4 @@ vulture>=2.7  # Dead code detection
 
 # Core deps
 numpy==1.26.4
+trio==0.25.0
