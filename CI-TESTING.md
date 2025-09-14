@@ -91,7 +91,7 @@ act -j e2e            # Run just e2e tests
 HF_HUB_OFFLINE=1
 TRANSFORMERS_OFFLINE=1
 HF_HUB_DISABLE_TELEMETRY=1
-LOQUILEX_OFFLINE=1
+LX_OFFLINE=1
 ```
 
 ### Test Commands:

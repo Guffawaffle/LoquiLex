@@ -59,7 +59,7 @@ def _set_offline_env() -> None:
     os.environ.setdefault("HF_HUB_OFFLINE", "1")
     os.environ.setdefault("TRANSFORMERS_OFFLINE", "1")
     os.environ.setdefault("HF_HUB_DISABLE_TELEMETRY", "1")
-    os.environ.setdefault("LOQUILEX_OFFLINE", "1")
+    os.environ.setdefault("LX_OFFLINE", "1")
 
 
 def _patch_translator() -> None:
