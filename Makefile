@@ -1,3 +1,6 @@
+# Alias used by GitHub Actions to run the full CI pipeline
+.PHONY: run-ci-mode
+run-ci-mode: ci
 # Lightweight dev profile: installs only base+dev deps and prefetches tiny model.
 
 ## ------------------------------
