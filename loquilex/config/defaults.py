@@ -39,6 +39,33 @@ def _env_float(name: str, default: float) -> float:
         return default
 
 
+def _env_time_seconds(name: str, default_seconds: float) -> float:
+    """Parse time value with unit suffixes (s, ms, m, h) and return seconds."""
+    raw = _env(name, str(default_seconds))
+    try:
+        # Handle plain numbers (assume seconds)
+        if raw.isdigit() or (raw.replace('.', '').isdigit()):
+            return float(raw)
+        
+        # Handle unit suffixes
+        raw = raw.strip().lower()
+        if raw.endswith('s'):
+            # Could be 's' or 'ms'
+            if raw.endswith('ms'):
+                return float(raw[:-2]) / 1000.0  # milliseconds to seconds
+            else:
+                return float(raw[:-1])  # seconds
+        elif raw.endswith('m'):
+            return float(raw[:-1]) * 60.0  # minutes to seconds
+        elif raw.endswith('h'):
+            return float(raw[:-1]) * 3600.0  # hours to seconds
+        else:
+            # No recognized suffix, assume seconds
+            return float(raw)
+    except Exception:
+        return default_seconds
+
+
 _DEFAULT_SAVE_AUDIO = _env("LX_SAVE_AUDIO", "off")
 _DEFAULT_SAVE_AUDIO_PATH = _env("LX_SAVE_AUDIO_PATH", "loquilex/out/session.wav")
 

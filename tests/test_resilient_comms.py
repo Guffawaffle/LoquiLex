@@ -284,11 +284,11 @@ class TestResilientComms:
         """Test environment variable configuration."""
         import os
 
-        # Test custom environment values
+        # Test custom environment values using new variable names
         test_env = {
-            "LX_WS_HEARTBEAT_MS": "3000",
-            "LX_WS_HEARTBEAT_TIMEOUT_MS": "10000",
-            "LX_WS_RESUME_TTL_SEC": "20",
+            "LX_WS_HEARTBEAT_SEC": "3",
+            "LX_WS_HEARTBEAT_TIMEOUT_SEC": "10",
+            "LX_WS_RESUME_TTL": "20",
             "LX_WS_MAX_IN_FLIGHT": "32",
             "LX_CLIENT_EVENT_BUFFER": "200",
         }
