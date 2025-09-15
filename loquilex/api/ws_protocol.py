@@ -643,7 +643,7 @@ class WSProtocolManager:
                 # System heartbeat
                 system_hb_data = SystemHeartbeatData(
                     ts=datetime.now(timezone.utc).isoformat(),
-                    t_mono_ms=self.state.get_monotonic_ms(),
+                    t_mono_ms=self.state.get_monotonic_ns(),
                     queue_depths=queue_depths,
                     drop_counts=drop_counts,
                     latency_metrics=self._metrics.get("latency_metrics", {}),
