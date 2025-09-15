@@ -56,7 +56,7 @@ test('handles model loading error', async () => {
   renderWithRouter(<ModelSelect />);
   
   await waitFor(() => {
-    expect(screen.getByText('Failed to load models')).toBeInTheDocument();
+    expect(screen.getByText('Network error')).toBeInTheDocument();
   });
 });
 
