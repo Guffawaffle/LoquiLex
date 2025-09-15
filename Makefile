@@ -287,20 +287,29 @@ stop-all-force: stop-ui-force stop-api-force stop-ws-force
 ## ------------------------------
 ## Cleanup
 
-clean:
-	rm -rf .pytest_cache .coverage $(VENV) dist build .pids
-
-## ------------------------------
-## Docker CI parity (optional)
-
-DOCKER_IMAGE ?= loquilex-ci
-PWD_SHELL := $(shell pwd)
-
-docker-ci:
-	@echo "=== Running CI in Docker (Dockerfile.ci) ==="
-	docker build -f Dockerfile.ci -t $(DOCKER_IMAGE) .
-	docker run --rm -v "$(PWD_SHELL)":/app $(DOCKER_IMAGE) ./scripts/ci-entrypoint.sh
-
+help:
+	@echo "Targets:"
+	@echo "  dev-minimal      - base+dev deps only; no model prefetch (offline-first)"
+	@echo "  dev              - alias of dev-minimal"
+	@echo "  dev-ml-cpu       - add CPU-only ML stack and prefetch tiny model"
+	@echo "  lint / fmt / typecheck / test / e2e / ci"
+	@echo "  ui-verify        - run UI unit/component and e2e tests (see below)"
+	@echo "  ui-e2e           - run Playwright E2E tests (see below)"
+	@echo "  dead-code-analysis - run comprehensive dead code detection tools"
+	@echo "  dead-code-report   - generate reports locally (no CI gating)"
+	@echo "  clean-artifacts    - remove all generated artifacts"
+	@echo ""
+	@echo "UI E2E/Verify Behavior:"
+	@echo "  - ui-e2e and ui-verify will conditionally install Playwright Chromium browser only when LX_OFFLINE!=1."
+	@echo "  - When LX_OFFLINE=1, browser install and E2E are skipped for deterministic offline runs."
+	@echo "  - When LX_OFFLINE=0, browser is installed and E2E tests are executed."
+	@echo "  - See scripts/ui_e2e.sh for details."
+	@echo ""
+	@echo "Vars:"
+	@echo "  USE_VENV=0       - use system Python instead of creating .venv (good for CI)"
+	@echo "  ASR_MODEL=...    - model to prefetch (default: tiny.en)"
+	@echo "  LX_SKIP_MODEL_PREFETCH=1 - skip model prefetch (for faster CI runs)"
+	@echo "  LX_SKIP_DEAD_CODE_REPORT=1 - skip dead code report generation (for faster CI runs)"
 docker-ci-build:
 	@echo "=== Building CI-parity image ==="
 	DOCKER_BUILDKIT=1 docker build -f Dockerfile.ci -t $(DOCKER_IMAGE) . --progress=plain
