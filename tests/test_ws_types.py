@@ -116,11 +116,12 @@ class TestDomainEventData:
 
     def test_mt_final_data(self):
         """Test machine translation final data."""
-        data = MTFinalData(text="你好世界", src="en", tgt="zh-Hans")
+        data = MTFinalData(text="你好世界", src="en", tgt="zh-Hans", segment_id="seg1")
 
         assert data.text == "你好世界"
         assert data.src == "en"
         assert data.tgt == "zh-Hans"
+        assert data.segment_id == "seg1"
 
     def test_status_data(self):
         """Test status data validation."""
