@@ -36,8 +36,17 @@ class MessageType(str, Enum):
     CLIENT_FLOW = "client.flow"
     ASR_PARTIAL = "asr.partial"
     ASR_FINAL = "asr.final"
+    MT_PARTIAL = "mt.partial"
     MT_FINAL = "mt.final"
     STATUS = "status"
+    # New resilient comms message types
+    SESSION_RESUME = "session.resume"
+    SESSION_SNAPSHOT = "session.snapshot"
+    SESSION_NEW = "session.new"
+    SESSION_ACK = "session.ack"
+    SYSTEM_HEARTBEAT = "system.heartbeat"
+    QUEUE_DROP = "queue.drop"
+    SYSTEM_METRICS = "system.metrics"
 
 
 # Strict type for envelope 't' field (v1 surface)
@@ -52,8 +61,16 @@ MessageTypeLiteral = Literal[
     "client.flow",
     "asr.partial",
     "asr.final",
+    "mt.partial",
     "mt.final",
     "status",
+    "session.resume",
+    "session.snapshot",
+    "session.new",
+    "session.ack",
+    "system.heartbeat",
+    "queue.drop",
+    "system.metrics",
 ]
 
 
@@ -115,6 +132,9 @@ class WSEnvelope(BaseModel):
                 MessageType.SERVER_ERROR,
                 MessageType.MT_FINAL,
                 MessageType.ASR_FINAL,
+                MessageType.SESSION_SNAPSHOT,
+                MessageType.SESSION_NEW,
+                MessageType.SESSION_ACK,
             }
             if self.t not in allowed:
                 raise ValueError(f"corr is only allowed on replies/acks, got t={self.t}")
@@ -226,6 +246,8 @@ class ASRPartialData(BaseModel):
     text: str = Field(description="Partial text")
     final: bool = Field(default=False, description="Whether this is final")
     segment_id: str = Field(description="Segment identifier")
+    stability: Optional[float] = Field(default=None, description="Stability score 0.0-1.0")
+    segments: Optional[list[Dict[str, Any]]] = Field(default=None, description="Segment details")
 
 
 class ASRFinalData(BaseModel):
@@ -235,6 +257,20 @@ class ASRFinalData(BaseModel):
     segment_id: str = Field(description="Segment identifier")
     start_ms: Optional[int] = Field(default=None, description="Segment start time in milliseconds")
     end_ms: Optional[int] = Field(default=None, description="Segment end time in milliseconds")
+    segments: Optional[list[Dict[str, Any]]] = Field(default=None, description="Segment details")
+    final_seq_range: Optional[Dict[str, int]] = Field(
+        default=None, description="Sequence range covered by this final: {from: seq, to: seq}"
+    )
+
+
+class MTPartialData(BaseModel):
+    """Machine translation partial payload."""
+
+    text: str = Field(description="Partial translated text")
+    src: str = Field(description="Source language code")
+    tgt: str = Field(description="Target language code")
+    segment_id: str = Field(description="Source segment identifier")
+    stability: Optional[float] = Field(default=None, description="Translation stability score")
 
 
 class MTFinalData(BaseModel):
@@ -243,6 +279,10 @@ class MTFinalData(BaseModel):
     text: str = Field(description="Translated text")
     src: str = Field(description="Source language code")
     tgt: str = Field(description="Target language code")
+    segment_id: str = Field(description="Source segment identifier")
+    final_seq_range: Optional[Dict[str, int]] = Field(
+        default=None, description="Sequence range covered by this final: {from: seq, to: seq}"
+    )
 
 
 class StatusData(BaseModel):
@@ -259,6 +299,7 @@ class SessionState:
     sid: str
     t0_mono: float  # Session start time (monotonic)
     t0_wall: str  # Session start time (wall clock, ISO8601)
+    epoch: int = 0  # Session epoch for reconnect detection
     seq: int = 0
     last_hb_sent: float = 0.0
     last_hb_recv: float = 0.0
@@ -316,3 +357,77 @@ class SessionState:
             self.replay_buffer.pop(ack_seq, None)
             if ack_seq > self.last_ack_seq:
                 self.last_ack_seq = ack_seq
+
+
+# New resilient comms payload types
+
+
+class SessionResumeData(BaseModel):
+    """Session resume request payload."""
+
+    session_id: str = Field(description="Session ID to resume")
+    last_seq: int = Field(description="Last acknowledged sequence number")
+    epoch: Optional[int] = Field(default=None, description="Expected session epoch")
+
+
+class SessionSnapshotData(BaseModel):
+    """Session snapshot response payload for rehydration."""
+
+    session_id: str = Field(description="Session ID")
+    epoch: int = Field(description="Current session epoch")
+    current_seq: int = Field(description="Current sequence number")
+    finalized_transcript: list[Dict[str, Any]] = Field(
+        default_factory=list, description="Final transcript segments"
+    )
+    active_partials: list[Dict[str, Any]] = Field(
+        default_factory=list, description="Active partial segments"
+    )
+    mt_status: Optional[Dict[str, Any]] = Field(default=None, description="MT state if enabled")
+
+
+class SessionNewData(BaseModel):
+    """Session new response payload for fresh start."""
+
+    session_id: str = Field(description="New session ID")
+    epoch: int = Field(description="New session epoch")
+    reason: str = Field(description="Reason for new session (e.g., 'resume_expired')")
+
+
+class SessionAckData(BaseModel):
+    """Session acknowledgement payload."""
+
+    session_id: str = Field(description="Session ID")
+    status: str = Field(description="Acknowledgement status")
+
+
+class SystemHeartbeatData(BaseModel):
+    """System heartbeat payload with comprehensive metrics."""
+
+    ts: str = Field(description="ISO8601 timestamp")
+    t_mono_ms: int = Field(description="Monotonic milliseconds since session start")
+    queue_depths: Dict[str, int] = Field(default_factory=dict, description="Queue depths by name")
+    drop_counts: Dict[str, int] = Field(default_factory=dict, description="Drop counts by queue")
+    latency_metrics: Dict[str, float] = Field(
+        default_factory=dict, description="Latency metrics in ms"
+    )
+
+
+class QueueDropData(BaseModel):
+    """Queue drop notification payload."""
+
+    path: str = Field(description="Queue/path where drop occurred")
+    count: int = Field(description="Number of items dropped")
+    reason: str = Field(description="Drop reason (capacity, ttl_expired, backpressure)")
+    total_dropped: int = Field(description="Total items dropped on this path")
+
+
+class SystemMetricsData(BaseModel):
+    """System metrics payload for telemetry."""
+
+    queue_depths: Dict[str, int] = Field(default_factory=dict, description="Current queue depths")
+    drop_totals: Dict[str, int] = Field(default_factory=dict, description="Total drops by queue")
+    latency_p95_ms: Dict[str, float] = Field(
+        default_factory=dict, description="95th percentile latencies"
+    )
+    uptime_seconds: float = Field(description="Session uptime in seconds")
+    memory_usage_mb: Optional[float] = Field(default=None, description="Memory usage in MB")
