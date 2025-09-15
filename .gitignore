@@ -40,3 +40,4 @@ htmlcov/
 
 # CI outputs
 .artifacts/
+ui/web/node_modules/
