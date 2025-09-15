@@ -17,7 +17,7 @@ import os
 import time
 import uuid
 from datetime import datetime, timezone
-from typing import Any, Callable, Dict, Optional, Set
+from typing import Any, Awaitable, Callable, Dict, Optional, Set
 
 from fastapi import WebSocket
 
@@ -114,6 +114,7 @@ class WSProtocolManager:
 
         # Callbacks
         self._on_disconnect: Optional[Callable[[str], None]] = None
+        self._session_snapshot_callback: Optional[Callable[[str], Awaitable[Any]]] = None
 
         # Bounded queues and telemetry
         from .bounded_queue import BoundedQueue, ReplayBuffer
@@ -132,11 +133,22 @@ class WSProtocolManager:
             "queue_depths": {},
             "drop_counts": {},
             "latency_metrics": {},
+            "resume_metrics": {
+                "attempts": 0,
+                "success": 0,
+                "miss": 0,
+                "snapshot_sizes": [],
+                "replay_durations": [],
+            },
         }
 
     def set_disconnect_callback(self, callback: Callable[[str], None]) -> None:
         """Set callback for when session should be cleaned up."""
         self._on_disconnect = callback
+
+    def set_session_snapshot_callback(self, callback: Callable[[str], Awaitable[Any]]) -> None:
+        """Set callback for getting session snapshot data for resume."""
+        self._session_snapshot_callback = callback
 
     async def add_connection(self, ws: WebSocket) -> None:
         """Add a new WebSocket connection."""
@@ -246,21 +258,27 @@ class WSProtocolManager:
     async def _handle_session_resume(self, ws: WebSocket, envelope: WSEnvelope) -> None:
         """Handle session resume request."""
         try:
+            start_time = time.monotonic()
+            self._metrics["resume_metrics"]["attempts"] += 1
+            
             resume_data = SessionResumeData.model_validate(envelope.data)
 
             # Check session ID match
             if resume_data.session_id != self.sid:
+                self._metrics["resume_metrics"]["miss"] += 1
                 await self._send_session_new(ws, envelope.corr, "session_id_mismatch")
                 return
 
             # Check epoch if provided
             if resume_data.epoch is not None and resume_data.epoch != self.state.epoch:
+                self._metrics["resume_metrics"]["miss"] += 1
                 await self._send_session_new(ws, envelope.corr, "epoch_mismatch")
                 return
 
             # Check if resume is within window
             elapsed = time.monotonic() - self.state.t0_mono
             if elapsed > self.resume_window.seconds:
+                self._metrics["resume_metrics"]["miss"] += 1
                 await self._send_session_new(ws, envelope.corr, "resume_expired")
                 return
 
@@ -269,10 +287,21 @@ class WSProtocolManager:
 
             # Send session snapshot with replay data
             await self._send_session_snapshot(ws, envelope.corr, replay_messages)
+            
+            # Record success metrics
+            self._metrics["resume_metrics"]["success"] += 1
+            duration_ms = (time.monotonic() - start_time) * 1000
+            self._metrics["resume_metrics"]["replay_durations"].append(duration_ms)
+            
+            # Keep only recent durations (last 100)
+            if len(self._metrics["resume_metrics"]["replay_durations"]) > 100:
+                self._metrics["resume_metrics"]["replay_durations"] = \
+                    self._metrics["resume_metrics"]["replay_durations"][-100:]
 
-            logger.info(f"Session {self.sid} resumed, replayed {len(replay_messages)} messages")
+            logger.info(f"Session {self.sid} resumed, replayed {len(replay_messages)} messages in {duration_ms:.1f}ms")
 
         except Exception as e:
+            self._metrics["resume_metrics"]["miss"] += 1
             logger.exception(f"Error handling session resume: {e}")
             await self._send_error(ws, "invalid_resume", str(e))
 
@@ -280,15 +309,38 @@ class WSProtocolManager:
         self, ws: WebSocket, corr: Optional[str], replay_messages: list
     ) -> None:
         """Send session snapshot for successful resume."""
-        # TODO: Get actual finalized transcript and active partials from session
-        # For now, send basic snapshot structure
+        # Get actual finalized transcript and active partials from session
+        finalized_transcript = []
+        active_partials = []
+        mt_status = None
+        
+        if self._session_snapshot_callback:
+            try:
+                snapshot = await self._session_snapshot_callback(self.sid)
+                if snapshot:
+                    finalized_transcript = snapshot.get("finalized_transcript", [])
+                    active_partials = snapshot.get("active_partials", [])
+                    mt_status = snapshot.get("mt_status")
+            except Exception as e:
+                logger.warning(f"Failed to get session snapshot for {self.sid}: {e}")
+
         snapshot_data = SessionSnapshotData(
             session_id=self.sid,
             epoch=self.state.epoch,
             current_seq=self.state.seq,
-            finalized_transcript=[],  # Would be populated from session state
-            active_partials=[],  # Would be populated from session state
+            finalized_transcript=finalized_transcript,
+            active_partials=active_partials,
+            mt_status=mt_status,
         )
+
+        # Record snapshot metrics
+        snapshot_size = len(finalized_transcript) + len(active_partials) + len(replay_messages)
+        self._metrics["resume_metrics"]["snapshot_sizes"].append(snapshot_size)
+        
+        # Keep only recent sizes (last 100)
+        if len(self._metrics["resume_metrics"]["snapshot_sizes"]) > 100:
+            self._metrics["resume_metrics"]["snapshot_sizes"] = \
+                self._metrics["resume_metrics"]["snapshot_sizes"][-100:]
 
         snapshot_envelope = self._create_envelope(
             MessageType.SESSION_SNAPSHOT,
@@ -419,7 +471,7 @@ class WSProtocolManager:
             seq=seq,
             corr=corr,
             t_wall=datetime.now(timezone.utc).isoformat(),
-            t_mono_ms=self.state.get_monotonic_ms(),
+            t_mono_ns=self.state.get_monotonic_ns(),
             data=data,
         )
 
@@ -661,6 +713,21 @@ class WSProtocolManager:
             drop_totals[f"outbound_{i}"] = queue_tel["total_dropped"]
 
         uptime = time.monotonic() - self.state.t0_mono
+        
+        # Calculate resume metrics statistics
+        resume_metrics = self._metrics["resume_metrics"]
+        avg_snapshot_size = 0
+        avg_replay_duration = 0
+        success_rate = 0
+        
+        if resume_metrics["snapshot_sizes"]:
+            avg_snapshot_size = sum(resume_metrics["snapshot_sizes"]) / len(resume_metrics["snapshot_sizes"])
+        
+        if resume_metrics["replay_durations"]:
+            avg_replay_duration = sum(resume_metrics["replay_durations"]) / len(resume_metrics["replay_durations"])
+            
+        if resume_metrics["attempts"] > 0:
+            success_rate = resume_metrics["success"] / resume_metrics["attempts"]
 
         return {
             "session_id": self.sid,
@@ -670,4 +737,12 @@ class WSProtocolManager:
             "drop_totals": drop_totals,
             "latency_metrics": self._metrics.get("latency_metrics", {}),
             "connections": len(self.connections),
+            "resume_metrics": {
+                "attempts": resume_metrics["attempts"],
+                "success": resume_metrics["success"],
+                "miss": resume_metrics["miss"],
+                "success_rate": success_rate,
+                "avg_snapshot_size": avg_snapshot_size,
+                "avg_replay_duration_ms": avg_replay_duration,
+            },
         }

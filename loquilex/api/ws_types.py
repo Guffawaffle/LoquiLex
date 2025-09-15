@@ -114,8 +114,8 @@ class WSEnvelope(BaseModel):
     seq: Optional[int] = Field(default=None, description="Sequence number per session")
     corr: Optional[str] = Field(default=None, description="Correlation ID for responses")
     t_wall: Optional[str] = Field(default=None, description="ISO8601 timestamp")
-    t_mono_ms: Optional[int] = Field(
-        default=None, description="Monotonic milliseconds since session start"
+    t_mono_ns: Optional[int] = Field(
+        default=None, description="Monotonic nanoseconds since session start"
     )
     data: Dict[str, Any] = Field(default_factory=dict, description="Type-specific payload")
 
@@ -314,9 +314,9 @@ class SessionState:
         self.seq += 1
         return self.seq
 
-    def get_monotonic_ms(self) -> int:
-        """Get milliseconds since session start (monotonic)."""
-        return int((time.monotonic() - self.t0_mono) * 1000)
+    def get_monotonic_ns(self) -> int:
+        """Get nanoseconds since session start (monotonic)."""
+        return int((time.monotonic() - self.t0_mono) * 1_000_000_000)
 
     def add_to_replay_buffer(self, envelope: WSEnvelope) -> None:
         """Add message to replay buffer with retention policy."""
@@ -327,8 +327,8 @@ class SessionState:
         cutoff_time = time.monotonic() - self.resume_window_sec
         to_remove = []
         for seq, env in self.replay_buffer.items():
-            if env.t_mono_ms is not None:
-                msg_time = self.t0_mono + (env.t_mono_ms / 1000.0)
+            if env.t_mono_ns is not None:
+                msg_time = self.t0_mono + (env.t_mono_ns / 1_000_000_000.0)
                 if msg_time < cutoff_time:
                     to_remove.append(seq)
 
