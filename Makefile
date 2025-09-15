@@ -205,3 +205,75 @@ dead-code-report:
 .PHONY: clean-artifacts
 clean-artifacts:
 	@rm -rf .artifacts || true
+## ------------------------------
+## UI config
+UI_DIR      ?= ui
+PKG_MGR     := $(shell if [ -f $(UI_DIR)/pnpm-lock.yaml ]; then echo pnpm; elif [ -f $(UI_DIR)/yarn.lock ]; then echo yarn; else echo npm; fi)
+UI_DEV_PORT ?= 5173
+UI_BASE_URL ?= http://localhost:$(UI_DEV_PORT)
+
+# If set to 1, `make ui-e2e` will start a local backend automatically.
+UI_E2E_START_BACKEND ?= 1
+# Override this to your project’s backend entrypoint if different.
+UI_E2E_BACKEND_CMD ?= $(PY) -m loquilex.api.server --host 127.0.0.1 --port 8000
+UI_E2E_BACKEND_URL ?= http://127.0.0.1:8000
+
+.PHONY: ui-setup ui-dev ui-build ui-start ui-test ui-test-watch ui-e2e ui-verify
+
+ui-setup:
+	@echo ">> Installing UI deps with $(PKG_MGR)"
+	@if [ "$(PKG_MGR)" = "pnpm" ]; then cd "$(UI_DIR)" && pnpm install; \
+	elif [ "$(PKG_MGR)" = "yarn" ]; then cd "$(UI_DIR)" && yarn install --frozen-lockfile; \
+	else cd "$(UI_DIR)" && npm ci; fi
+
+ui-dev: ui-setup
+	@echo ">> Starting UI dev server (port $(UI_DEV_PORT))"
+	@cd "$(UI_DIR)" && \
+	if [ "$(PKG_MGR)" = "pnpm" ]; then pnpm run dev; \
+	elif [ "$(PKG_MGR)" = "yarn" ]; then yarn dev; \
+	else npm run dev; fi
+
+ui-build: ui-setup
+	@echo ">> Building UI"
+	@cd "$(UI_DIR)" && \
+	if [ "$(PKG_MGR)" = "pnpm" ]; then pnpm run build; \
+	elif [ "$(PKG_MGR)" = "yarn" ]; then yarn build; \
+	else npm run build; fi
+
+ui-start: ui-build
+	@echo ">> Serving production build"
+	@cd "$(UI_DIR)" && \
+	if [ "$(PKG_MGR)" = "pnpm" ]; then pnpm run preview; \
+	elif [ "$(PKG_MGR)" = "yarn" ]; then yarn preview; \
+	else npm run preview; fi
+
+ui-test: ui-setup
+	@echo ">> Running UI unit/component tests"
+	@cd "$(UI_DIR)" && \
+	if [ "$(PKG_MGR)" = "pnpm" ]; then pnpm run test -- --run; \
+	elif [ "$(PKG_MGR)" = "yarn" ]; then yarn test --run; \
+	else npm run test -- --run; fi
+
+ui-test-watch: ui-setup
+	@cd "$(UI_DIR)" && \
+	if [ "$(PKG_MGR)" = "pnpm" ]; then pnpm run test; \
+	elif [ "$(PKG_MGR)" = "yarn" ]; then yarn test; \
+	else npm run test; fi
+
+ui-e2e: ui-setup
+	@echo ">> Running UI E2E tests (Playwright) against $(UI_BASE_URL)"
+	@set -euo pipefail; \
+	if [ "$(UI_E2E_START_BACKEND)" = "1" ]; then \
+		echo ">> Starting backend: $(UI_E2E_BACKEND_CMD)"; \
+		( $(UI_E2E_BACKEND_CMD) >/tmp/ui-e2e-backend.log 2>&1 & echo $$! > .backend.pid ); \
+		sleep 3; \
+	fi; \
+	cd "$(UI_DIR)" && npx playwright install --with-deps >/dev/null 2>&1 || true; \
+	BASE_URL="$(UI_BASE_URL)" API_BASE_URL="$(UI_E2E_BACKEND_URL)" \
+	if [ "$(PKG_MGR)" = "pnpm" ]; then pnpm run e2e; \
+	elif [ "$(PKG_MGR)" = "yarn" ]; then yarn e2e; \
+	else npm run e2e; fi; \
+	if [ -f ../.backend.pid ]; then kill $$(cat ../.backend.pid) || true; rm -f ../.backend.pid; fi
+
+ui-verify: ui-test ui-e2e
+	@echo ">> UI verify complete"
