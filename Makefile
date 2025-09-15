@@ -88,6 +88,27 @@ install-ml-cpu: install-venv
 prefetch-asr:
     @echo "[prefetch-asr] Downloading ASR model: $(ASR_MODEL)"
     @ASR_MODEL="$(ASR_MODEL)" $(PY) -c ' \
+# ------------------------------
+# Stop config
+PIDS_DIR           ?= .pids
+STOP_TIMEOUT       ?= 5
+
+UI_DEV_PORT        ?= 5173
+UI_PREVIEW_PORT    ?= $(UI_DEV_PORT)
+
+API_PORT           ?= 8000
+WS_PORT            ?= 0            # set if WS is on a distinct port; 0 = skip
+
+UI_DEV_PID         ?= $(PIDS_DIR)/ui-dev.pid
+UI_PREVIEW_PID     ?= $(PIDS_DIR)/ui-preview.pid
+API_PID            ?= $(PIDS_DIR)/api.pid
+# Also clean up temp backend started by ui-e2e:
+E2E_API_PID        ?= .backend.pid
+WS_PID             ?= $(PIDS_DIR)/ws.pid
+
+# -------------- Helpers
+define _kill_from_pid
+	@if [ -f $(1) ]; then \
 import os; \
 from faster_whisper import WhisperModel; \
 model = os.environ.get("ASR_MODEL") or os.environ.get("LX_ASR_MODEL") or "tiny.en"; \
@@ -103,6 +124,10 @@ models-tiny:
 	else \
 		$(MAKE) prefetch-asr ASR_MODEL=tiny.en; \
 	fi
+endef
+
+define _kill_by_port
+	@PORT=$(1); \
 
 ## ------------------------------
 ## Dev presets
@@ -119,10 +144,18 @@ dev: dev-minimal
 # Opt-in CPU ML stack (no torch/CUDA)
 dev-ml-cpu: install-base install-ml-cpu models-tiny
 	@echo "✅ dev-ml-cpu ready."
+endef
+
+define _kill_from_pid_force
+	@if [ -f $(1) ]; then \
 
 ## ------------------------------
 ## Quality gates & tests
 
+endef
+
+define _kill_by_port_force
+	@PORT=$(1); \
 lint: install-base
 	$(PY) -m ruff check loquilex tests
 
@@ -132,6 +165,59 @@ fmt: install-base
 fmt-check: install-base
 	$(PY) -m black --check --diff loquilex tests
 
+endef
+
+.PHONY: stop-ui stop-ui-force stop-api stop-api-force stop-ws stop-ws-force stop-all stop-all-force
+
+## UI (dev + preview) — graceful
+stop-ui:
+	@mkdir -p "$(PIDS_DIR)"
+	$(call _kill_from_pid,$(UI_DEV_PID))
+	$(call _kill_from_pid,$(UI_PREVIEW_PID))
+	$(call _kill_by_port,$(UI_DEV_PORT))
+	$(call _kill_by_port,$(UI_PREVIEW_PORT))
+
+## UI — force
+stop-ui-force:
+	@mkdir -p "$(PIDS_DIR)"
+	$(call _kill_from_pid_force,$(UI_DEV_PID))
+	$(call _kill_from_pid_force,$(UI_PREVIEW_PID))
+	$(call _kill_by_port_force,$(UI_DEV_PORT))
+	$(call _kill_by_port_force,$(UI_PREVIEW_PORT))
+
+## Backend API (includes temp PID from ui-e2e) — graceful
+stop-api:
+	@mkdir -p "$(PIDS_DIR)"
+	$(call _kill_from_pid,$(API_PID))
+	$(call _kill_from_pid,$(E2E_API_PID))
+	$(call _kill_by_port,$(API_PORT))
+
+## Backend API — force
+stop-api-force:
+	@mkdir -p "$(PIDS_DIR)"
+	$(call _kill_from_pid_force,$(API_PID))
+	$(call _kill_from_pid_force,$(E2E_API_PID))
+	$(call _kill_by_port_force,$(API_PORT))
+
+## WebSocket endpoint (set WS_PORT if distinct) — graceful
+stop-ws:
+	@mkdir -p "$(PIDS_DIR)"
+	$(call _kill_from_pid,$(WS_PID))
+	$(call _kill_by_port,$(WS_PORT))
+
+## WebSocket endpoint — force
+stop-ws-force:
+	@mkdir -p "$(PIDS_DIR)"
+	$(call _kill_from_pid_force,$(WS_PID))
+	$(call _kill_by_port_force,$(WS_PORT))
+
+## Everything — graceful
+stop-all: stop-ui stop-api stop-ws
+	@echo ">> stop-all complete"
+
+## Everything — force
+stop-all-force: stop-ui-force stop-api-force stop-ws-force
+	@echo ">> stop-all-force complete"
 typecheck: install-base
 	$(PY) -m mypy loquilex
 
