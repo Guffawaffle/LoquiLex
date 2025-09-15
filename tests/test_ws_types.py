@@ -43,7 +43,7 @@ class TestWSEnvelope:
             seq=42,
             corr="msg_prev",
             t_wall="2025-01-01T00:00:00Z",
-            t_mono_ms=1500,
+            t_mono_ns=1500000,
             data={"text": "hello world", "segment_id": "seg1"},
         )
 
@@ -54,7 +54,7 @@ class TestWSEnvelope:
         assert envelope.seq == 42
         assert envelope.corr == "msg_prev"
         assert envelope.t_wall == "2025-01-01T00:00:00Z"
-        assert envelope.t_mono_ms == 1500
+        assert envelope.t_mono_ns == 1500000
         assert envelope.data["text"] == "hello world"
 
     def test_auto_message_id_generation(self):
@@ -208,11 +208,11 @@ class TestSessionState:
         state = SessionState(sid="test", t0_mono=t0, t0_wall=datetime.now(timezone.utc).isoformat())
 
         # Get monotonic time
-        mono_ms = state.get_monotonic_ms()
+        mono_ns = state.get_monotonic_ns()
 
         # Should be >= 0 and reasonable
-        assert mono_ms >= 0
-        assert mono_ms < 1000  # Less than 1 second since creation
+        assert mono_ns >= 0
+        assert mono_ns < 1_000_000_000  # Less than 1 second since creation
 
     def test_flow_control_limits(self):
         """Test flow control checking."""

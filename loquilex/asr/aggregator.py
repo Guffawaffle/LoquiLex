@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import time
 from collections import deque
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Callable, Deque, Dict, List, Optional, Set
 
 from .stream import ASRPartialEvent, ASRFinalEvent
@@ -14,6 +14,7 @@ __all__ = ["PartialFinalAggregator"]
 
 
 @dataclass
+
 class PartialState:
     """Track partial events for a segment."""
 
@@ -22,6 +23,7 @@ class PartialState:
     latest_text: str
     latest_words: List[Dict[str, Any]]
     last_update: float
+    seq_range: List[int] = field(default_factory=list)  # Track all seq numbers for this partial
 
 
 @dataclass
@@ -33,6 +35,7 @@ class FinalSegment:
     words: List[Dict[str, Any]]
     ts_monotonic: float
     eou_reason: str
+    final_seq_range: List[int] = field(default_factory=list)  # Seq numbers covered by this final
 
 
 class PartialFinalAggregator:
@@ -100,10 +103,11 @@ class PartialFinalAggregator:
         if partial.segment_id in self.partials:
             # Update existing partial
             state = self.partials[partial.segment_id]
-            state.latest_seq = partial.seq
+            state.latest_seq = self.global_seq
             state.latest_text = partial.text
             state.latest_words = words_dict
             state.last_update = now
+            state.seq_range.append(self.global_seq)
         else:
             # New partial - check if we need to evict old ones
             if len(self.partials) >= self.max_partials:
@@ -115,10 +119,11 @@ class PartialFinalAggregator:
             # Create new partial state
             state = PartialState(
                 segment_id=partial.segment_id,
-                latest_seq=partial.seq,
+                latest_seq=self.global_seq,
                 latest_text=partial.text,
                 latest_words=words_dict,
                 last_update=now,
+                seq_range=[self.global_seq],
             )
             self.partials[partial.segment_id] = state
             self.partial_order.append(partial.segment_id)
@@ -161,6 +166,14 @@ class PartialFinalAggregator:
         # Convert words to dict format
         words_dict = [{"w": w.w, "t0": w.t0, "t1": w.t1, "conf": w.conf} for w in final.words]
 
+        # Get the sequence range covered by this final (from partials)
+        final_seq_range = []
+        if final.segment_id in self.partials:
+            final_seq_range = self.partials[final.segment_id].seq_range.copy()
+
+        # Add current final sequence to the range
+        final_seq_range.append(self.global_seq)
+
         # Create final segment record
         final_segment = FinalSegment(
             segment_id=final.segment_id,
@@ -168,6 +181,7 @@ class PartialFinalAggregator:
             words=words_dict,
             ts_monotonic=final.ts_monotonic,
             eou_reason=final.eou_reason,
+            final_seq_range=final_seq_range,
         )
 
         # Add to recent finals (bounded)
@@ -202,6 +216,7 @@ class PartialFinalAggregator:
             "words": words_dict,
             "ts_monotonic": final.ts_monotonic,
             "eou_reason": final.eou_reason,
+            "final_seq_range": final_seq_range,
         }
 
         emit_fn(enriched_event)
@@ -222,6 +237,7 @@ class PartialFinalAggregator:
                     "text": final_seg.text,
                     "t0": final_seg.words[0]["t0"] if final_seg.words else 0.0,
                     "t1": final_seg.words[-1]["t1"] if final_seg.words else 0.0,
+                    "final_seq_range": final_seg.final_seq_range,
                 }
             )
 

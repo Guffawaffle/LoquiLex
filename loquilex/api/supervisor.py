@@ -471,6 +471,7 @@ class SessionManager:
                     sid=sid, hb_config=self._default_hb_config, limits=self._default_limits
                 )
                 protocol_manager.set_disconnect_callback(self._cleanup_ws_protocol)
+                protocol_manager.set_session_snapshot_callback(self._get_session_snapshot)
                 self._ws_protocols[sid] = protocol_manager
 
             # Also maintain legacy WebSocket list for compatibility
@@ -498,6 +499,34 @@ class SessionManager:
         """Cleanup callback for protocol manager."""
         with self._lock:
             self._ws_protocols.pop(sid, None)
+
+    async def _get_session_snapshot(self, sid: str) -> Optional[Dict[str, Any]]:
+        """Get session snapshot data for resume functionality."""
+        with self._lock:
+            session = self._sessions.get(sid)
+        
+        if not session:
+            return None
+            
+        # Only StreamingSession supports snapshots currently
+        if isinstance(session, StreamingSession):
+            snapshot_data = {}
+            
+            # Get ASR snapshot
+            asr_snapshot = session.get_asr_snapshot()
+            if asr_snapshot:
+                # Extract finalized transcript and active partials
+                snapshot_data["finalized_transcript"] = asr_snapshot.get("recent_finals", [])
+                snapshot_data["active_partials"] = []
+                if asr_snapshot.get("live_partial"):
+                    snapshot_data["active_partials"] = [asr_snapshot["live_partial"]]
+                    
+            # Get MT status
+            snapshot_data["mt_status"] = session.get_mt_status()
+            
+            return snapshot_data
+            
+        return None
 
     def _stamp(self, payload: Dict[str, Any], sid: str) -> Dict[str, Any]:
         with self._lock:
