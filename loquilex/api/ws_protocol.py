@@ -81,21 +81,21 @@ class WSProtocolManager:
         )
 
         # Configuration with environment variable support
-        import os
-
-        # Default configuration
+        from ..config.defaults import _env_time_seconds, _env_int
+        
+        # Default configuration with unit suffix support
         default_hb_config = HeartbeatConfig(
-            interval_ms=int(os.getenv("LX_WS_HEARTBEAT_MS", "5000")),
-            timeout_ms=int(os.getenv("LX_WS_HEARTBEAT_TIMEOUT_MS", "15000")),
+            interval_ms=int(_env_time_seconds("LX_WS_HEARTBEAT_SEC", 5.0) * 1000),
+            timeout_ms=int(_env_time_seconds("LX_WS_HEARTBEAT_TIMEOUT_SEC", 15.0) * 1000),
         )
 
         default_resume_window = ResumeWindow(
-            seconds=int(os.getenv("LX_WS_RESUME_TTL_SEC", "10")),
+            seconds=int(_env_time_seconds("LX_WS_RESUME_TTL", 10.0)),
         )
 
         default_limits = ServerLimits(
-            max_in_flight=int(os.getenv("LX_WS_MAX_IN_FLIGHT", "64")),
-            max_msg_bytes=int(os.getenv("LX_WS_MAX_MSG_BYTES", "131072")),
+            max_in_flight=_env_int("LX_WS_MAX_IN_FLIGHT", 64),
+            max_msg_bytes=_env_int("LX_WS_MAX_MSG_BYTES", 131072),
         )
 
         self.hb_config = hb_config or default_hb_config
@@ -120,7 +120,7 @@ class WSProtocolManager:
         from .bounded_queue import BoundedQueue, ReplayBuffer
 
         # Replace simple replay buffer with bounded replay buffer
-        max_replay_events = int(os.getenv("LX_WS_RESUME_MAX_EVENTS", "500"))
+        max_replay_events = _env_int("LX_WS_RESUME_MAX_EVENTS", 500)
         self._replay_buffer = ReplayBuffer(
             maxsize=max_replay_events, ttl_seconds=self.resume_window.seconds
         )
@@ -173,8 +173,8 @@ class WSProtocolManager:
 
         # Create bounded outbound queue for this connection
         from .bounded_queue import BoundedQueue
-
-        client_buffer_size = int(os.getenv("LX_CLIENT_EVENT_BUFFER", "300"))
+        from ..config.defaults import _env_int
+        client_buffer_size = _env_int("LX_CLIENT_EVENT_BUFFER", 300)
         self._outbound_queues[ws] = BoundedQueue(
             maxsize=client_buffer_size, name=f"outbound_{id(ws)}"
         )
