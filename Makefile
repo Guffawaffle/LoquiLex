@@ -25,7 +25,8 @@ PIP         := $(if $(wildcard $(VENV_PIP)),$(VENV_PIP),$(SYS_PIP))
         prefetch-asr models-tiny dev dev-minimal dev-ml-cpu \
         lint fmt fmt-check typecheck test unit test-e2e e2e ci clean \
         docker-ci docker-ci-build docker-ci-run docker-ci-test docker-ci-shell \
-        sec-scan dead-code-analysis dead-code-report clean-artifacts
+        sec-scan dead-code-analysis dead-code-report clean-artifacts \
+        ui-setup ui-dev ui-build ui-start ui-test ui-e2e
 
 help:
 	@echo "Targets:"
@@ -33,6 +34,12 @@ help:
 	@echo "  dev              - alias of dev-minimal"
 	@echo "  dev-ml-cpu       - add CPU-only ML stack and prefetch tiny model"
 	@echo "  lint / fmt / typecheck / test / e2e / ci"
+	@echo "  ui-setup         - install UI dependencies"
+	@echo "  ui-dev           - start dev server with proxy to FastAPI"
+	@echo "  ui-build         - build UI for production"
+	@echo "  ui-start         - start FastAPI serving built UI"
+	@echo "  ui-test          - run UI unit tests"
+	@echo "  ui-e2e           - run UI end-to-end tests"
 	@echo "  dead-code-analysis - run comprehensive dead code detection tools"
 	@echo "  dead-code-report   - generate reports locally (no CI gating)"
 	@echo "  clean-artifacts    - remove all generated artifacts"
@@ -161,6 +168,53 @@ run-ci-mode: ci
 
 clean:
 	rm -rf .pytest_cache .coverage $(VENV) dist build
+	cd ui/app && rm -rf node_modules dist .vite || true
+
+## ------------------------------
+## UI targets
+
+# Install UI dependencies
+ui-setup:
+	@echo "[ui-setup] Installing UI dependencies"
+	cd ui/app && npm install
+
+# Start development server with proxy to FastAPI
+ui-dev: ui-setup
+	@echo "[ui-dev] Starting development servers"
+	@echo "Starting FastAPI server in background..."
+	@LX_API_PORT=$${LX_API_PORT:-8000} LX_UI_PORT=$${LX_UI_PORT:-5173} \
+	$(PY) -m loquilex.api.server &
+	@echo "Waiting for FastAPI to start..."
+	@sleep 3
+	@echo "Starting Vite dev server..."
+	@cd ui/app && LX_API_PORT=$${LX_API_PORT:-8000} LX_UI_PORT=$${LX_UI_PORT:-5173} npm run dev
+
+# Build UI for production
+ui-build: ui-setup
+	@echo "[ui-build] Building UI for production"
+	cd ui/app && npm run build
+
+# Start FastAPI serving built UI
+ui-start: ui-build
+	@echo "[ui-start] Starting FastAPI with built UI"
+	LX_API_PORT=$${LX_API_PORT:-8000} $(PY) -m loquilex.api.server
+
+# Run UI unit tests
+ui-test: ui-setup
+	@echo "[ui-test] Running UI unit tests"
+	cd ui/app && npm run test
+
+# Run UI end-to-end tests
+ui-e2e: ui-build
+	@echo "[ui-e2e] Running UI end-to-end tests"
+	@echo "Starting FastAPI server for e2e tests..."
+	@LX_API_PORT=$${LX_API_PORT:-8000} $(PY) -m loquilex.api.server &
+	@SERVER_PID=$$!; \
+	sleep 5; \
+	cd ui/app && npm run e2e; \
+	E2E_EXIT=$$?; \
+	kill $$SERVER_PID 2>/dev/null || true; \
+	exit $$E2E_EXIT
 
 ## ------------------------------
 ## Docker CI parity (optional)
