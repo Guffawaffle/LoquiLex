@@ -23,9 +23,11 @@ PIP         := $(if $(wildcard $(VENV_PIP)),$(VENV_PIP),$(SYS_PIP))
 ## Phony targets
 .PHONY: help install-venv install-base install-ml-minimal install-ml-cpu \
         prefetch-asr models-tiny dev dev-minimal dev-ml-cpu \
-        lint fmt fmt-check typecheck test unit test-e2e e2e ci clean \
+        lint fmt fmt-check typecheck test test-online unit test-e2e e2e ci clean \
         docker-ci docker-ci-build docker-ci-run docker-ci-test docker-ci-shell \
-        sec-scan dead-code-analysis dead-code-report clean-artifacts
+        sec-scan dead-code-analysis dead-code-report clean-artifacts \
+        stop-ui stop-ui-force stop-api stop-api-force stop-ws stop-ws-force stop-all stop-all-force \
+        ui-setup ui-dev ui-build ui-start ui-test ui-test-watch ui-e2e ui-verify
 
 help:
 	@echo "Targets:"
@@ -33,6 +35,8 @@ help:
 	@echo "  dev              - alias of dev-minimal"
 	@echo "  dev-ml-cpu       - add CPU-only ML stack and prefetch tiny model"
 	@echo "  lint / fmt / typecheck / test / e2e / ci"
+	@echo "  ui-setup / ui-dev / ui-build / ui-start / ui-test / ui-e2e / ui-verify"
+	@echo "  stop-ui / stop-api / stop-ws / stop-all (and *-force variants)"
 	@echo "  dead-code-analysis - run comprehensive dead code detection tools"
 	@echo "  dead-code-report   - generate reports locally (no CI gating)"
 	@echo "  clean-artifacts    - remove all generated artifacts"
@@ -41,7 +45,6 @@ help:
 	@echo "  ASR_MODEL=...    - model to prefetch (default: tiny.en)"
 	@echo "  LX_SKIP_MODEL_PREFETCH=1 - skip model prefetch (for faster CI runs)"
 	@echo "  LX_SKIP_DEAD_CODE_REPORT=1 - skip dead code report generation (for faster CI runs)"
-
 
 ## ------------------------------
 ## Bootstrap / installs
@@ -86,10 +89,74 @@ install-ml-cpu: install-venv
 
 # Prefetch a specific ASR model (default tiny.en) to avoid on-demand downloads
 prefetch-asr:
-    @echo "[prefetch-asr] Downloading ASR model: $(ASR_MODEL)"
-    @ASR_MODEL="$(ASR_MODEL)" $(PY) -c ' \
-# ------------------------------
-# Stop config
+	@echo "[prefetch-asr] Downloading ASR model: $(ASR_MODEL)"
+	@ASR_MODEL="$(ASR_MODEL)" $(PY) -c 'import os; \
+from faster_whisper import WhisperModel; \
+model = os.environ.get("ASR_MODEL") or os.environ.get("LX_ASR_MODEL") or "tiny.en"; \
+print(f"Downloading {model}..."); \
+WhisperModel(model, device="cpu", compute_type="int8"); \
+print(f\"[prefetch-asr] downloaded/prepared: {model}\")'
+
+# Prefetch only the tiny model unless explicitly skipped
+models-tiny:
+	@if echo "$${LX_SKIP_MODEL_PREFETCH:-0}" | grep -Eiq '^(1|true|yes|on)$$'; then \
+		echo "[dev] Skipping tiny model prefetch (LX_SKIP_MODEL_PREFETCH set to truthy value)"; \
+	else \
+		$(MAKE) prefetch-asr ASR_MODEL=tiny.en; \
+	fi
+
+## ------------------------------
+## Dev presets
+
+# Lightweight developer setup (safe for Codespaces)
+dev-minimal: install-base
+	@echo "[dev-minimal] Skipping model prefetch (offline-first)."
+	@echo "[dev-minimal] Development environment ready."
+
+# Keep `dev` as the default developer entrypoint
+dev: dev-minimal
+	@true
+
+# Opt-in CPU ML stack (no torch/CUDA)
+dev-ml-cpu: install-base install-ml-cpu models-tiny
+	@echo "✅ dev-ml-cpu ready."
+
+## ------------------------------
+## Quality gates & tests
+
+lint: install-base
+	$(PY) -m ruff check loquilex tests
+
+fmt: install-base
+	$(PY) -m black loquilex tests
+
+fmt-check: install-base
+	$(PY) -m black --check --diff loquilex tests
+
+typecheck: install-base
+	$(PY) -m mypy loquilex
+
+test:
+	LX_OFFLINE=${LX_OFFLINE:-1} HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 HF_HUB_DISABLE_TELEMETRY=1 $(PY) -m pytest -q
+
+test-online:
+	HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 HF_HUB_DISABLE_TELEMETRY=1 LX_OFFLINE=0 $(PY) -m pytest -q
+
+unit: test
+
+test-e2e: install-base
+	$(PY) -m pytest -m e2e -q
+
+# Verbose E2E (add extra flags via: make e2e PYTEST_FLAGS="--timeout=45")
+e2e: install-base
+	$(PY) -m pytest -m e2e -vv -rA $(PYTEST_FLAGS)
+
+ci: lint typecheck test
+	@echo "✓ CI checks passed locally"
+
+## ------------------------------
+## Stop config (graceful & force)
+
 PIDS_DIR           ?= .pids
 STOP_TIMEOUT       ?= 5
 
@@ -109,65 +176,63 @@ WS_PID             ?= $(PIDS_DIR)/ws.pid
 # -------------- Helpers
 define _kill_from_pid
 	@if [ -f $(1) ]; then \
-import os; \
-from faster_whisper import WhisperModel; \
-model = os.environ.get("ASR_MODEL") or os.environ.get("LX_ASR_MODEL") or "tiny.en"; \
-print(f"Downloading {model}..."); \
-WhisperModel(model, device="cpu", compute_type="int8"); \
-print(f"[prefetch-asr] downloaded/prepared: {model}")'
-
-
-# Prefetch only the tiny model unless explicitly skipped
-models-tiny:
-	@if echo "$${LX_SKIP_MODEL_PREFETCH:-0}" | grep -Eiq '^(1|true|yes|on)$'; then \
-		echo "[dev] Skipping tiny model prefetch (LX_SKIP_MODEL_PREFETCH set to truthy value)"; \
+		PID=$$(cat $(1)); \
+		if kill -0 $$PID >/dev/null 2>&1; then \
+			echo ">> Stopping $$PID ($(1)) with SIGTERM"; \
+			kill $$PID; \
+			for i in $$(seq $(STOP_TIMEOUT)); do \
+				if kill -0 $$PID >/dev/null 2>&1; then sleep 1; else DONE=1; break; fi; \
+			done; \
+			if [ "$$DONE" != "1" ]; then echo "!! Timeout; still alive $$PID after $(STOP_TIMEOUT)s"; fi; \
+		else \
+			echo ">> Stale PID file $(1) (no process $$PID)"; \
+		fi; \
+		rm -f $(1); \
 	else \
-		$(MAKE) prefetch-asr ASR_MODEL=tiny.en; \
+		echo ">> No PID file: $(1)"; \
 	fi
 endef
 
 define _kill_by_port
 	@PORT=$(1); \
-
-## ------------------------------
-## Dev presets
-
-# Lightweight developer setup (safe for Codespaces)
-dev-minimal: install-base
-	@echo "[dev-minimal] Skipping model prefetch (offline-first)."
-	@echo "[dev-minimal] Development environment ready."
-
-# Keep `dev` as the default developer entrypoint
-dev: dev-minimal
-	@true
-
-# Opt-in CPU ML stack (no torch/CUDA)
-dev-ml-cpu: install-base install-ml-cpu models-tiny
-	@echo "✅ dev-ml-cpu ready."
+	if [ "$$PORT" = "0" ] || [ -z "$$PORT" ]; then exit 0; fi; \
+	if command -v lsof >/dev/null 2>&1; then \
+		PIDS=$$(lsof -tiTCP:$$PORT -sTCP:LISTEN || true); \
+	elif command -v fuser >/dev/null 2>&1; then \
+		PIDS=$$(fuser -n tcp $$PORT 2>/dev/null | tr ' ' '\n'); \
+	else \
+		echo ">> Neither lsof nor fuser found; cannot kill by port $$PORT"; \
+		PIDS=""; \
+	fi; \
+	for PID in $$PIDS; do \
+		echo ">> Stopping $$PID listening on :$$PORT with SIGTERM"; \
+		kill $$PID || true; \
+		for i in $$(seq $(STOP_TIMEOUT)); do \
+			if kill -0 $$PID >/dev/null 2>&1; then sleep 1; else break; fi; \
+		done; \
+	done
 endef
 
 define _kill_from_pid_force
 	@if [ -f $(1) ]; then \
-
-## ------------------------------
-## Quality gates & tests
-
+		PID=$$(cat $(1)); \
+		if kill -0 $$PID >/dev/null 2>&1; then echo ">> Force killing $$PID ($(1))"; kill -9 $$PID || true; fi; \
+		rm -f $(1); \
+	fi
 endef
 
 define _kill_by_port_force
 	@PORT=$(1); \
-lint: install-base
-	$(PY) -m ruff check loquilex tests
-
-fmt: install-base
-	$(PY) -m black loquilex tests
-
-fmt-check: install-base
-	$(PY) -m black --check --diff loquilex tests
-
+	if [ "$$PORT" = "0" ] || [ -z "$$PORT" ]; then exit 0; fi; \
+	if command -v lsof >/dev/null 2>&1; then \
+		PIDS=$$(lsof -tiTCP:$$PORT -sTCP:LISTEN || true); \
+	elif command -v fuser >/dev/null 2>&1; then \
+		PIDS=$$(fuser -n tcp $$PORT 2>/dev/null | tr ' ' '\n'); \
+	else \
+		PIDS=""; \
+	fi; \
+	for PID in $$PIDS; do echo ">> Force killing $$PID on :$$PORT"; kill -9 $$PID || true; done
 endef
-
-.PHONY: stop-ui stop-ui-force stop-api stop-api-force stop-ws stop-ws-force stop-all stop-all-force
 
 ## UI (dev + preview) — graceful
 stop-ui:
@@ -218,35 +283,12 @@ stop-all: stop-ui stop-api stop-ws
 ## Everything — force
 stop-all-force: stop-ui-force stop-api-force stop-ws-force
 	@echo ">> stop-all-force complete"
-typecheck: install-base
-	$(PY) -m mypy loquilex
-
-test:
-	LX_OFFLINE=${LX_OFFLINE:-1} HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 HF_HUB_DISABLE_TELEMETRY=1 pytest -q
-
-test-online:
-	HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 HF_HUB_DISABLE_TELEMETRY=1 LX_OFFLINE=0 pytest -q
-
-unit: test
-
-test-e2e: install-base
-	$(PY) -m pytest -m e2e -q
-
-# Verbose E2E (add extra flags via: make e2e PYTEST_FLAGS="--timeout=45")
-e2e: install-base
-	$(PY) -m pytest -m e2e -vv -rA $(PYTEST_FLAGS)
-
-ci: lint typecheck test
-	@echo "✓ CI checks passed locally"
-
-.PHONY: run-ci-mode
-run-ci-mode: ci
 
 ## ------------------------------
 ## Cleanup
 
 clean:
-	rm -rf .pytest_cache .coverage $(VENV) dist build
+	rm -rf .pytest_cache .coverage $(VENV) dist build .pids
 
 ## ------------------------------
 ## Docker CI parity (optional)
@@ -283,14 +325,13 @@ dead-code-analysis: install-base
 	- ./scripts/dead-code-analysis.sh || echo "[warn] dead code found (non-blocking)"
 	@echo "== done =="
 
-.PHONY: dead-code-report
 dead-code-report:
 	@bash scripts/dead-code-analysis.sh --report-only
 	@echo "✅ Dead code reports generated in .artifacts/dead-code-reports/"
 
-.PHONY: clean-artifacts
 clean-artifacts:
 	@rm -rf .artifacts || true
+
 ## ------------------------------
 ## UI config
 UI_DIR      ?= ui
@@ -304,13 +345,11 @@ UI_E2E_START_BACKEND ?= 1
 UI_E2E_BACKEND_CMD ?= $(PY) -m loquilex.api.server --host 127.0.0.1 --port 8000
 UI_E2E_BACKEND_URL ?= http://127.0.0.1:8000
 
-.PHONY: ui-setup ui-dev ui-build ui-start ui-test ui-test-watch ui-e2e ui-verify
-
 ui-setup:
 	@echo ">> Installing UI deps with $(PKG_MGR)"
 	@if [ "$(PKG_MGR)" = "pnpm" ]; then cd "$(UI_DIR)" && pnpm install; \
 	elif [ "$(PKG_MGR)" = "yarn" ]; then cd "$(UI_DIR)" && yarn install --frozen-lockfile; \
-	else cd "$(UI_DIR)" && npm ci; fi
+	else cd "$(UI_DIR)" && if [ -f package-lock.json ]; then npm ci; else echo "(package-lock.json missing; using npm install)"; npm install; fi; fi
 
 ui-dev: ui-setup
 	@echo ">> Starting UI dev server (port $(UI_DEV_PORT))"
@@ -347,19 +386,11 @@ ui-test-watch: ui-setup
 	else npm run test; fi
 
 ui-e2e: ui-setup
-	@echo ">> Running UI E2E tests (Playwright) against $(UI_BASE_URL)"
-	@set -euo pipefail; \
-	if [ "$(UI_E2E_START_BACKEND)" = "1" ]; then \
-		echo ">> Starting backend: $(UI_E2E_BACKEND_CMD)"; \
-		( $(UI_E2E_BACKEND_CMD) >/tmp/ui-e2e-backend.log 2>&1 & echo $$! > .backend.pid ); \
-		sleep 3; \
-	fi; \
-	cd "$(UI_DIR)" && npx playwright install --with-deps >/dev/null 2>&1 || true; \
-	BASE_URL="$(UI_BASE_URL)" API_BASE_URL="$(UI_E2E_BACKEND_URL)" \
-	if [ "$(PKG_MGR)" = "pnpm" ]; then pnpm run e2e; \
-	elif [ "$(PKG_MGR)" = "yarn" ]; then yarn e2e; \
-	else npm run e2e; fi; \
-	if [ -f ../.backend.pid ]; then kill $$(cat ../.backend.pid) || true; rm -f ../.backend.pid; fi
+	@UI_E2E_START_BACKEND=$(UI_E2E_START_BACKEND) \
+	UI_E2E_BACKEND_CMD='$(UI_E2E_BACKEND_CMD)' \
+	UI_E2E_BACKEND_URL='$(UI_E2E_BACKEND_URL)' \
+	UI_BASE_URL='$(UI_BASE_URL)' \
+	bash scripts/ui_e2e.sh
 
 ui-verify: ui-test ui-e2e
 	@echo ">> UI verify complete"
