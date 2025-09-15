@@ -51,11 +51,11 @@ app = FastAPI(title="LoquiLex API", version="0.1.0")
 @app.middleware("http")
 async def security_headers(request: Request, call_next):
     response = await call_next(request)
-    # Strict CSP for production
+    # Strict CSP for production with some dev allowances
     csp = (
         "default-src 'self'; "
         "script-src 'self'; "
-        "style-src 'self'; "
+        "style-src 'self' 'unsafe-inline'; "  # Allow inline styles for Vite CSS 
         "img-src 'self' blob:; "
         "font-src 'self'; "
         "connect-src 'self' ws://127.0.0.1:*; "
@@ -96,7 +96,10 @@ app.mount("/out", StaticFiles(directory=str(OUT_ROOT), html=False), name="out")
 
 # Mount UI static files at root if they exist
 if UI_DIST_PATH.exists() and UI_DIST_PATH.is_dir():
-    app.mount("/static", StaticFiles(directory=str(UI_DIST_PATH)), name="static")
+    # Mount assets directory for CSS/JS files
+    assets_path = UI_DIST_PATH / "assets"
+    if assets_path.exists():
+        app.mount("/assets", StaticFiles(directory=str(assets_path)), name="assets")
 
 # Global manager instance
 MANAGER = SessionManager()
@@ -472,7 +475,7 @@ async def ws_events(ws: WebSocket, sid: str) -> None:
 # SPA fallback route - must be last to catch all unmatched routes
 @app.get("/{full_path:path}")
 @app.head("/{full_path:path}")
-async def spa_fallback(full_path: str) -> FileResponse:
+async def spa_fallback(full_path: str) -> FileResponse:  # noqa: ARG001
     """Serve SPA index.html for all unknown routes (client-side routing)."""
     if UI_DIST_PATH.exists() and UI_DIST_PATH.is_dir():
         index_path = UI_DIST_PATH / "index.html"
