@@ -14,7 +14,7 @@ __all__ = ["PartialFinalAggregator"]
 
 
 @dataclass
-@dataclass
+
 class PartialState:
     """Track partial events for a segment."""
 
@@ -170,7 +170,7 @@ class PartialFinalAggregator:
         final_seq_range = []
         if final.segment_id in self.partials:
             final_seq_range = self.partials[final.segment_id].seq_range.copy()
-        
+
         # Add current final sequence to the range
         final_seq_range.append(self.global_seq)
 
