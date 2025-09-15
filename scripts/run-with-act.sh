@@ -9,7 +9,7 @@ if ! command -v act &> /dev/null; then
     echo "brew install act"
     echo ""
     echo "# On Linux:"
-    echo "curl https://raw.githubusercontent.com/nektos/act/master/install.sh | sudo bash"
+    echo "curl https://raw.githubusercontent.com/nektos/act/master/install.sh | bash"
     echo ""
     echo "# Or download from: https://github.com/nektos/act/releases"
     exit 1

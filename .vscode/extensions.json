@@ -1,0 +1,10 @@
+{
+    "recommendations": [
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "ms-toolsai.jupyter",
+        "ms-vscode.makefile-tools",
+        "github.vscode-pull-request-github",
+        "ritwickdey.liveserver"
+    ]
+}

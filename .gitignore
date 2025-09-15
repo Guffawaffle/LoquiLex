@@ -1,7 +1,7 @@
 .models/
 coverage_html/
 reports/
-# Analysis artifacts  
+# Analysis artifacts
 .artifacts/
 
 # Egg-info
@@ -41,3 +41,44 @@ htmlcov/
 # CI outputs
 .artifacts/
 ui/web/node_modules/
+
+# --- Node / JS artifacts (monorepo-safe) ---
+**/node_modules/
+**/dist/
+**/build/
+**/.next/
+**/.nuxt/
+**/.svelte-kit/
+**/.turbo/
+**/.cache/
+**/.parcel-cache/
+**/.vite/
+**/coverage/
+**/playwright-report/
+**/test-results/
+**/.eslintcache
+**/.stylelintcache
+**/*.tsbuildinfo
+**/.pnp
+**/.pnp.*
+
+# Logs
+**/npm-debug.log*
+**/yarn-debug.log*
+**/yarn-error.log*
+**/pnpm-debug.log*
+
+# Env (keep exemplars)
+.env
+.env.*
+!.env.example
+
+# OS/editor (optional – keep curated VS Code files if you track them)
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+!.vscode/tasks.json
+!.vscode/launch.json
+.idea/
