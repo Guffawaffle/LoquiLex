@@ -40,3 +40,10 @@ htmlcov/
 
 # CI outputs
 .artifacts/
+
+# UI Node.js
+ui/app/node_modules/
+ui/app/dist/
+ui/app/.vite/
+ui/app/playwright-report/
+ui/app/test-results/
