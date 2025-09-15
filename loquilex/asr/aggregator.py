@@ -14,7 +14,6 @@ __all__ = ["PartialFinalAggregator"]
 
 
 @dataclass
-
 class PartialState:
     """Track partial events for a segment."""
 

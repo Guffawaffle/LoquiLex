@@ -1,6 +1,9 @@
 # instruction
 Implement and finish **UI: dual panels (source/target), timestamps toggle, dark theme** (#34) on top of PR #54. Make minimal diffs to land the acceptance criteria below. Follow **AGENTS.md** and repo conventions (offline-first, small commits, imperative messages).
 
+# branch
+ONLY work on branch copilot/fix-34. If the user is currently on anothe branch stop immediately and report to the user. If this is agent mode then ignore this file if you are not working on that branch
+
 # context
 - Phase 1 realtime bridge: dual transcript panels with partial/final separation; transparent state; dark theme default.
 - Resilient comms (#32/#52) provide reconnect and snapshot; streaming ASR (#43) supplies partial/final with monotonic timestamps.

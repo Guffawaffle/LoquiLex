@@ -9,14 +9,14 @@ export function useWebSocketSession(sessionId: string | null) {
   const [sessionState, setSessionState] = useState<SessionState | null>(null)
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('offline')
   const wsRef = useRef<WebSocket | null>(null)
-  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const reconnectTimeoutRef = useRef<number | null>(null)
   const backoffRef = useRef(500) // Start with 500ms backoff
 
   const processMessage = useCallback((message: WebSocketMessage) => {
     return measurePerformance(() => {
       if (!sessionId) return
 
-      setSessionState(prevState => {
+  setSessionState((prevState: SessionState | null) => {
         if (!prevState) return prevState
 
         const newState = { ...prevState }
@@ -47,7 +47,7 @@ export function useWebSocketSession(sessionId: string | null) {
               language: 'source',
               segmentId: data.segment_id,
             }
-            
+
             // Add to final lines and clear partial
             newState.sourceLines = [...newState.sourceLines, line].slice(-200) // Keep last 200 lines
             newState.currentPartial.source = undefined
@@ -78,7 +78,7 @@ export function useWebSocketSession(sessionId: string | null) {
               language: 'target',
               segmentId: data.segment_id,
             }
-            
+
             // Add to final lines and clear partial
             newState.targetLines = [...newState.targetLines, line].slice(-200) // Keep last 200 lines
             newState.currentPartial.target = undefined
@@ -163,7 +163,7 @@ export function useWebSocketSession(sessionId: string | null) {
       ws.onopen = () => {
         setConnectionStatus('connected')
         backoffRef.current = 500 // Reset backoff on successful connection
-        
+
         if (!sessionState) {
           setSessionState({
             id: sessionId,
@@ -175,7 +175,7 @@ export function useWebSocketSession(sessionId: string | null) {
             lastActivity: Date.now(),
           })
         } else {
-          setSessionState(prev => prev ? { ...prev, status: 'connected' } : prev)
+          setSessionState((prev: SessionState | null) => prev ? { ...prev, status: 'connected' } : prev)
         }
       }
 
@@ -183,7 +183,7 @@ export function useWebSocketSession(sessionId: string | null) {
         try {
           // Handle both new protocol and legacy messages
           let message: WebSocketMessage
-          
+
           const data = JSON.parse(event.data)
           if (data.v && data.t) {
             // New protocol message
@@ -196,7 +196,7 @@ export function useWebSocketSession(sessionId: string | null) {
               data: data,
             }
           }
-          
+
           processMessage(message)
         } catch (error) {
           console.warn('Failed to parse WebSocket message:', error)
@@ -205,26 +205,26 @@ export function useWebSocketSession(sessionId: string | null) {
 
       ws.onclose = () => {
         setConnectionStatus('reconnecting')
-        setSessionState(prev => prev ? { ...prev, status: 'reconnecting' } : prev)
-        
+  setSessionState((prev: SessionState | null) => prev ? { ...prev, status: 'reconnecting' } : prev)
+
         // Exponential backoff with jitter
         const jitter = Math.random() * 1000
         const delay = Math.min(backoffRef.current + jitter, 8000)
         backoffRef.current = Math.min(backoffRef.current * 2, 8000)
-        
+
         reconnectTimeoutRef.current = setTimeout(connectWebSocket, delay)
       }
 
       ws.onerror = (error) => {
         console.error('WebSocket error:', error)
         setConnectionStatus('offline')
-        setSessionState(prev => prev ? { ...prev, status: 'offline' } : prev)
+  setSessionState((prev: SessionState | null) => prev ? { ...prev, status: 'offline' } : prev)
       }
 
     } catch (error) {
       console.error('Failed to create WebSocket connection:', error)
       setConnectionStatus('offline')
-      setSessionState(prev => prev ? { ...prev, status: 'offline' } : prev)
+  setSessionState((prev: SessionState | null) => prev ? { ...prev, status: 'offline' } : prev)
     }
   }, [sessionId, sessionState, processMessage])
 
@@ -280,7 +280,7 @@ export function useUIPreferences() {
     } catch (e) {
       // Ignore localStorage errors
     }
-    
+
     return {
       theme: 'dark',
       showTimestamps: true,
@@ -289,7 +289,7 @@ export function useUIPreferences() {
   })
 
   const updatePreferences = useCallback((updates: Partial<UIPreferences>) => {
-    setPreferences(prev => {
+  setPreferences((prev: UIPreferences) => {
       const newPrefs = { ...prev, ...updates }
       try {
         localStorage.setItem('loquilex-ui-prefs', JSON.stringify(newPrefs))
@@ -310,7 +310,7 @@ export function useUIPreferences() {
 export function useAutoScroll(isEnabled: boolean) {
   const scrollElementRef = useRef<HTMLElement | null>(null)
   const [isUserScrolling, setIsUserScrolling] = useState(false)
-  const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const scrollTimeoutRef = useRef<number | null>(null)
 
   const scrollToBottom = useCallback(() => {
     if (scrollElementRef.current && !isUserScrolling && isEnabled) {

@@ -4,13 +4,14 @@ export type ConnectionStatus = 'connected' | 'reconnecting' | 'offline'
 
 export type Theme = 'light' | 'dark' | 'system'
 
+export type TranscriptKind = 'partial' | 'final';
 export interface TranscriptLine {
-  id: string
-  text: string
-  timestamp: number
-  isFinal: boolean
-  language: 'source' | 'target'
-  segmentId?: string
+  utterance_id: string;
+  segment_seq: number;
+  kind: TranscriptKind;
+  text: string;
+  t_start_ms: number; // session-monotonic or wall; UI formats
+}
 }
 
 export interface UIPreferences {

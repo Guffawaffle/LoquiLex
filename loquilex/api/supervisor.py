@@ -504,14 +504,14 @@ class SessionManager:
         """Get session snapshot data for resume functionality."""
         with self._lock:
             session = self._sessions.get(sid)
-        
+
         if not session:
             return None
-            
+
         # Only StreamingSession supports snapshots currently
         if isinstance(session, StreamingSession):
             snapshot_data = {}
-            
+
             # Get ASR snapshot
             asr_snapshot = session.get_asr_snapshot()
             if asr_snapshot:
@@ -520,12 +520,12 @@ class SessionManager:
                 snapshot_data["active_partials"] = []
                 if asr_snapshot.get("live_partial"):
                     snapshot_data["active_partials"] = [asr_snapshot["live_partial"]]
-                    
+
             # Get MT status
             snapshot_data["mt_status"] = session.get_mt_status()
-            
+
             return snapshot_data
-            
+
         return None
 
     def _stamp(self, payload: Dict[str, Any], sid: str) -> Dict[str, Any]:

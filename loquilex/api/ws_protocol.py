@@ -173,6 +173,7 @@ class WSProtocolManager:
         # Create bounded outbound queue for this connection
         from .bounded_queue import BoundedQueue
         from ..config.defaults import _env_int
+
         client_buffer_size = _env_int("LX_CLIENT_EVENT_BUFFER", 300)
         self._outbound_queues[ws] = BoundedQueue(
             maxsize=client_buffer_size, name=f"outbound_{id(ws)}"
@@ -294,10 +295,13 @@ class WSProtocolManager:
 
             # Keep only recent durations (last 100)
             if len(self._metrics["resume_metrics"]["replay_durations"]) > 100:
-                self._metrics["resume_metrics"]["replay_durations"] = \
-                    self._metrics["resume_metrics"]["replay_durations"][-100:]
+                self._metrics["resume_metrics"]["replay_durations"] = self._metrics[
+                    "resume_metrics"
+                ]["replay_durations"][-100:]
 
-            logger.info(f"Session {self.sid} resumed, replayed {len(replay_messages)} messages in {duration_ms:.1f}ms")
+            logger.info(
+                f"Session {self.sid} resumed, replayed {len(replay_messages)} messages in {duration_ms:.1f}ms"
+            )
 
         except Exception as e:
             self._metrics["resume_metrics"]["miss"] += 1
@@ -338,8 +342,9 @@ class WSProtocolManager:
 
         # Keep only recent sizes (last 100)
         if len(self._metrics["resume_metrics"]["snapshot_sizes"]) > 100:
-            self._metrics["resume_metrics"]["snapshot_sizes"] = \
-                self._metrics["resume_metrics"]["snapshot_sizes"][-100:]
+            self._metrics["resume_metrics"]["snapshot_sizes"] = self._metrics["resume_metrics"][
+                "snapshot_sizes"
+            ][-100:]
 
         snapshot_envelope = self._create_envelope(
             MessageType.SESSION_SNAPSHOT,
@@ -720,10 +725,14 @@ class WSProtocolManager:
         success_rate = 0
 
         if resume_metrics["snapshot_sizes"]:
-            avg_snapshot_size = sum(resume_metrics["snapshot_sizes"]) / len(resume_metrics["snapshot_sizes"])
+            avg_snapshot_size = sum(resume_metrics["snapshot_sizes"]) / len(
+                resume_metrics["snapshot_sizes"]
+            )
 
         if resume_metrics["replay_durations"]:
-            avg_replay_duration = sum(resume_metrics["replay_durations"]) / len(resume_metrics["replay_durations"])
+            avg_replay_duration = sum(resume_metrics["replay_durations"]) / len(
+                resume_metrics["replay_durations"]
+            )
 
         if resume_metrics["attempts"] > 0:
             success_rate = resume_metrics["success"] / resume_metrics["attempts"]

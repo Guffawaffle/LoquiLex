@@ -20,15 +20,15 @@ export interface TranscriptPanelRef {
 }
 
 export const TranscriptPanel = forwardRef<TranscriptPanelRef, TranscriptPanelProps>(
-  ({ 
-    title, 
-    language, 
-    lines, 
-    currentPartial, 
-    showTimestamps, 
+  ({
+    title,
+    language,
+    lines,
+    currentPartial,
+    showTimestamps,
     isAutoScrollEnabled,
     onScrollStateChange,
-    ariaLabel 
+    ariaLabel
   }, ref) => {
     const {
       scrollElementRef,
@@ -56,10 +56,10 @@ export const TranscriptPanel = forwardRef<TranscriptPanelRef, TranscriptPanelPro
     }, [lines.length, currentPartial?.text, scrollToBottom])
 
     const handleCopyLine = async (line: TranscriptLine) => {
-      const textToCopy = showTimestamps 
-        ? `[${formatTimestamp(line.timestamp)}] ${line.text}`
+      const textToCopy = showTimestamps
+        ? `[${formatTimestamp(line.t_start_ms)}] ${line.text}`
         : line.text
-      
+
       if (await copyToClipboard(textToCopy)) {
         // Could add a toast notification here
         console.log('Copied to clipboard:', textToCopy)
@@ -71,14 +71,14 @@ export const TranscriptPanel = forwardRef<TranscriptPanelRef, TranscriptPanelPro
       if (currentPartial) {
         allLines.push(currentPartial)
       }
-      
+
       const textToCopy = allLines
-        .map(line => showTimestamps 
-          ? `[${formatTimestamp(line.timestamp)}] ${line.text}`
+        .map(line => showTimestamps
+          ? `[${formatTimestamp(line.t_start_ms)}] ${line.text}`
           : line.text
         )
         .join('\n')
-      
+
       if (await copyToClipboard(textToCopy)) {
         console.log('Copied all lines to clipboard')
       }
@@ -87,7 +87,7 @@ export const TranscriptPanel = forwardRef<TranscriptPanelRef, TranscriptPanelPro
     return (
       <div className="flex flex-col h-full" role="region" aria-label={ariaLabel || `${title} transcript`}>
         {/* Header */}
-        <div className="flex items-center justify-between p-3 border-b" 
+        <div className="flex items-center justify-between p-3 border-b"
              style={{ borderColor: 'var(--color-border)' }}>
           <div>
             <h2 className="text-lg font-semibold" style={{ color: 'var(--color-text-primary)' }}>
@@ -100,7 +100,7 @@ export const TranscriptPanel = forwardRef<TranscriptPanelRef, TranscriptPanelPro
           <button
             onClick={handleCopyAll}
             className="px-3 py-1 text-sm rounded-md transition-colors focus-visible:focus"
-            style={{ 
+            style={{
               backgroundColor: 'var(--color-bg-tertiary)',
               color: 'var(--color-text-secondary)'
             }}
@@ -112,7 +112,7 @@ export const TranscriptPanel = forwardRef<TranscriptPanelRef, TranscriptPanelPro
 
         {/* Transcript content */}
         <div
-          ref={scrollElementRef}
+          ref={scrollElementRef as React.RefObject<HTMLDivElement>}
           className="flex-1 overflow-y-auto p-3 space-y-2 panel-scroll"
           style={{ backgroundColor: 'var(--color-bg-secondary)' }}
           role="log"
@@ -120,7 +120,7 @@ export const TranscriptPanel = forwardRef<TranscriptPanelRef, TranscriptPanelPro
           aria-label={`${title} transcript content`}
         >
           {lines.length === 0 && !currentPartial && (
-            <div 
+            <div
               className="text-center py-8"
               style={{ color: 'var(--color-text-muted)' }}
             >
@@ -131,7 +131,7 @@ export const TranscriptPanel = forwardRef<TranscriptPanelRef, TranscriptPanelPro
           {/* Final transcript lines */}
           {lines.map((line) => (
             <div
-              key={line.id}
+              key={line.utterance_id + ':' + line.segment_seq}
               className="transcript-line final group cursor-pointer"
               onClick={() => handleCopyLine(line)}
               tabIndex={0}
@@ -146,21 +146,21 @@ export const TranscriptPanel = forwardRef<TranscriptPanelRef, TranscriptPanelPro
             >
               <div className="flex items-start gap-2">
                 {showTimestamps && (
-                  <span 
+                  <span
                     className="text-xs font-mono shrink-0 mt-0.5"
                     style={{ color: 'var(--color-text-muted)' }}
-                    aria-label={`Timestamp ${formatTimestamp(line.timestamp)}`}
+                    aria-label={`Timestamp ${formatTimestamp(line.t_start_ms)}`}
                   >
-                    [{formatTimestamp(line.timestamp)}]
+                    [{formatTimestamp(line.t_start_ms)}]
                   </span>
                 )}
-                <span 
+                <span
                   className="flex-1"
                   style={{ color: 'var(--color-final)' }}
                 >
                   {line.text}
                 </span>
-                <span 
+                <span
                   className="opacity-0 group-hover:opacity-100 text-xs transition-opacity"
                   style={{ color: 'var(--color-text-muted)' }}
                 >
@@ -178,21 +178,21 @@ export const TranscriptPanel = forwardRef<TranscriptPanelRef, TranscriptPanelPro
             >
               <div className="flex items-start gap-2">
                 {showTimestamps && (
-                  <span 
+                  <span
                     className="text-xs font-mono shrink-0 mt-0.5"
                     style={{ color: 'var(--color-text-muted)' }}
                   >
-                    [{formatTimestamp(currentPartial.timestamp)}]
+                    [{formatTimestamp(currentPartial.t_start_ms)}]
                   </span>
                 )}
-                <span 
+                <span
                   className="flex-1"
                   style={{ color: 'var(--color-partial)' }}
                 >
                   {currentPartial.text}
                   <span className="animate-pulse ml-1">|</span>
                 </span>
-                <span 
+                <span
                   className="text-xs"
                   style={{ color: 'var(--color-text-muted)' }}
                 >
@@ -204,9 +204,9 @@ export const TranscriptPanel = forwardRef<TranscriptPanelRef, TranscriptPanelPro
         </div>
 
         {/* Status footer */}
-        <div 
+        <div
           className="p-2 text-xs border-t"
-          style={{ 
+          style={{
             borderColor: 'var(--color-border)',
             backgroundColor: 'var(--color-bg-primary)',
             color: 'var(--color-text-muted)'
