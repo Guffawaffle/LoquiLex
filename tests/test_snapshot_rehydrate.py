@@ -1,9 +1,9 @@
 """Test snapshot rehydrate functionality."""
 
-import asyncio
+import asyncio # noqa: F401
 import json
 import pytest
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock # noqa: F401
 
 from loquilex.api.ws_protocol import WSProtocolManager
 from loquilex.api.ws_types import (
@@ -45,7 +45,7 @@ class TestSnapshotRehydrate:
         """Test that snapshot includes actual finalized transcript from session."""
         # Create protocol manager with snapshot callback
         manager = WSProtocolManager("test_session")
-        
+
         # Mock session snapshot data
         mock_snapshot_data = {
             "finalized_transcript": [
@@ -67,12 +67,14 @@ class TestSnapshotRehydrate:
             ],
             "mt_status": {"enabled": True, "dest_lang": "zh"},
         }
-        
+
         async def mock_get_snapshot(sid):
+            if sid is None:
+                pass  # For type checker
             return mock_snapshot_data
-            
+
         manager.set_session_snapshot_callback(mock_get_snapshot)
-        
+
         async with manager:
             # Add connection and some messages to replay buffer
             mock_ws = MockWebSocket()
@@ -107,15 +109,15 @@ class TestSnapshotRehydrate:
             # Check snapshot message contains actual data
             snapshot_msg = json.loads(mock_ws2.sent_messages[0])
             assert snapshot_msg["t"] == "session.snapshot"
-            
+
             snapshot_data = snapshot_msg["data"]
             assert len(snapshot_data["finalized_transcript"]) == 1
             assert snapshot_data["finalized_transcript"][0]["text"] == "Hello world."
             assert snapshot_data["finalized_transcript"][0]["final_seq_range"] == [1, 2, 3]
-            
+
             assert len(snapshot_data["active_partials"]) == 1
             assert snapshot_data["active_partials"][0]["text"] == "This is a partial"
-            
+
             assert snapshot_data["mt_status"]["dest_lang"] == "zh"
 
     async def test_resume_metrics_tracking(self):
@@ -124,9 +126,11 @@ class TestSnapshotRehydrate:
             mock_ws = MockWebSocket()
             await manager.add_connection(mock_ws)
             mock_ws.sent_messages.clear()
-            
+
             # Mock session snapshot callback
             async def mock_get_snapshot(sid):
+                if sid is None:
+                    pass  # For type checker
                 return {
                     "finalized_transcript": [{"text": "test"}],
                     "active_partials": [],
@@ -136,7 +140,7 @@ class TestSnapshotRehydrate:
 
             # Add some messages to replay buffer
             await manager.send_domain_event(MessageType.ASR_PARTIAL, {"text": "hello"})
-            
+
             # Simulate resume request
             resume_envelope = WSEnvelope(
                 t=MessageType.SESSION_RESUME,
@@ -151,7 +155,7 @@ class TestSnapshotRehydrate:
             # Check metrics
             telemetry = manager.get_telemetry_summary()
             resume_metrics = telemetry["resume_metrics"]
-            
+
             assert resume_metrics["attempts"] == 1
             assert resume_metrics["success"] == 1
             assert resume_metrics["miss"] == 0
@@ -180,7 +184,7 @@ class TestSnapshotRehydrate:
             # Check metrics
             telemetry = manager.get_telemetry_summary()
             resume_metrics = telemetry["resume_metrics"]
-            
+
             assert resume_metrics["attempts"] == 1
             assert resume_metrics["success"] == 0
             assert resume_metrics["miss"] == 1
@@ -191,18 +195,18 @@ class TestSnapshotRehydrate:
         async with WSProtocolManager("test_session") as manager:
             mock_ws = MockWebSocket()
             await manager.add_connection(mock_ws)
-            
+
             # Welcome message should have monotonic timing
             welcome_msg = json.loads(mock_ws.sent_messages[0])
             assert "t_mono_ns" in welcome_msg
             assert welcome_msg["t_mono_ns"] is not None
             assert welcome_msg["t_mono_ns"] > 0
-            
+
             mock_ws.sent_messages.clear()
 
             # Domain events should have monotonic timing
             await manager.send_domain_event(MessageType.ASR_PARTIAL, {"text": "test"})
-            
+
             partial_msg = json.loads(mock_ws.sent_messages[0])
             assert "t_mono_ns" in partial_msg
             assert partial_msg["t_mono_ns"] is not None
@@ -213,10 +217,12 @@ class TestSnapshotRehydrate:
         async with WSProtocolManager("test_session") as manager:
             # Mock session snapshot with final_seq_range
             async def mock_get_snapshot(sid):
+                if sid is None:
+                    pass  # For type checker
                 return {
                     "finalized_transcript": [
                         {
-                            "segment_id": "seg1", 
+                            "segment_id": "seg1",
                             "text": "First segment.",
                             "final_seq_range": [1, 2, 3],  # This final covers partials with seq 1, 2, 3
                         },
@@ -229,9 +235,9 @@ class TestSnapshotRehydrate:
                     "active_partials": [],
                     "mt_status": None
                 }
-            
+
             manager.set_session_snapshot_callback(mock_get_snapshot)
-            
+
             mock_ws = MockWebSocket()
             await manager.add_connection(mock_ws)
             mock_ws.sent_messages.clear()
@@ -250,7 +256,7 @@ class TestSnapshotRehydrate:
             # Check snapshot contains final_seq_range
             snapshot_msg = json.loads(mock_ws.sent_messages[0])
             finalized_transcript = snapshot_msg["data"]["finalized_transcript"]
-            
+
             assert len(finalized_transcript) == 2
             assert finalized_transcript[0]["final_seq_range"] == [1, 2, 3]
             assert finalized_transcript[1]["final_seq_range"] == [4, 5]

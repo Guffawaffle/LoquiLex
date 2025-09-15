@@ -13,7 +13,6 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
-import os
 import time
 import uuid
 from datetime import datetime, timezone
@@ -82,7 +81,7 @@ class WSProtocolManager:
 
         # Configuration with environment variable support
         from ..config.defaults import _env_time_seconds, _env_int
-        
+
         # Default configuration with unit suffix support
         default_hb_config = HeartbeatConfig(
             interval_ms=int(_env_time_seconds("LX_WS_HEARTBEAT_SEC", 5.0) * 1000),
@@ -260,7 +259,7 @@ class WSProtocolManager:
         try:
             start_time = time.monotonic()
             self._metrics["resume_metrics"]["attempts"] += 1
-            
+
             resume_data = SessionResumeData.model_validate(envelope.data)
 
             # Check session ID match
@@ -287,12 +286,12 @@ class WSProtocolManager:
 
             # Send session snapshot with replay data
             await self._send_session_snapshot(ws, envelope.corr, replay_messages)
-            
+
             # Record success metrics
             self._metrics["resume_metrics"]["success"] += 1
             duration_ms = (time.monotonic() - start_time) * 1000
             self._metrics["resume_metrics"]["replay_durations"].append(duration_ms)
-            
+
             # Keep only recent durations (last 100)
             if len(self._metrics["resume_metrics"]["replay_durations"]) > 100:
                 self._metrics["resume_metrics"]["replay_durations"] = \
@@ -313,7 +312,7 @@ class WSProtocolManager:
         finalized_transcript = []
         active_partials = []
         mt_status = None
-        
+
         if self._session_snapshot_callback:
             try:
                 snapshot = await self._session_snapshot_callback(self.sid)
@@ -336,7 +335,7 @@ class WSProtocolManager:
         # Record snapshot metrics
         snapshot_size = len(finalized_transcript) + len(active_partials) + len(replay_messages)
         self._metrics["resume_metrics"]["snapshot_sizes"].append(snapshot_size)
-        
+
         # Keep only recent sizes (last 100)
         if len(self._metrics["resume_metrics"]["snapshot_sizes"]) > 100:
             self._metrics["resume_metrics"]["snapshot_sizes"] = \
@@ -713,19 +712,19 @@ class WSProtocolManager:
             drop_totals[f"outbound_{i}"] = queue_tel["total_dropped"]
 
         uptime = time.monotonic() - self.state.t0_mono
-        
+
         # Calculate resume metrics statistics
         resume_metrics = self._metrics["resume_metrics"]
         avg_snapshot_size = 0
         avg_replay_duration = 0
         success_rate = 0
-        
+
         if resume_metrics["snapshot_sizes"]:
             avg_snapshot_size = sum(resume_metrics["snapshot_sizes"]) / len(resume_metrics["snapshot_sizes"])
-        
+
         if resume_metrics["replay_durations"]:
             avg_replay_duration = sum(resume_metrics["replay_durations"]) / len(resume_metrics["replay_durations"])
-            
+
         if resume_metrics["attempts"] > 0:
             success_rate = resume_metrics["success"] / resume_metrics["attempts"]
 
