@@ -96,6 +96,21 @@ LoquiLex uses a structured GitHub Copilot Coding Agent workflow for development 
 
 See [`.github/copilot/README.md`](.github/copilot/README.md) for complete workflow documentation.
 
+## Architecture & Documentation
+
+LoquiLex follows a **JS-first architecture** where JavaScript orchestrates workflows and Python executes ML tasks:
+
+- **[JS-First Architecture Guide](./docs/architecture/js-first.md)** - Core principles, patterns, and implementation guidelines
+- **[API Contracts Reference](./docs/contracts/README.md)** - WebSocket, REST, and data type contracts
+- **[Orchestration Module](./loquilex/ui/web/src/orchestration/README.md)** - Client-side utilities and patterns
+
+### Key Features
+
+- **Event Throttling**: 2-10 Hz frequency capping prevents UI jank
+- **Resilient WebSockets**: Automatic reconnection with bounded queues
+- **Web Workers**: Background processing for progress smoothing and ETA calculations
+- **Type Safety**: End-to-end TypeScript contracts for all JS ↔ Python communication
+
 ## Versioning & Releases
 
 ### Versioning Strategy
