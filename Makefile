@@ -175,8 +175,8 @@ clean:
 
 # Install UI dependencies
 ui-setup:
-	@echo "[ui-setup] Installing UI dependencies"
-	cd ui/app && npm install
+	@echo "[ui-setup] Installing UI dependencies (npm ci)"
+	cd ui/app && npm ci
 
 # Start development server with proxy to FastAPI
 ui-dev: ui-setup

@@ -35,7 +35,9 @@ class MockWebSocketSession:
 
     async def connect(self) -> None:
         """Connect to the WebSocket endpoint."""
-        ws_url = f"{self.base_url.replace('http', 'ws')}/events/{self.session_id}"
+        from loquilex.api import server as api_server
+
+        ws_url = f"{self.base_url.replace('http', 'ws')}{api_server.WS_PATH}/{self.session_id}"
         self.websocket = await websockets.connect(ws_url)
 
     async def listen_for_events(self, timeout: float = 5.0) -> List[Dict[str, Any]]:
@@ -125,7 +127,8 @@ async def test_e2e_websocket_live_session():
                         assert len(session_id) > 0
 
                         # Step 2: Test WebSocket endpoint accessibility
-                        ws_url = f"/events/{session_id}"
+                        from loquilex.api import server as api_server
+                        ws_url = f"{api_server.WS_PATH}/{session_id}"
 
                         # Test that the WebSocket endpoint exists and accepts connections
                         # Note: TestClient WebSocket support is basic but we can verify the endpoint

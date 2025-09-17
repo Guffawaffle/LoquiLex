@@ -1,7 +1,7 @@
 """Test configuration parsing and environment variables."""
 
 import os
-import pytest # noqa: F401
+import pytest  # noqa: F401
 from unittest.mock import patch
 
 from loquilex.config.defaults import _env_time_seconds
@@ -83,9 +83,11 @@ class TestConfigurationParsing:
         """Test WSProtocolManager uses default values when env vars not set."""
         # Ensure relevant env vars are not set
         env_keys = [
-            "LX_WS_HEARTBEAT_SEC", "LX_WS_HEARTBEAT_TIMEOUT_SEC",
-            "LX_WS_RESUME_TTL", "LX_WS_RESUME_MAX_EVENTS",
-            "LX_CLIENT_EVENT_BUFFER"
+            "LX_WS_HEARTBEAT_SEC",
+            "LX_WS_HEARTBEAT_TIMEOUT_SEC",
+            "LX_WS_RESUME_TTL",
+            "LX_WS_RESUME_MAX_EVENTS",
+            "LX_CLIENT_EVENT_BUFFER",
         ]
 
         env_backup = {}
@@ -110,12 +112,12 @@ class TestConfigurationParsing:
     def test_complex_time_formats(self):
         """Test parsing various complex time formats."""
         test_cases = [
-            ("10", 10.0),      # Plain number
-            ("10s", 10.0),     # Seconds
-            ("500ms", 0.5),    # Milliseconds
-            ("1.5m", 90.0),    # Minutes with decimal
+            ("10", 10.0),  # Plain number
+            ("10s", 10.0),  # Seconds
+            ("500ms", 0.5),  # Milliseconds
+            ("1.5m", 90.0),  # Minutes with decimal
             ("0.25h", 900.0),  # Hours with decimal
-            ("  2s  ", 2.0),   # With whitespace
+            ("  2s  ", 2.0),  # With whitespace
         ]
 
         for input_val, expected in test_cases:

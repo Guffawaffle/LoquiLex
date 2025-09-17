@@ -44,20 +44,20 @@ def _env_time_seconds(name: str, default_seconds: float) -> float:
     raw = _env(name, str(default_seconds))
     try:
         # Handle plain numbers (assume seconds)
-        if raw.isdigit() or (raw.replace('.', '').isdigit()):
+        if raw.isdigit() or (raw.replace(".", "").isdigit()):
             return float(raw)
-        
+
         # Handle unit suffixes
         raw = raw.strip().lower()
-        if raw.endswith('s'):
+        if raw.endswith("s"):
             # Could be 's' or 'ms'
-            if raw.endswith('ms'):
+            if raw.endswith("ms"):
                 return float(raw[:-2]) / 1000.0  # milliseconds to seconds
             else:
                 return float(raw[:-1])  # seconds
-        elif raw.endswith('m'):
+        elif raw.endswith("m"):
             return float(raw[:-1]) * 60.0  # minutes to seconds
-        elif raw.endswith('h'):
+        elif raw.endswith("h"):
             return float(raw[:-1]) * 3600.0  # hours to seconds
         else:
             # No recognized suffix, assume seconds

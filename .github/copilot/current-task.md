@@ -1,60 +1,50 @@
 #instruction
-Run the full repository test suite via Makefile targets (CI-equivalent), diagnose failures, and fix them iteratively with minimal diffs until all checks pass.
+Unify the WebSocket path and keep the API surface clean with minimal diffs.
 
-#environment OFFLINE
-- (.venv)
-- Offline-first env: export HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 HF_HUB_DISABLE_TELEMETRY=1 LX_OFFLINE=1
-- Work from repo root. Use Makefile targets as the source of truth. Follow `AGENTS.md` conventions.
+## Do exactly this
+1) **Frontend**
+   - Centralize WS path via **build-time config**: `VITE_WS_PATH` (default `/ws`).
+   - Replace all hardcoded `/events` usages in `ui/app/src` with a helper that builds `ws://<origin><VITE_WS_PATH>/{sid}`.
+   - Do **not** mount downloads under the WS path; leave HTTP downloads under `/api/…` (no change if not applicable).
 
-#environment ONLINE
-- (.venv)
-- Offline-first env: export HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 HF_HUB_DISABLE_TELEMETRY=1 LX_OFFLINE=0
-- Work from repo root. Use Makefile targets as the source of truth. Follow `AGENTS.md` conventions.
+2) **Backend**
+   - Keep default `WS_PATH=/ws`.
+   - Add **optional alias** for `/events` behind env `LX_WS_ALLOW_EVENTS_ALIAS=1` (dev-only). Log a deprecation warning when used.
+   - **CSP (prod):** `connect-src 'self' ws://127.0.0.1:*;` (scope scheme to loopback). Dev gating can remain broader.
 
-#discovery
-1) Identify the canonical “full suite” target in this priority order:
-   - ci, verify, check, test-all, tests, test
-2) Inspect available targets:
-   - make help || true
-   - make -qp | sed -n 's/^\([a-zA-Z0-9][a-zA-Z0-9._-]*\):.*/\1/p' | sort -u
-3) If a target named run-ci-mode exists, treat it as an alias of `ci` when selecting FULL_TARGET (do not run it separately “first”).
+3) **Tests / Evidence**
+   - e2e/integration: assert WS handshake succeeds using configured path.
+   - Deliverables must include:
+     - Real header lines: `Content-Security-Policy`, `Permissions-Policy` (prod & dev runs).
+     - Real asset header checks: `/vite.svg` and one file under `/assets/*` with content-type.
+     - `grep` proving no leftover `/events` in UI sources (except comments/tests), and that UI reads `VITE_WS_PATH`.
 
-#process
-Run the suite in BOTH environments (OFFLINE first, then ONLINE), reusing the same venv.
-1) Dry-run & execute
-   - make -n <FULL_TARGET> to preview
-   - make <FULL_TARGET> and capture full stdout/stderr
-2) Triage the first blocking error
-   - Identify the true root cause (not just the symptom).
-   - Apply the smallest viable fix (code/tests/config) aligned with LoquiLex principles (offline-first, transparency, minimal diffs).
-   - Never delete or skip tests to “go green.” No broad refactors.
-3) Re-run & iterate until <FULL_TARGET> exits 0 in the current environment.
-4) Repeat steps 1–3 in the second environment and ensure it also exits 0.
-5) Gate checks (if not already covered by <FULL_TARGET>):
-   - make lint
-   - make fmt-check
-   - make typecheck
-   - make test -k (only if the suite target didn’t run tests)
-6) CI parity sanity
-   - If the suite target is incomplete/broken, minimally fix the Makefile target(s) and justify changes.
-   - Keep changes tight; do not reintroduce removed checks.
+## Acceptance Criteria
+- Canonical WS base is `/ws`; frontend reads `VITE_WS_PATH` (default `/ws`).
+- Optional `/events` alias works only when `LX_WS_ALLOW_EVENTS_ALIAS=1` and logs a deprecation warning.
+- No remaining hardcoded `/events` in UI (except tests/comments).
+- CSP prod uses `connect-src 'self' ws://127.0.0.1:*;` (no global `ws:`).
+- e2e WS handshake passes against FastAPI-served build.
+- All CI/lint/type/test pass; diffs minimal.
 
-#constraints
-- Maintain offline determinism (no network in tests) when LX_OFFLINE=1.
-- Prefer `anyio`-compatible async usage in tests.
-- Keep commit messages imperative; reference ISSUE_REF if provided.
+#requirements
+- One branch: `copilot/fix-58-ws-path`.
+- Follow `AGENTS.md` (offline-first, minimal diffs, imperative commits).
+- Reuse existing patterns; no new dependencies.
+- Use `npm ci` for UI; Node 20 LTS only.
+- If ambiguity: search repo for existing helpers before adding new ones.
 
 #deliverable-format
-Write ONLY this report to `.github/copilot/current-task-deliverables.md`:
-1. Executive Summary — Which target(s) ran, failures found, key changes, outcome (OFFLINE vs ONLINE).
-2. Steps Taken — Bullet list of commands, diagnoses, and edits (per iteration), clearly separated by OFFLINE and ONLINE runs.
-3. Evidence & Verification — Full command outputs for failing→passing runs; relevant diffs/snippets, grouped per environment.
-4. Final Results — Explicit pass/fail per environment and any residual warnings/TODOs.
-5. Files Changed — Each file + brief reason (tests, impl, Makefile, CI, docs).
+Write `.github/copilot/current-task-deliverables.md` with:
+1. **Executive Summary** (what changed, why, outcome).
+2. **Steps Taken** (timestamps, commands, files edited).
+3. **Evidence & Verification**:
+   - Header dumps (prod/dev) for CSP/Permissions-Policy.
+   - `curl -I` for `/vite.svg` + one concrete `/assets/<file>` with content-type.
+   - `grep` outputs proving `VITE_WS_PATH` usage and no leftover `/events`.
+   - e2e WS handshake result (pass/fail).
+4. **Final Results** (pass/fail, follow-ups).
+5. **Files Changed** (each file + purpose).
 
 #output
-- Commit with imperative messages (e.g., `fix(streaming): ensure thread-to-loop handoff on FastAPI loop`), optionally appending ISSUE_REF.
-
-#run
-- FULL_TARGET: auto-discover using #discovery; prefer `ci` if present (treat `run-ci-mode` as an alias).
-- ISSUE_REF: <optional>
+Write only the deliverables file into `.github/copilot/current-task-deliverables.md`.

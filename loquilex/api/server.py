@@ -44,45 +44,69 @@ ALLOWED_ORIGINS = os.getenv(
 API_PORT = int(os.getenv("LX_API_PORT", "8000"))
 UI_PORT = int(os.getenv("LX_UI_PORT", "5173"))
 WS_PATH = os.getenv("LX_WS_PATH", "/ws")
+# Optional dev-only alias to accept legacy /events path when explicitly allowed.
+ALLOW_EVENTS_ALIAS = os.getenv("LX_WS_ALLOW_EVENTS_ALIAS", "0") == "1"
+DEV_MODE = os.getenv("LX_DEV", "0") == "1"
+
+# One-time flag for /events alias deprecation logging
+_events_alias_warned = False
 
 app = FastAPI(title="LoquiLex API", version="0.1.0")
+
 
 # CSP and security headers
 @app.middleware("http")
 async def security_headers(request: Request, call_next):
     response = await call_next(request)
-    # Strict CSP for production with some dev allowances
-    csp = (
-        "default-src 'self'; "
-        "script-src 'self'; "
-        "style-src 'self' 'unsafe-inline'; "  # Allow inline styles for Vite CSS 
-        "img-src 'self' blob:; "
-        "font-src 'self'; "
-        "connect-src 'self' ws://127.0.0.1:*; "
-        "object-src 'none'; "
-        "frame-ancestors 'none'; "
-        "base-uri 'self';"
-    )
+    if DEV_MODE:
+        csp = (
+            "default-src 'self'; "
+            "script-src 'self'; "
+            "style-src 'self' 'unsafe-inline'; "
+            "img-src 'self' blob:; "
+            "font-src 'self'; "
+            "connect-src 'self' ws: http://127.0.0.1:* http://localhost:*; "
+            "object-src 'none'; "
+            "frame-ancestors 'none'; "
+            "base-uri 'self';"
+        )
+    else:
+        # Production: restrict ws scheme to loopback as per requirements
+        csp = (
+            "default-src 'self'; "
+            "script-src 'self'; "
+            "style-src 'self'; "
+            "img-src 'self' blob:; "
+            "font-src 'self'; "
+            "connect-src 'self' ws://127.0.0.1:*; "
+            "object-src 'none'; "
+            "frame-ancestors 'none'; "
+            "base-uri 'self';"
+        )
     response.headers["Content-Security-Policy"] = csp
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["Referrer-Policy"] = "no-referrer"
-    response.headers["Permissions-Policy"] = "microphone=()"
+    # Permit microphone (or omit header if issues arise). Keep permissive by default.
+    response.headers["Permissions-Policy"] = "microphone=(self)"
     return response
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=ALLOWED_ORIGINS,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+
+if DEV_MODE:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=ALLOWED_ORIGINS,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
 # Serve outputs directory for easy linking from UI (hardened)
 OUT_ROOT = Path(os.getenv("LLX_OUT_DIR", "loquilex/out")).resolve()
 OUT_ROOT.mkdir(parents=True, exist_ok=True)
 
-# UI static files serving
+# UI static files path (mounted later to avoid shadowing API routes)
 UI_DIST_PATH = Path("ui/app/dist").resolve()
+
 
 def _safe_session_dir(sid: str) -> Path:
     if not re.fullmatch(r"[A-Za-z0-9_-]{6,64}", sid):
@@ -92,14 +116,8 @@ def _safe_session_dir(sid: str) -> Path:
         raise HTTPException(status_code=400, detail="invalid path")
     return p
 
-app.mount("/out", StaticFiles(directory=str(OUT_ROOT), html=False), name="out")
 
-# Mount UI static files at root if they exist
-if UI_DIST_PATH.exists() and UI_DIST_PATH.is_dir():
-    # Mount assets directory for CSS/JS files
-    assets_path = UI_DIST_PATH / "assets"
-    if assets_path.exists():
-        app.mount("/assets", StaticFiles(directory=str(assets_path)), name="assets")
+app.mount("/out", StaticFiles(directory=str(OUT_ROOT), html=False), name="out")
 
 # Global manager instance
 MANAGER = SessionManager()
@@ -451,8 +469,22 @@ async def get_snapshot(sid: str) -> Dict[str, Any]:
 @app.websocket(WS_PATH + "/{sid}")
 async def ws_events(ws: WebSocket, sid: str) -> None:
     origin = ws.headers.get("origin", "")
-    if origin not in ALLOWED_ORIGINS:
-        raise WebSocketDisconnect(code=4403)
+    if DEV_MODE:
+        if origin and origin not in ALLOWED_ORIGINS:
+            raise WebSocketDisconnect(code=4403)
+    else:
+        # In prod, require same-origin or allow missing Origin (e.g., native/Electron)
+        host = ws.headers.get("host", "")
+        if origin:
+            # Accept only if origin scheme+host matches ws host
+            try:
+                from urllib.parse import urlparse
+
+                o = urlparse(origin)
+                if host and o.netloc != host:
+                    raise WebSocketDisconnect(code=4403)
+            except Exception:
+                raise WebSocketDisconnect(code=4403)
     await ws.accept()
     try:
         await MANAGER.register_ws(sid, ws)
@@ -471,6 +503,57 @@ async def ws_events(ws: WebSocket, sid: str) -> None:
     finally:
         await MANAGER.unregister_ws(sid, ws)
 
+
+# Optional legacy alias for /events to ease dev migration. Only mounted when explicitly enabled.
+if ALLOW_EVENTS_ALIAS and WS_PATH != "/events":
+    # Emit this deprecation warning only once to avoid flooding logs on repeated reconnects
+    _events_alias_warned = False
+
+    @app.websocket("/events/{sid}")
+    async def ws_events_alias(ws: WebSocket, sid: str) -> None:
+        global _events_alias_warned
+        if not _events_alias_warned:
+            logger.warning(
+                "Deprecated: '/events' alias is enabled via LX_WS_ALLOW_EVENTS_ALIAS=1; set LX_WS_PATH='/ws' and update clients to VITE_WS_PATH accordingly"
+            )
+            _events_alias_warned = True
+        # Delegate to the main handler by reusing the same logic path: accept, register, loop.
+        origin = ws.headers.get("origin", "")
+        if DEV_MODE:
+            if origin and origin not in ALLOWED_ORIGINS:
+                raise WebSocketDisconnect(code=4403)
+        else:
+            host = ws.headers.get("host", "")
+            if origin:
+                try:
+                    from urllib.parse import urlparse
+
+                    o = urlparse(origin)
+                    if host and o.netloc != host:
+                        raise WebSocketDisconnect(code=4403)
+                except Exception:
+                    raise WebSocketDisconnect(code=4403)
+        await ws.accept()
+        try:
+            await MANAGER.register_ws(sid, ws)
+            while True:
+                try:
+                    message = await ws.receive_text()
+                    await MANAGER.handle_ws_message(sid, ws, message)
+                except WebSocketDisconnect:
+                    break
+                except Exception as e:
+                    logger.exception(f"WebSocket message handling error: {e}")
+                    await asyncio.sleep(1)
+        except WebSocketDisconnect:
+            pass
+        finally:
+            await MANAGER.unregister_ws(sid, ws)
+
+
+# Mount UI at root if dist exists (serves index.html for unknown paths)
+if UI_DIST_PATH.exists() and UI_DIST_PATH.is_dir():
+    app.mount("/", StaticFiles(directory=str(UI_DIST_PATH), html=True), name="ui")
 
 # SPA fallback route - must be last to catch all unmatched routes
 @app.get("/{full_path:path}")
