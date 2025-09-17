@@ -2,11 +2,25 @@
 
 ## Quickstart
 
+### Local Development
 ```bash
 make dev-minimal  # Lightweight, offline-first setup
 make run-ci-mode  # Fast, lightweight checks (mirrors CI-lite)
 make run-local-ci # Full dependencies for local development
 ```
+
+### Docker Deployment
+```bash
+# CPU-only deployment
+make docker-run
+
+# GPU-enabled deployment (WSL2/Docker Desktop)
+make docker-gpu
+```
+
+FastAPI + UI available at http://localhost:8000
+
+For detailed Docker setup instructions, see [Docker Deployment Guide](docs/DOCKER.md).
 
 ### Offline-first Development
 

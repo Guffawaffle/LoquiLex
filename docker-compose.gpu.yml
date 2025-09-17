@@ -1,8 +1,6 @@
 # GPU-specific Docker Compose override
 # Usage: docker-compose -f docker-compose.yml -f docker-compose.gpu.yml up
 
-version: '3.8'
-
 services:
   loquilex:
     build:

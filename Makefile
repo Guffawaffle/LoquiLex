@@ -25,7 +25,7 @@ PIP         := $(if $(wildcard $(VENV_PIP)),$(VENV_PIP),$(SYS_PIP))
         prefetch-asr models-tiny dev dev-minimal dev-ml-cpu \
         lint fmt fmt-check typecheck test unit test-e2e e2e ci clean \
         docker-ci docker-ci-build docker-ci-run docker-ci-test docker-ci-shell \
-        docker-build docker-run docker-gpu docker-stop docker-clean \
+        docker-build docker-run docker-gpu docker-stop docker-clean docker-test \
         sec-scan dead-code-analysis dead-code-report clean-artifacts \
         ui-setup ui-dev ui-build ui-start ui-test ui-e2e
 
@@ -46,6 +46,7 @@ help:
 	@echo "  docker-gpu       - run LoquiLex in Docker with GPU support"
 	@echo "  docker-stop      - stop running Docker containers"
 	@echo "  docker-clean     - remove Docker containers and images"
+	@echo "  docker-test      - test Docker setup and configuration"
 	@echo "  dead-code-analysis - run comprehensive dead code detection tools"
 	@echo "  dead-code-report   - generate reports locally (no CI gating)"
 	@echo "  clean-artifacts    - remove all generated artifacts"
@@ -300,6 +301,10 @@ docker-clean: docker-stop
 docker-shell:
 	@echo "=== Opening shell in running LoquiLex container ==="
 	docker exec -it $(DOCKER_CONTAINER_NAME) /bin/bash
+
+docker-test:
+	@echo "=== Testing Docker setup ==="
+	./scripts/test-docker.sh
 
 # Dead code analysis using multiple detection tools
 dead-code-analysis: install-base
