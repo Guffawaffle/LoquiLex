@@ -1,50 +1,39 @@
 #instruction
-Unify the WebSocket path and keep the API surface clean with minimal diffs.
+Fix **SPA fallback** so deep routes (e.g., `/settings`, `/sessions`) return **200** with `text/html` (serving `index.html`) without shadowing API/WS routes.
 
-## Do exactly this
-1) **Frontend**
-   - Centralize WS path via **build-time config**: `VITE_WS_PATH` (default `/ws`).
-   - Replace all hardcoded `/events` usages in `ui/app/src` with a helper that builds `ws://<origin><VITE_WS_PATH>/{sid}`.
-   - Do **not** mount downloads under the WS path; leave HTTP downloads under `/api/…` (no change if not applicable).
+## Do exactly this (tiny diffs)
+1) **Static + Fallback**
+   - Ensure the built UI directory `ui/app/dist` is served at the site root.
+   - Add a **catch‑all GET/HEAD** fallback that returns `ui/app/dist/index.html` with **200** when it exists.
+   - Register the fallback **after** API and static routes so it never shadows `/api/*`, `/ws/*`, or `/assets/*`.
+   - Remove any reference to dev‑only favicon `vite.svg` in the source HTML if present.
 
-2) **Backend**
-   - Keep default `WS_PATH=/ws`.
-   - Add **optional alias** for `/events` behind env `LX_WS_ALLOW_EVENTS_ALIAS=1` (dev-only). Log a deprecation warning when used.
-   - **CSP (prod):** `connect-src 'self' ws://127.0.0.1:*;` (scope scheme to loopback). Dev gating can remain broader.
-
-3) **Tests / Evidence**
-   - e2e/integration: assert WS handshake succeeds using configured path.
-   - Deliverables must include:
-     - Real header lines: `Content-Security-Policy`, `Permissions-Policy` (prod & dev runs).
-     - Real asset header checks: `/vite.svg` and one file under `/assets/*` with content-type.
-     - `grep` proving no leftover `/events` in UI sources (except comments/tests), and that UI reads `VITE_WS_PATH`.
+2) **Guardrails**
+   - Fallback must trigger **only** for GET and HEAD (not POST/PUT/etc.).
+   - Do **not** intercept `/api/*`, `/ws/*`, or `/assets/*` paths.
 
 ## Acceptance Criteria
-- Canonical WS base is `/ws`; frontend reads `VITE_WS_PATH` (default `/ws`).
-- Optional `/events` alias works only when `LX_WS_ALLOW_EVENTS_ALIAS=1` and logs a deprecation warning.
-- No remaining hardcoded `/events` in UI (except tests/comments).
-- CSP prod uses `connect-src 'self' ws://127.0.0.1:*;` (no global `ws:`).
-- e2e WS handshake passes against FastAPI-served build.
-- All CI/lint/type/test pass; diffs minimal.
+- `GET /settings` → **200** with `content-type: text/html` (index.html).
+- `GET /api/health` → **API JSON** (not index.html).
+- `GET /ws/{sid}` → **WebSocket** works (unchanged).
+- `GET /assets/<built-file>` → **200** with correct `content-type`.
+- `ui/app/dist/index.html` (and source) do **not** reference `/vite.svg`.
 
 #requirements
-- One branch: `copilot/fix-58-ws-path`.
-- Follow `AGENTS.md` (offline-first, minimal diffs, imperative commits).
-- Reuse existing patterns; no new dependencies.
-- Use `npm ci` for UI; Node 20 LTS only.
-- If ambiguity: search repo for existing helpers before adding new ones.
+- Branch: continue on your current working branch.
+- Minimal diffs; reuse existing patterns; **no new dependencies**.
 
 #deliverable-format
 Write `.github/copilot/current-task-deliverables.md` with:
-1. **Executive Summary** (what changed, why, outcome).
-2. **Steps Taken** (timestamps, commands, files edited).
-3. **Evidence & Verification**:
-   - Header dumps (prod/dev) for CSP/Permissions-Policy.
-   - `curl -I` for `/vite.svg` + one concrete `/assets/<file>` with content-type.
-   - `grep` outputs proving `VITE_WS_PATH` usage and no leftover `/events`.
-   - e2e WS handshake result (pass/fail).
-4. **Final Results** (pass/fail, follow-ups).
-5. **Files Changed** (each file + purpose).
+1) **Executive Summary** — one paragraph: what changed, why, outcome.
+2) **Steps Taken** — timestamps, key commands, files edited.
+3) **Evidence & Verification** — paste outputs for:
+   - `curl -sI http://127.0.0.1:8000/settings | grep -E 'HTTP/|content-type'` → `200` + `text/html`.
+   - `curl -sI http://127.0.0.1:8000/api/health | head -n1` → shows API status (not HTML).
+   - `ASSET=$(ls ui/app/dist/assets | head -n1); curl -sI "http://127.0.0.1:8000/assets/$ASSET" | grep -E 'HTTP/|content-type'` → `200` + correct type.
+   - `grep -RIn "vite.svg" ui/app/index.html ui/app/dist/index.html || true` → no matches.
+4) **Final Results** — pass/fail.
+5) **Files Changed** — each file and purpose.
 
 #output
 Write only the deliverables file into `.github/copilot/current-task-deliverables.md`.
