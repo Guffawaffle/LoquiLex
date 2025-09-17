@@ -114,14 +114,12 @@ describe('WebSocket Resilience', () => {
       for (let i = 0; i < 3; i++) {
         const instances = MockWebSocket.getInstances()
         const ws = instances[instances.length - 1]
-        
-        if (ws) {
-          ws.simulateOpen()
-          await vi.advanceTimersByTimeAsync(10)
-          
-          ws.simulateClose()
-          await vi.advanceTimersByTimeAsync(50)
-        }
+
+        ws.simulateOpen()
+        await vi.advanceTimersByTimeAsync(10)
+
+        ws.simulateClose()
+        await vi.advanceTimersByTimeAsync(50)
       }
 
       // Should not have excessive connections

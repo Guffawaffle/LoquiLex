@@ -113,9 +113,7 @@ self.onmessage = (event: MessageEvent<WorkerMessage>) => {
         const samples = data as ProgressComputeRequest['samples']
         if (samples.length > 0) {
           const latest = samples[samples.length - 1]
-          if (latest) {
-            smoother.addSample(latest.timestamp, latest.progress)
-          }
+          smoother.addSample(latest.timestamp, latest.progress)
         }
         // Use low frequency for ETA calculations (more stable)
         result = smoother.computeSmoothedProgress(2)
