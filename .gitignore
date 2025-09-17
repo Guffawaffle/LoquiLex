@@ -1,7 +1,7 @@
 .models/
 coverage_html/
 reports/
-# Analysis artifacts  
+# Analysis artifacts
 .artifacts/
 
 # Egg-info
@@ -47,3 +47,6 @@ ui/app/dist/
 ui/app/.vite/
 ui/app/playwright-report/
 ui/app/test-results/
+
+dropoff
+node_modules
