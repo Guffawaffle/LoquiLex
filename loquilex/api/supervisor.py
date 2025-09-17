@@ -49,6 +49,24 @@ class StreamingSession:
         # MT integration
         self.mt_integration: Optional[Any] = None  # MTIntegration
 
+    async def __aenter__(self):
+        """Support async context manager for automatic cleanup."""
+        return self
+
+    async def __aexit__(self, exc_type, exc, tb):
+        """Ensure cleanup when exiting context manager."""
+        self.stop()
+
+    def __del__(self):
+        """Destructor to ensure cleanup if not already done."""
+        # If audio thread is still running, set stop event and attempt join
+        if self._audio_thread and self._audio_thread.is_alive():
+            self._stop_evt.set()
+            try:
+                self._audio_thread.join(timeout=1.0)
+            except Exception:
+                pass
+
     def set_broadcast_fn(self, broadcast_fn) -> None:
         """Set the broadcast function for emitting events."""
         self._broadcast_fn = broadcast_fn
@@ -303,6 +321,31 @@ class Session:
         self.queue: "queue.Queue[str]" = queue.Queue(maxsize=1000)
         self._reader_thread: Optional[threading.Thread] = None
         self.stamper = EventStamper.new()
+
+    async def __aenter__(self):
+        """Support async context manager for automatic cleanup."""
+        return self
+
+    async def __aexit__(self, exc_type, exc, tb):
+        """Ensure cleanup when exiting context manager."""
+        self.stop()
+
+    def __del__(self):
+        """Destructor to ensure cleanup if not already done."""
+        # Stop subprocess if still running
+        if self.proc and self.proc.poll() is None:
+            self._stop_evt.set()
+            try:
+                self.proc.terminate()
+            except Exception:
+                pass
+        # Join reader thread
+        if self._reader_thread and self._reader_thread.is_alive():
+            self._stop_evt.set()
+            try:
+                self._reader_thread.join(timeout=1.0)
+            except Exception:
+                pass
 
     def start(self) -> None:
         env = os.environ.copy()
@@ -782,3 +825,64 @@ class SessionManager:
                 return True
             except Exception:
                 return False
+
+    async def shutdown(self) -> None:
+        """Shutdown all sessions and cleanup resources."""
+        logger.info("SessionManager shutdown initiated")
+        
+        # Stop flag to halt background threads
+        self._stop = True
+        
+        # Stop all active sessions
+        with self._lock:
+            session_ids = list(self._sessions.keys())
+            
+        for sid in session_ids:
+            try:
+                self.stop_session(sid)
+            except Exception as e:
+                logger.warning(f"Error stopping session {sid}: {e}")
+                
+        # Close all WebSocket protocol managers
+        with self._lock:
+            protocol_managers = list(self._ws_protocols.values())
+            
+        for protocol_manager in protocol_managers:
+            try:
+                await protocol_manager.close()
+            except Exception as e:
+                logger.warning(f"Error closing protocol manager: {e}")
+                
+        # Cancel all download processes
+        with self._lock:
+            download_procs = list(self._dl_procs.items())
+            
+        for job_id, proc in download_procs:
+            try:
+                self.cancel_download(job_id)
+            except Exception as e:
+                logger.warning(f"Error canceling download {job_id}: {e}")
+                
+        # Wait for background threads to finish
+        for thread in self._bg_threads:
+            if thread.is_alive():
+                try:
+                    thread.join(timeout=3.0)
+                except Exception as e:
+                    logger.warning(f"Error joining background thread: {e}")
+                    
+        logger.info("SessionManager shutdown completed")
+
+    def __del__(self):
+        """Destructor to ensure cleanup if not already done."""
+        # Set stop flag for background threads
+        self._stop = True
+        
+        # Stop all sessions
+        with self._lock:
+            sessions = list(self._sessions.values())
+        for session in sessions:
+            try:
+                session.stop()
+            except Exception:
+                pass

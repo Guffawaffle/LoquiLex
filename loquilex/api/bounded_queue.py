@@ -146,6 +146,21 @@ class BoundedQueue(Generic[T]):
             self._queue.clear()
             return items
 
+    def cleanup(self) -> None:
+        """Explicit cleanup method for resources."""
+        self._ensure_lock()
+        with self._lock:
+            self._queue.clear()
+            self.metrics = DropMetrics()
+
+    def __del__(self):
+        """Destructor to ensure cleanup if not already done."""
+        # Clear queue to release references
+        try:
+            self._queue.clear()
+        except Exception:
+            pass
+
 
 class ReplayBuffer(BoundedQueue[Any]):
     """Specialized bounded queue for WebSocket message replay.

@@ -665,7 +665,17 @@ class WSProtocolManager:
             logger.exception(f"System heartbeat loop error: {e}")
 
     async def _cleanup_session(self) -> None:
-        """Clean up session resources."""
+        """Clean up session resources.
+        
+        Resource Lifecycle Management:
+        - Stops heartbeat tasks (heartbeat and system heartbeat)
+        - Closes all WebSocket connections gracefully
+        - Clears outbound message queues 
+        - Calls disconnect callback to notify parent manager
+        
+        This method ensures all tasks are cancelled and connections
+        are properly closed to prevent resource leaks.
+        """
         await self._stop_heartbeat()
         await self._stop_system_heartbeat()
 
@@ -677,7 +687,12 @@ class WSProtocolManager:
                 pass
         self.connections.clear()
 
-        # Clear outbound queues
+        # Clear outbound queues and explicitly cleanup
+        for queue in self._outbound_queues.values():
+            try:
+                queue.cleanup()
+            except Exception:
+                pass
         self._outbound_queues.clear()
 
         # Notify parent to remove session
