@@ -584,6 +584,7 @@ async def root_index() -> FileResponse:
             return FileResponse(str(index_path), media_type="text/html")
     raise HTTPException(status_code=404, detail="Not found")
 
+
 # SPA fallback route - must be last to catch all unmatched routes
 @app.get("/{full_path:path}")
 @app.head("/{full_path:path}")
