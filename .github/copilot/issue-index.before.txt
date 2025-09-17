@@ -1,0 +1,33 @@
+#80 [ci, docs] CI: Add fast docs link-checker to catch broken README/docs links
+#79 [docs, frontend] Public API: Verify orchestration barrel exports for new utilities
+#78 [tests, ci, frontend] CI: Ensure UI resilience/throttling tests run (vitest/jest + Makefile buckets)
+#77 [tech-debt, frontend] Refactor: Consolidate '*-fixed.ts' exemplars to a single canonical file
+#76 [docs] Docs: Add orchestration README referenced by root README
+#68 [] Cleanup: Remove Legacy Orchestration from Python
+#67 [] Docs: Architecture Guide, Contracts, Troubleshooting
+#66 [] WS Resilience & Snapshot Rehydrate in TS
+#65 [] Exports Orchestrator + Thin Python Executor
+#64 [] Model Selection Dropdowns + Session/Launch Gating
+#63 [] Device Test Orchestrator + Thin Python Executor
+#62 [] Downloads Orchestrator + Thin Python Executor
+#60 [epic] # Epic: Adopt a JS‑First Architecture (React/TypeScript orchestrates; Python executes)
+#59 [frontend] Model selection dropdowns, Model Downloads tab, and Device Testing
+#56 [tech-debt, cleanup, project-hygiene, hardening] Bucket Make Commands
+#55 [feature, phase1, frontend] Overlay: Local WebSource for OBS/Browser Source (live captions/translation)
+#51 [infra, resource-management, audit, sprint-candidate] Resource Management Audit: Ensure Clean Termination and Release of All Threads, Tasks, and Resources
+#50 [security, sanitization, injection, hardening] Sanitization and injection risk: XSS, SQL, prompt injection, and related concerns
+#49 [integration, test, websocket] WebSocket integration test skipped: server not running on localhost:8000
+#47 [enhancement, feature, backend] Sessions & Permissions Foundation (Privacy-First Profiles) ~ Very Rough Draft
+#46 [enhancement] Privacy-First Diagnostics Logging (Opt-in, Redacted, Local-Only)
+#42 [docs, feature, phase1] Docs: Quick Start + User Guide for MVP
+#41 [feature, phase1, infra] Packaging & Docker: local-first runtime (WSL2/GPU)
+#40 [tests, feature, phase1] Synthetic audio tests & latency CI job
+#39 [feature, phase1, infra] Structured logging + metrics (latency, throughput)
+#38 [dx, feature, frontend] Replace 'ui' label with 'frontend'
+#37 [feature, phase1, frontend] Settings & Profiles: model selection, device, latency/quality
+#36 [feature, phase1, backend] Sessions & storage: rolling logs, capped history
+#35 [feature, phase1, backend] Exporters: TXT / VTT / SRT with rolling overwrite/cap
+#34 [feature, phase1, frontend] UI: dual panels (source/target), timestamps toggle, dark theme
+#28 [epic, feature, phase1] Epic: Phase 1 — Realtime Bridge MVP (EN↔ZH), Dual Panels, Exports
+#26 [bug, tech-debt, dx, tests] DeprecationWarning: httpx.Client(app=...) → use transport=WSGITransport(app=...)
+#23 [tech-debt, cleanup] CI Log Retention
