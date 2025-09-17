@@ -86,7 +86,7 @@ const concurrencyLimiter = createConcurrencyLimiter({
 async function apiStartDownload(request: DownloadRequest): Promise<{ job_id: string }> {
   // Simulate API call delay
   await new Promise(resolve => setTimeout(resolve, 100))
-  return { job_id: `job_${Date.now()}_${Math.random().toString(36).substr(2, 9)}` }
+  return { job_id: `job_${Date.now()}_${Math.random().toString(36).slice(2, 11)}` }
 }
 
 export const useDownloadsStore = create<DownloadsStore>((set, get) => ({
