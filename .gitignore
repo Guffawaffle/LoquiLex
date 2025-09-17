@@ -48,5 +48,7 @@ ui/app/.vite/
 ui/app/playwright-report/
 ui/app/test-results/
 
+# Local drop zone (symlink to D:)
 dropoff
+
 node_modules
