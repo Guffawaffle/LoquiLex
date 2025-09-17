@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - New features go here
 
 ### Changed
+- Legacy /events WebSocket alias is now dev-only and deprecated (use /ws instead)
 - Changes in existing functionality go here
 
 ### Fixed
