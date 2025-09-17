@@ -9,7 +9,7 @@ import uuid
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Request
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -58,6 +58,7 @@ app = FastAPI(title="LoquiLex API", version="0.1.0")
 @app.middleware("http")
 async def security_headers(request: Request, call_next):
     response = await call_next(request)
+    # Production: strict CSP, no 'unsafe-inline'
     if DEV_MODE:
         csp = (
             "default-src 'self'; "
@@ -68,10 +69,9 @@ async def security_headers(request: Request, call_next):
             "connect-src 'self' ws: http://127.0.0.1:* http://localhost:*; "
             "object-src 'none'; "
             "frame-ancestors 'none'; "
-            "base-uri 'self';"
+            "base-uri 'self'"
         )
     else:
-        # Production: restrict ws scheme to loopback as per requirements
         csp = (
             "default-src 'self'; "
             "script-src 'self'; "
@@ -81,17 +81,18 @@ async def security_headers(request: Request, call_next):
             "connect-src 'self' ws://127.0.0.1:*; "
             "object-src 'none'; "
             "frame-ancestors 'none'; "
-            "base-uri 'self';"
+            "base-uri 'self'"
         )
+
     response.headers["Content-Security-Policy"] = csp
-    response.headers["X-Content-Type-Options"] = "nosniff"
-    response.headers["Referrer-Policy"] = "no-referrer"
-    # Permit microphone (or omit header if issues arise). Keep permissive by default.
     response.headers["Permissions-Policy"] = "microphone=(self)"
+    response.headers["Referrer-Policy"] = "no-referrer"
+    response.headers["X-Content-Type-Options"] = "nosniff"
     return response
 
 
 if DEV_MODE:
+    # Enable CORS only in explicit dev mode to allow Vite HMR during development
     app.add_middleware(
         CORSMiddleware,
         allow_origins=ALLOWED_ORIGINS,
@@ -237,6 +238,17 @@ def get_mt_langs(model_id: str) -> Dict[str, Any]:
 async def healthz() -> Dict[str, Any]:
     """Health endpoint for Electron readiness check."""
     return {"status": "ok", "timestamp": time.time()}
+
+
+# Minimal API health endpoint used by external checks and tests
+@app.get("/api/health")
+async def api_health() -> Dict[str, Any]:
+    return {"status": "ok"}
+
+
+@app.head("/api/health")
+async def api_health_head() -> Response:
+    return Response(status_code=200)
 
 
 @app.post("/models/download")
@@ -506,18 +518,21 @@ async def ws_events(ws: WebSocket, sid: str) -> None:
 
 # Optional legacy alias for /events to ease dev migration. Only mounted when explicitly enabled.
 if ALLOW_EVENTS_ALIAS and WS_PATH != "/events":
-    # Emit this deprecation warning only once to avoid flooding logs on repeated reconnects
     _events_alias_warned = False
 
     @app.websocket("/events/{sid}")
     async def ws_events_alias(ws: WebSocket, sid: str) -> None:
+        """Deprecated alias for backwards compatibility in dev only.
+
+        Logs a one-time deprecation warning and otherwise behaves like the canonical handler.
+        """
         global _events_alias_warned
         if not _events_alias_warned:
             logger.warning(
-                "Deprecated: '/events' alias is enabled via LX_WS_ALLOW_EVENTS_ALIAS=1; set LX_WS_PATH='/ws' and update clients to VITE_WS_PATH accordingly"
+                "Deprecated: '/events' alias is enabled via LX_WS_ALLOW_EVENTS_ALIAS=1; set LX_WS_PATH to '/ws' and update clients to use VITE_WS_PATH"
             )
             _events_alias_warned = True
-        # Delegate to the main handler by reusing the same logic path: accept, register, loop.
+
         origin = ws.headers.get("origin", "")
         if DEV_MODE:
             if origin and origin not in ALLOWED_ORIGINS:
@@ -533,6 +548,7 @@ if ALLOW_EVENTS_ALIAS and WS_PATH != "/events":
                         raise WebSocketDisconnect(code=4403)
                 except Exception:
                     raise WebSocketDisconnect(code=4403)
+
         await ws.accept()
         try:
             await MANAGER.register_ws(sid, ws)
@@ -551,15 +567,32 @@ if ALLOW_EVENTS_ALIAS and WS_PATH != "/events":
             await MANAGER.unregister_ws(sid, ws)
 
 
-# Mount UI at root if dist exists (serves index.html for unknown paths)
+# Serve built assets under /assets if UI is present
 if UI_DIST_PATH.exists() and UI_DIST_PATH.is_dir():
-    app.mount("/", StaticFiles(directory=str(UI_DIST_PATH), html=True), name="ui")
+    assets_dir = UI_DIST_PATH / "assets"
+    if assets_dir.exists() and assets_dir.is_dir():
+        app.mount("/assets", StaticFiles(directory=str(assets_dir), html=False), name="assets")
+
+
+# Root index route when UI is present
+@app.get("/")
+@app.head("/")
+async def root_index() -> FileResponse:
+    if UI_DIST_PATH.exists() and UI_DIST_PATH.is_dir():
+        index_path = UI_DIST_PATH / "index.html"
+        if index_path.exists():
+            return FileResponse(str(index_path), media_type="text/html")
+    raise HTTPException(status_code=404, detail="Not found")
 
 # SPA fallback route - must be last to catch all unmatched routes
 @app.get("/{full_path:path}")
 @app.head("/{full_path:path}")
 async def spa_fallback(full_path: str) -> FileResponse:  # noqa: ARG001
     """Serve SPA index.html for all unknown routes (client-side routing)."""
+    # Guardrails: do not intercept API, WS, or asset paths
+    if full_path.startswith(("api/", "ws/", "assets/")):
+        raise HTTPException(status_code=404, detail="Not found")
+
     if UI_DIST_PATH.exists() and UI_DIST_PATH.is_dir():
         index_path = UI_DIST_PATH / "index.html"
         if index_path.exists():
