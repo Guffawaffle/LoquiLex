@@ -12,7 +12,7 @@ interface QueuedOperation<T> {
   operation: () => Promise<T>
   resolve: (value: T) => void
   reject: (error: Error) => void
-  cancellationToken?: CancellationToken | undefined
+  cancellationToken?: CancellationToken
 }
 
 export class ConcurrencyLimiter {
