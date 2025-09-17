@@ -1,5 +1,8 @@
 import { DownloadMsg, EventMsg } from './types'
 
+// Centralized WS base path from Vite env. Default to `/ws` for backwards compat.
+const WS_BASE = (import.meta.env && import.meta.env.VITE_WS_PATH) || '/ws'
+
 export function connectSessionWS(sid: string, onMsg: (m: EventMsg) => void, onStatus?: (s: 'open'|'closed'|'reconnecting') => void) {
   let ws: WebSocket | null = null
   let stopped = false
@@ -7,7 +10,7 @@ export function connectSessionWS(sid: string, onMsg: (m: EventMsg) => void, onSt
 
   const url = (() => {
     const proto = location.protocol === 'https:' ? 'wss' : 'ws'
-    return `${proto}://${location.host}/events/${encodeURIComponent(sid)}`
+    return `${proto}://${location.host}${WS_BASE}/${encodeURIComponent(sid)}`
   })()
 
   const open = () => {
@@ -55,7 +58,7 @@ export function connectSessionWS(sid: string, onMsg: (m: EventMsg) => void, onSt
 
 export function connectDownloadWS(jobId: string, onMsg: (m: DownloadMsg) => void) {
   const proto = location.protocol === 'https:' ? 'wss' : 'ws'
-  const url = `${proto}://${location.host}/events/_download/${encodeURIComponent(jobId)}`
+  const url = `${proto}://${location.host}${WS_BASE}/_download/${encodeURIComponent(jobId)}`
   const ws = new WebSocket(url)
   ws.onmessage = ev => {
     try {
