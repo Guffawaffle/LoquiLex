@@ -56,7 +56,11 @@ test('handles model loading error', async () => {
   renderWithRouter(<ModelSelect />);
   
   await waitFor(() => {
+<<<<<<< HEAD
     expect(screen.getByText('Network error')).toBeInTheDocument();
+=======
+    expect(screen.getByText('Failed to load models')).toBeInTheDocument();
+>>>>>>> a96258d (Implement FastAPI single-server with React SPA and baseline UI components)
   });
 });
 

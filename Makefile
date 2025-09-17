@@ -175,8 +175,13 @@ clean:
 
 # Install UI dependencies
 ui-setup:
+<<<<<<< HEAD
 	@echo "[ui-setup] Installing UI dependencies (npm ci)"
 	cd ui/app && npm ci
+=======
+	@echo "[ui-setup] Installing UI dependencies"
+	cd ui/app && npm install
+>>>>>>> a96258d (Implement FastAPI single-server with React SPA and baseline UI components)
 
 # Start development server with proxy to FastAPI
 ui-dev: ui-setup

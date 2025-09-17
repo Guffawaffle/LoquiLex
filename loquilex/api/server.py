@@ -9,7 +9,11 @@ import uuid
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
+<<<<<<< HEAD
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Request, Response
+=======
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Request
+>>>>>>> a96258d (Implement FastAPI single-server with React SPA and baseline UI components)
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -44,6 +48,7 @@ ALLOWED_ORIGINS = os.getenv(
 API_PORT = int(os.getenv("LX_API_PORT", "8000"))
 UI_PORT = int(os.getenv("LX_UI_PORT", "5173"))
 WS_PATH = os.getenv("LX_WS_PATH", "/ws")
+<<<<<<< HEAD
 # Optional dev-only alias to accept legacy /events path when explicitly allowed.
 ALLOW_EVENTS_ALIAS = os.getenv("LX_WS_ALLOW_EVENTS_ALIAS", "0") == "1"
 DEV_MODE = os.getenv("LX_DEV", "0") == "1"
@@ -54,10 +59,16 @@ _events_alias_warned = False
 app = FastAPI(title="LoquiLex API", version="0.1.0")
 
 
+=======
+
+app = FastAPI(title="LoquiLex API", version="0.1.0")
+
+>>>>>>> a96258d (Implement FastAPI single-server with React SPA and baseline UI components)
 # CSP and security headers
 @app.middleware("http")
 async def security_headers(request: Request, call_next):
     response = await call_next(request)
+<<<<<<< HEAD
     # Production: strict CSP, no 'unsafe-inline'
     if DEV_MODE:
         csp = (
@@ -100,14 +111,46 @@ if DEV_MODE:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+=======
+    # Strict CSP for production
+    csp = (
+        "default-src 'self'; "
+        "script-src 'self'; "
+        "style-src 'self'; "
+        "img-src 'self' blob:; "
+        "font-src 'self'; "
+        "connect-src 'self' ws://127.0.0.1:*; "
+        "object-src 'none'; "
+        "frame-ancestors 'none'; "
+        "base-uri 'self';"
+    )
+    response.headers["Content-Security-Policy"] = csp
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["Referrer-Policy"] = "no-referrer"
+    response.headers["Permissions-Policy"] = "microphone=()"
+    return response
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=ALLOWED_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+>>>>>>> a96258d (Implement FastAPI single-server with React SPA and baseline UI components)
 
 # Serve outputs directory for easy linking from UI (hardened)
 OUT_ROOT = Path(os.getenv("LLX_OUT_DIR", "loquilex/out")).resolve()
 OUT_ROOT.mkdir(parents=True, exist_ok=True)
 
+<<<<<<< HEAD
 # UI static files path (mounted later to avoid shadowing API routes)
 UI_DIST_PATH = Path("ui/app/dist").resolve()
 
+=======
+# UI static files serving
+UI_DIST_PATH = Path("ui/app/dist").resolve()
+>>>>>>> a96258d (Implement FastAPI single-server with React SPA and baseline UI components)
 
 def _safe_session_dir(sid: str) -> Path:
     if not re.fullmatch(r"[A-Za-z0-9_-]{6,64}", sid):
@@ -117,8 +160,11 @@ def _safe_session_dir(sid: str) -> Path:
         raise HTTPException(status_code=400, detail="invalid path")
     return p
 
-
 app.mount("/out", StaticFiles(directory=str(OUT_ROOT), html=False), name="out")
+
+# Mount UI static files at root if they exist
+if UI_DIST_PATH.exists() and UI_DIST_PATH.is_dir():
+    app.mount("/static", StaticFiles(directory=str(UI_DIST_PATH)), name="static")
 
 # Global manager instance
 MANAGER = SessionManager()
@@ -240,6 +286,7 @@ async def healthz() -> Dict[str, Any]:
     return {"status": "ok", "timestamp": time.time()}
 
 
+<<<<<<< HEAD
 # Minimal API health endpoint used by external checks and tests
 @app.get("/api/health")
 async def api_health() -> Dict[str, Any]:
@@ -251,6 +298,8 @@ async def api_health_head() -> Response:
     return Response(status_code=200)
 
 
+=======
+>>>>>>> a96258d (Implement FastAPI single-server with React SPA and baseline UI components)
 @app.post("/models/download")
 async def post_download(req: DownloadReq) -> Dict[str, Any]:
     job_id = str(uuid.uuid4())
@@ -516,6 +565,7 @@ async def ws_events(ws: WebSocket, sid: str) -> None:
         await MANAGER.unregister_ws(sid, ws)
 
 
+<<<<<<< HEAD
 # Optional legacy alias for /events to ease dev migration. Only mounted when explicitly enabled.
 if ALLOW_EVENTS_ALIAS and WS_PATH != "/events":
     _events_alias_warned = False
@@ -594,6 +644,13 @@ async def spa_fallback(full_path: str) -> FileResponse:  # noqa: ARG001
     if full_path.startswith(("api/", "ws/", "assets/")):
         raise HTTPException(status_code=404, detail="Not found")
 
+=======
+# SPA fallback route - must be last to catch all unmatched routes
+@app.get("/{full_path:path}")
+@app.head("/{full_path:path}")
+async def spa_fallback(full_path: str) -> FileResponse:
+    """Serve SPA index.html for all unknown routes (client-side routing)."""
+>>>>>>> a96258d (Implement FastAPI single-server with React SPA and baseline UI components)
     if UI_DIST_PATH.exists() and UI_DIST_PATH.is_dir():
         index_path = UI_DIST_PATH / "index.html"
         if index_path.exists():

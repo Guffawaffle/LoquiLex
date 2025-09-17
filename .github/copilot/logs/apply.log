@@ -1,0 +1,25 @@
+closing #28
+closing #34
+closing #35
+update #36: Implement rolling session storage with capped history
+https://github.com/Guffawaffle/LoquiLex/issues/36
+update #37: Add Settings screen: model, device, cadence, timestamps
+https://github.com/Guffawaffle/LoquiLex/issues/37
+update #39: Add structured logging and basic performance metrics
+https://github.com/Guffawaffle/LoquiLex/issues/39
+update #40: Add synthetic audio tests and latency CI job
+https://github.com/Guffawaffle/LoquiLex/issues/40
+update #41: Package local-first runtime (WSL2/GPU) with Docker
+https://github.com/Guffawaffle/LoquiLex/issues/41
+update #42: Write Quick Start and MVP User Guide
+https://github.com/Guffawaffle/LoquiLex/issues/42
+dedup #62 -> #59
+https://github.com/Guffawaffle/LoquiLex/issues/62#issuecomment-3303164776
+dedup #63 -> #59
+https://github.com/Guffawaffle/LoquiLex/issues/63#issuecomment-3303165054
+dedup #64 -> #59
+https://github.com/Guffawaffle/LoquiLex/issues/64#issuecomment-3303165303
+closing #65
+closing #66
+closing #38
+closing #60

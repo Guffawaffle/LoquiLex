@@ -44,6 +44,9 @@ export default defineConfig({
     globals: true,
     environment: 'jsdom',
     setupFiles: './src/test/setup.ts',
+<<<<<<< HEAD
     exclude: ['**/e2e/**', '**/node_modules/**'],
+=======
+>>>>>>> a96258d (Implement FastAPI single-server with React SPA and baseline UI components)
   },
 })
