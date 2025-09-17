@@ -45,7 +45,8 @@ async def test_websocket_envelope_integration():
                 import websockets
 
                 try:
-                    ws_url = f"ws://127.0.0.1:8000/events/{sid}"
+                    from loquilex.api import server as api_server
+                    ws_url = f"ws://127.0.0.1:8000{api_server.WS_PATH}/{sid}"
 
                     # Simplified connection without additional headers for compatibility
                     async with websockets.connect(ws_url) as websocket:

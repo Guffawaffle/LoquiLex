@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { CaptionLine, SessionStatus } from '../types';
+import { buildWsUrl } from '../utils/ws';
 
 export function DualPanelsView() {
   const { sessionId } = useParams<{ sessionId: string }>();
@@ -25,8 +26,7 @@ export function DualPanelsView() {
   useEffect(() => {
     if (!sessionId) return;
 
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${protocol}//${window.location.host}/ws/${sessionId}`;
+  const wsUrl = buildWsUrl(sessionId);
 
     try {
       const ws = new WebSocket(wsUrl);
@@ -135,9 +135,9 @@ export function DualPanelsView() {
   };
 
   const handleMTFinal = (data: any) => {
-    setCaptions(prev => 
-      prev.map(c => 
-        c.id === `final-${data.segment_id}` 
+    setCaptions(prev =>
+      prev.map(c =>
+        c.id === `final-${data.segment_id}`
           ? { ...c, translation: data.translation }
           : c
       )
@@ -186,7 +186,7 @@ export function DualPanelsView() {
 
   const exportCaptions = (format: 'txt' | 'json' | 'vtt' | 'srt') => {
     const finalCaptions = captions.filter(c => c.final);
-    
+
     let content = '';
     let filename = `captions-${sessionId}.${format}`;
     let mimeType = 'text/plain';
@@ -410,7 +410,7 @@ export function DualPanelsView() {
             )}
           </>
         )}
-        
+
         <div style={{ marginTop: '1rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
           Shortcuts: T=timestamps, Ctrl+E=export, Ctrl+.=pause
         </div>

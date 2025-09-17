@@ -1,9 +1,9 @@
 """Test snapshot rehydrate functionality."""
 
-import asyncio # noqa: F401
+import asyncio  # noqa: F401
 import json
 import pytest
-from unittest.mock import AsyncMock, MagicMock # noqa: F401
+from unittest.mock import AsyncMock, MagicMock  # noqa: F401
 
 from loquilex.api.ws_protocol import WSProtocolManager
 from loquilex.api.ws_types import (
@@ -134,8 +134,9 @@ class TestSnapshotRehydrate:
                 return {
                     "finalized_transcript": [{"text": "test"}],
                     "active_partials": [],
-                    "mt_status": None
+                    "mt_status": None,
                 }
+
             manager.set_session_snapshot_callback(mock_get_snapshot)
 
             # Add some messages to replay buffer
@@ -224,16 +225,20 @@ class TestSnapshotRehydrate:
                         {
                             "segment_id": "seg1",
                             "text": "First segment.",
-                            "final_seq_range": [1, 2, 3],  # This final covers partials with seq 1, 2, 3
+                            "final_seq_range": [
+                                1,
+                                2,
+                                3,
+                            ],  # This final covers partials with seq 1, 2, 3
                         },
                         {
                             "segment_id": "seg2",
                             "text": "Second segment.",
                             "final_seq_range": [4, 5],  # This final covers partials with seq 4, 5
-                        }
+                        },
                     ],
                     "active_partials": [],
-                    "mt_status": None
+                    "mt_status": None,
                 }
 
             manager.set_session_snapshot_callback(mock_get_snapshot)

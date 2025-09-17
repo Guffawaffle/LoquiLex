@@ -3,7 +3,7 @@
 import asyncio
 import json
 import pytest
-from unittest.mock import AsyncMock # noqa: F401
+from unittest.mock import AsyncMock  # noqa: F401
 
 from loquilex.api.ws_protocol import WSProtocolManager
 from loquilex.api.ws_types import (
@@ -63,7 +63,7 @@ class TestE2EResumeFlow:
                     "t0": 2.0,
                     "t1": 3.5,
                     "final_seq_range": [4, 5],  # Final covers partial sequences 4,5
-                }
+                },
             ],
             "active_partials": [
                 {
@@ -73,10 +73,10 @@ class TestE2EResumeFlow:
                     "seq": 6,
                 }
             ],
-            "mt_status": {"enabled": True, "dest_lang": "zh"}
+            "mt_status": {"enabled": True, "dest_lang": "zh"},
         }
 
-        async def mock_get_snapshot(sid): # noqa: ARG001
+        async def mock_get_snapshot(sid):  # noqa: ARG001
             return session_snapshot
 
         async with WSProtocolManager("test_session") as manager:
@@ -89,8 +89,12 @@ class TestE2EResumeFlow:
 
             # Send some domain events that would be in replay buffer
             await manager.send_domain_event(MessageType.ASR_PARTIAL, {"text": "This is"})  # seq=1
-            await manager.send_domain_event(MessageType.ASR_PARTIAL, {"text": "This is newer"})  # seq=2
-            await manager.send_domain_event(MessageType.ASR_FINAL, {"text": "This is newer text."})  # seq=3
+            await manager.send_domain_event(
+                MessageType.ASR_PARTIAL, {"text": "This is newer"}
+            )  # seq=2
+            await manager.send_domain_event(
+                MessageType.ASR_FINAL, {"text": "This is newer text."}
+            )  # seq=3
 
             # Capture what was sent during initial session
             initial_messages = [json.loads(msg) for msg in ws1.sent_messages]
@@ -148,14 +152,18 @@ class TestE2EResumeFlow:
 
             # Phase 5: Continue session with new events (ensure sequence continues properly)
             ws2.sent_messages.clear()
-            await manager.send_domain_event(MessageType.ASR_FINAL, {"text": "I am fine, thanks."})  # Should get next seq
+            await manager.send_domain_event(
+                MessageType.ASR_FINAL, {"text": "I am fine, thanks."}
+            )  # Should get next seq
 
             new_messages = [json.loads(msg) for msg in ws2.sent_messages]
             assert len(new_messages) == 1
 
             new_final = new_messages[0]
             assert new_final["t"] == "asr.final"
-            assert new_final["seq"] > last_received_seq  # Sequence should continue from where it left off
+            assert (
+                new_final["seq"] > last_received_seq
+            )  # Sequence should continue from where it left off
 
             # Phase 6: Validate metrics
             telemetry = manager.get_telemetry_summary()
@@ -170,12 +178,8 @@ class TestE2EResumeFlow:
     async def test_ordering_guarantees_after_resume(self):
         """Test that sequence ordering is maintained after resume."""
 
-        async def mock_get_snapshot(sid): # noqa: ARG001
-            return {
-                "finalized_transcript": [],
-                "active_partials": [],
-                "mt_status": None
-            }
+        async def mock_get_snapshot(sid):  # noqa: ARG001
+            return {"finalized_transcript": [], "active_partials": [], "mt_status": None}
 
         async with WSProtocolManager("test_session") as manager:
             manager.set_session_snapshot_callback(mock_get_snapshot)
@@ -189,7 +193,11 @@ class TestE2EResumeFlow:
             await manager.send_domain_event(MessageType.ASR_PARTIAL, {"text": "msg2"})  # seq=2
 
             # Get sequence numbers
-            initial_messages = [json.loads(msg) for msg in ws1.sent_messages if json.loads(msg)["t"] in ["asr.partial"]]
+            initial_messages = [
+                json.loads(msg)
+                for msg in ws1.sent_messages
+                if json.loads(msg)["t"] in ["asr.partial"]
+            ]
             last_seq = max(msg["seq"] for msg in initial_messages)
 
             # Disconnect and resume
@@ -212,8 +220,12 @@ class TestE2EResumeFlow:
             ws2.sent_messages.clear()
 
             # Send new events after resume
-            await manager.send_domain_event(MessageType.ASR_PARTIAL, {"text": "msg3"})  # Should be seq=3
-            await manager.send_domain_event(MessageType.ASR_FINAL, {"text": "msg3 final"})  # Should be seq=4
+            await manager.send_domain_event(
+                MessageType.ASR_PARTIAL, {"text": "msg3"}
+            )  # Should be seq=3
+            await manager.send_domain_event(
+                MessageType.ASR_FINAL, {"text": "msg3 final"}
+            )  # Should be seq=4
 
             new_messages = [json.loads(msg) for msg in ws2.sent_messages]
 
@@ -224,7 +236,7 @@ class TestE2EResumeFlow:
 
             # Check all sequences are strictly increasing
             for i in range(1, len(sequences)):
-                assert sequences[i] == sequences[i-1] + 1  # Should be consecutive
+                assert sequences[i] == sequences[i - 1] + 1  # Should be consecutive
 
     async def test_resume_with_expired_window(self):
         """Test graceful handling when resume window has expired."""
