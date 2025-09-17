@@ -128,6 +128,7 @@ async def test_e2e_websocket_live_session():
 
                         # Step 2: Test WebSocket endpoint accessibility
                         from loquilex.api import server as api_server
+
                         ws_url = f"{api_server.WS_PATH}/{session_id}"
 
                         # Test that the WebSocket endpoint exists and accepts connections
