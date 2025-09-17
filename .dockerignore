@@ -16,5 +16,11 @@ logs/
 *.mp4
 .coverage
 htmlcov/
-dist/
 build/
+# Exclude root dist but allow ui/app/dist (built UI assets)
+/dist/
+.env
+.env.*
+!.env.docker
+.DS_Store
+Thumbs.db

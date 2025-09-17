@@ -1,0 +1,57 @@
+version: '3.8'
+
+services:
+  loquilex:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        INSTALL_GPU_SUPPORT: ${INSTALL_GPU_SUPPORT:-false}
+    image: loquilex:latest
+    container_name: loquilex-app
+    ports:
+      - "${LX_API_PORT:-8000}:${LX_API_PORT:-8000}"
+    environment:
+      - LX_API_PORT=${LX_API_PORT:-8000}
+      - LX_UI_PORT=${LX_UI_PORT:-5173}
+      - LX_DEVICE=${LX_DEVICE:-auto}
+      - LX_ASR_MODEL=${LX_ASR_MODEL:-tiny.en}
+      - LX_ASR_LANGUAGE=${LX_ASR_LANGUAGE:-en}
+      - LX_NLLB_MODEL=${LX_NLLB_MODEL:-facebook/nllb-200-distilled-600M}
+      - LX_OUT_DIR=/app/outputs
+      - LX_SKIP_MODEL_PREFETCH=${LX_SKIP_MODEL_PREFETCH:-0}
+    volumes:
+      - loquilex_outputs:/app/outputs
+      - loquilex_models:/root/.cache/huggingface
+      - loquilex_whisper:/root/.cache/whisper
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:${LX_API_PORT:-8000}/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # GPU-enabled variant (use via separate compose file)
+  loquilex-gpu:
+    extends:
+      service: loquilex
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    environment:
+      - LX_DEVICE=cuda
+    profiles:
+      - gpu
+
+volumes:
+  loquilex_outputs:
+    driver: local
+  loquilex_models:
+    driver: local
+  loquilex_whisper:
+    driver: local
