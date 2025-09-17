@@ -127,15 +127,20 @@ export const useDownloadsStore = create<DownloadsStore>((set, get) => ({
             const response = await apiStartDownload(request)
             
             // Update job as started
-            set(state => ({
-              jobs: {
-                ...state.jobs,
-                [jobId]: {
-                  ...state.jobs[jobId]!,
-                  startedAt: Date.now()
+            set(state => {
+              const existingJob = state.jobs[jobId]
+              if (!existingJob) return state
+              
+              return {
+                jobs: {
+                  ...state.jobs,
+                  [jobId]: {
+                    ...existingJob,
+                    startedAt: Date.now()
+                  }
                 }
               }
-            }))
+            })
             
             return response
           },
@@ -146,15 +151,20 @@ export const useDownloadsStore = create<DownloadsStore>((set, get) => ({
       cancellationToken
     ).catch(error => {
       // Handle failure
-      set(state => ({
-        jobs: {
-          ...state.jobs,
-          [jobId]: {
-            ...state.jobs[jobId]!,
-            operation: createErrorOperation(error)
+      set(state => {
+        const existingJob = state.jobs[jobId]
+        if (!existingJob) return state
+        
+        return {
+          jobs: {
+            ...state.jobs,
+            [jobId]: {
+              ...existingJob,
+              operation: createErrorOperation(error)
+            }
           }
         }
-      }))
+      })
     })
     
     return jobId

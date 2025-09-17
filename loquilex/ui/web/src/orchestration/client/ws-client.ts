@@ -226,7 +226,10 @@ export class WSClient {
   }
 
   private scheduleReconnect(): void {
+    // Guard against multiple reconnect attempts
     if (this.reconnectTimer) return
+    if (this.cancellationToken.isCancelled) return
+    if (this.state === 'connected' || this.state === 'connecting') return
 
     this.setState('reconnecting')
     this.reconnectAttempt++
@@ -238,7 +241,8 @@ export class WSClient {
 
     this.reconnectTimer = window.setTimeout(() => {
       this.reconnectTimer = null
-      if (!this.cancellationToken.isCancelled) {
+      // Double-check cancellation before attempting connection
+      if (!this.cancellationToken.isCancelled && this.state === 'reconnecting') {
         this.attemptConnection().catch(() => {
           // Error handled in onclose
         })

@@ -13,6 +13,7 @@ export * from './utils/retry'
 export * from './utils/cancellation'
 export * from './utils/concurrency'
 export * from './utils/bounded-queue'
+export * from './utils/throttle'
 
 // ===== Client =====
 export * from './client/ws-client'
@@ -36,6 +37,7 @@ import {
 } from './utils/cancellation'
 import { createConcurrencyLimiter } from './utils/concurrency'
 import { createBoundedQueue } from './utils/bounded-queue'
+import { createThrottler, RateLimiter } from './utils/throttle'
 import { createWSClient } from './client/ws-client'
 import { createProgressWorker } from './worker/worker-channel'
 import { 
@@ -57,6 +59,8 @@ export {
   combineCancellationTokens,
   createConcurrencyLimiter,
   createBoundedQueue,
+  createThrottler,
+  RateLimiter,
   createWSClient,
   createProgressWorker,
   createAsyncOperation,
@@ -95,5 +99,10 @@ export const DEFAULT_CONFIGS = {
   boundedQueue: {
     maxSize: 100,
     dropStrategy: 'oldest' as const
+  },
+  throttle: {
+    maxHz: 5,
+    leading: true,
+    trailing: true
   }
 } as const

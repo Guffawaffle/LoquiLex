@@ -164,8 +164,10 @@ export class Semaphore {
    */
   release(): void {
     if (this.waitQueue.length > 0) {
-      const next = this.waitQueue.shift()!
-      next()
+      const next = this.waitQueue.shift()
+      if (next) {
+        next()
+      }
     } else {
       this.permits++
     }
