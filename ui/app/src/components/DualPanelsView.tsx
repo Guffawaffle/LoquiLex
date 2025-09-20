@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { CaptionLine, SessionStatus } from '../types';
 import { buildWsUrl } from '../utils/ws';
+import { loadSettings } from '../utils/settings';
 
 export function DualPanelsView() {
   const { sessionId } = useParams<{ sessionId: string }>();
@@ -9,7 +10,11 @@ export function DualPanelsView() {
   const wsRef = useRef<WebSocket | null>(null);
   const [captions, setCaptions] = useState<CaptionLine[]>([]);
   const [status, setStatus] = useState<SessionStatus>({ status: 'idle' });
-  const [showTimestamps, setShowTimestamps] = useState(true);
+  const [showTimestamps, setShowTimestamps] = useState(() => {
+    // Initialize from saved settings
+    const settings = loadSettings();
+    return settings.show_timestamps;
+  });
   const [isPaused, setIsPaused] = useState(false);
   const captionsEndRef = useRef<HTMLDivElement>(null);
 
