@@ -33,7 +33,6 @@ def _session_manager_finalize_stop(self_proxy: Any) -> None:
     except Exception:
         pass
 
-
 from .events import EventStamper
 from .ws_protocol import WSProtocolManager
 from .ws_types import MessageType, HeartbeatConfig, ServerLimits
@@ -441,7 +440,6 @@ class Session:
                         _ = self.queue.get_nowait()
                     except Exception:
                         pass
-
         self._reader_thread = threading.Thread(target=_reader)
         self._reader_thread.start()
 
@@ -577,7 +575,7 @@ class SessionManager:
                 "heartbeat_timeout_ms": self._default_hb_config.timeout_ms,
                 "max_in_flight": self._default_limits.max_in_flight,
                 "max_msg_bytes": self._default_limits.max_msg_bytes,
-            },
+            }
         )
 
         def _bg_runner(self_ref: Any) -> None:
@@ -599,9 +597,7 @@ class SessionManager:
         # with static type checkers when finalizer registration fails.
         self._finalizer: Optional[Any] = None
         try:
-            self._finalizer = weakref.finalize(
-                self, _session_manager_finalize_stop, weakref.proxy(self)
-            )
+            self._finalizer = weakref.finalize(self, _session_manager_finalize_stop, weakref.proxy(self))
         except Exception:
             self._finalizer = None
 
@@ -610,7 +606,7 @@ class SessionManager:
             with self._lock:
                 running_cuda = sum(1 for s in self._sessions.values() if s.cfg.device == "cuda")
             if running_cuda >= self._max_cuda_sessions:
-                raise RuntimeError("GPU busy: maximum concurrent CUDA sessions reached")
+                raise RuntimeError("GPU busy: maximum concgurrent CUDA sessions reached")
 
         sid = str(uuid.uuid4())
         run_dir = Path("loquilex/out") / sid
@@ -723,6 +719,8 @@ class SessionManager:
         """Cleanup callback for protocol manager."""
         with self._lock:
             self._ws_protocols.pop(sid, None)
+            # Also drop legacy list to avoid leaks when unregister isn't called
+            self._ws.pop(sid, None)
 
     async def _get_session_snapshot(self, sid: str) -> Optional[Dict[str, Any]]:
         """Get session snapshot data for resume functionality."""
@@ -854,7 +852,9 @@ class SessionManager:
 
     # Download management
     def start_download_job(self, job_id: str, repo_id: str, _typ: str) -> None:
-        t = threading.Thread(target=self._download_worker, args=(job_id, repo_id, _typ))
+        t = threading.Thread(
+            target=self._download_worker, args=(job_id, repo_id, _typ)
+        )
         t.start()
         self._bg_threads.append(t)
 
@@ -876,21 +876,20 @@ class SessionManager:
                 )
             )
 
-        code = (
-            "from huggingface_hub import snapshot_download;"
-            f"p=snapshot_download('{repo_id}', local_dir=None);"
-            "print(p)"
-        )
         try:
-            creationflags = 0
-            start_new_session = False
-            if os.name == "nt":
-                creationflags = getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
-                start_new_session = False
-            else:
-                start_new_session = True
+            creationflags = getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0) if os.name == "nt" else 0
+            start_new_session = (os.name != "nt")
             proc = subprocess.Popen(
-                [sys.executable, "-c", code],
+                [
+                    sys.executable,
+                    "-c",
+                    (
+                        "from huggingface_hub import snapshot_download; import sys; "
+                        "p = snapshot_download(sys.argv[1], local_dir=None); print(p)"
+                    ),
+                    "--",
+                    repo_id,
+                ],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 start_new_session=start_new_session,
