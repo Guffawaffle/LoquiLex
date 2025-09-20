@@ -52,7 +52,16 @@ export class StructuredLogger {
   }
 
   private generateSessionId(): string {
-    return Math.random().toString(36).substring(2, 10)
+    // Use secure random values if available
+    if (typeof window !== 'undefined' && window.crypto && window.crypto.getRandomValues) {
+      const array = new Uint32Array(2); // 2*32 bits = 64 bits (enough for 8 base36 characters)
+      window.crypto.getRandomValues(array);
+      // Convert each part to base36 and join them
+      return Array.from(array).map(num => num.toString(36)).join('').substring(0, 8);
+    } else {
+      // Fallback to a less secure method if crypto isn't available (should be rare)
+      return (Date.now().toString(36) + Math.random().toString(36).substring(2, 10)).substring(0, 8);
+    }
   }
 
   private formatLogEntry(level: LogLevel, message: string, context: Record<string, any>): LogEntry {
