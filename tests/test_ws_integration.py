@@ -1,6 +1,5 @@
 """Integration tests for WebSocket envelope protocol with existing API."""
 
-import asyncio
 import json
 from unittest.mock import patch
 
@@ -12,9 +11,12 @@ from loquilex.api.ws_types import AckData, ClientHelloData, MessageType, WSEnvel
 
 
 @pytest.mark.e2e
-@pytest.mark.asyncio
-async def test_websocket_envelope_integration():
-    """Test that the new envelope protocol works with the existing API."""
+def test_websocket_envelope_integration():
+    """Test that the new envelope protocol works with the existing API.
+    
+    Uses FastAPI TestClient WebSocket support for reliable testing without 
+    requiring external server startup.
+    """
 
     # Mock session creation to avoid subprocess spawning
     with patch("loquilex.api.supervisor.Session.start"):
@@ -42,18 +44,16 @@ async def test_websocket_envelope_integration():
                     pytest.skip("No session ID returned")
 
                 # Test WebSocket connection with envelope protocol
-                import websockets
+                from loquilex.api import server as api_server
 
+                ws_url = f"{api_server.WS_PATH}/{sid}"
+
+                # Use FastAPI TestClient WebSocket support
                 try:
-                    from loquilex.api import server as api_server
-
-                    ws_url = f"ws://127.0.0.1:8000{api_server.WS_PATH}/{sid}"
-
-                    # Simplified connection without additional headers for compatibility
-                    async with websockets.connect(ws_url) as websocket:
+                    with client.websocket_connect(ws_url) as websocket:
 
                         # Should receive welcome message
-                        welcome_raw = await asyncio.wait_for(websocket.recv(), timeout=2.0)
+                        welcome_raw = websocket.receive_text()
                         welcome = json.loads(welcome_raw)
 
                         # Validate welcome message structure
@@ -78,30 +78,25 @@ async def test_websocket_envelope_integration():
                             ).model_dump(),
                         )
 
-                        await websocket.send(hello_envelope.model_dump_json())
+                        websocket.send_text(hello_envelope.model_dump_json())
 
                         # Client hello is processed but doesn't generate a response
-                        # Wait briefly to ensure processing
-                        await asyncio.sleep(0.1)
+                        # No need to wait in synchronous TestClient context
 
                         # Send acknowledgement for welcome message
                         ack_envelope = WSEnvelope(
                             t=MessageType.CLIENT_ACK, data=AckData(ack_seq=0).model_dump()
                         )
 
-                        await websocket.send(ack_envelope.model_dump_json())
+                        websocket.send_text(ack_envelope.model_dump_json())
 
-                        # Wait briefly to ensure ack is processed
-                        await asyncio.sleep(0.1)
-
-                except (
-                    websockets.exceptions.InvalidURI,
-                    OSError,
-                    asyncio.TimeoutError,
-                    ConnectionError,
-                ) as e:
-                    # Skip if WebSocket connection fails (expected in some test environments)
-                    pytest.skip(f"WebSocket connection failed: {e}")
+                except Exception as e:
+                    # Only skip for specific connection/configuration issues
+                    if "404" in str(e):
+                        pytest.skip(f"WebSocket endpoint not found: {e}")
+                    else:
+                        # Let other exceptions propagate as test failures
+                        raise
 
                 # Clean up session
                 try:
