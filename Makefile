@@ -160,8 +160,21 @@ link-check:
 		echo "Installing markdown-link-check..."; \
 		npm install --no-save markdown-link-check; \
 	fi; \
-	npx markdown-link-check README.md --config .markdown-link-check.json; \
-	find docs -name "*.md" -exec npx markdown-link-check {} --config .markdown-link-check.json \;
+	FAILED=0; \
+	for file in README.md $$(find docs -name "*.md"); do \
+		echo "Checking $$file..."; \
+		output=$$(npx markdown-link-check "$$file" --config .markdown-link-check.json 2>&1); \
+		echo "$$output"; \
+		if echo "$$output" | grep -q "ERROR:.*dead links found"; then \
+			FAILED=1; \
+		fi; \
+	done; \
+	if [ $$FAILED -eq 1 ]; then \
+		echo "❌ Link check failed: dead links found"; \
+		exit 1; \
+	else \
+		echo "✅ All links are valid"; \
+	fi
 
 test:
 	LX_OFFLINE=${LX_OFFLINE:-1} HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 HF_HUB_DISABLE_TELEMETRY=1 pytest -q
