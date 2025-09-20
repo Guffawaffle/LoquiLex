@@ -213,4 +213,15 @@ All local gates (ruff, mypy, pytest) passed. No app logic changed in this task. 
 
 - `.github/copilot/current-task-deliverables.md`: docs — Added full task deliverables report with logs, timestamps, and verification links.
 
+
+## Addendum — Docker CI Parity (make docker-ci-test)
+
+End-to-end CI-parity run completed successfully inside the container. Key summaries:
+
+- Unit suite: 220 passed, 4 skipped, 10 deselected, 15 warnings in 24.43s
+- E2E suite: 9 passed, 1 skipped, 224 deselected, 7 warnings in 3.81s
+- Overall: “DONE: CI-parity run completed successfully”
+
+No formatting or lint issues were reported; Black/Ruff clean. Confirms parity with GH Actions.
+
 .
