@@ -1,5 +1,4 @@
 import asyncio
-import pytest
 
 from loquilex.api.supervisor import SessionManager
 
