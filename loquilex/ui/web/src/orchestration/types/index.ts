@@ -3,6 +3,16 @@
  * 
  * This module provides versioned, typed contracts for REST/WS payloads,
  * state machine types, and orchestration primitives.
+ * 
+ * 📖 Documentation:
+ * - WebSocket Protocol: /docs/contracts/websocket.md
+ * - ASR Streaming: /docs/contracts/asr-streaming.md  
+ * - Translation Events: /docs/contracts/translation.md
+ * - Downloads API: /docs/contracts/downloads-api.md
+ * - Session Management: /docs/contracts/session-management.md
+ * - Models API: /docs/contracts/models-api.md
+ * - Device Testing: /docs/contracts/device-testing.md
+ * - Export Operations: /docs/contracts/exports.md
  */
 
 // ===== Core Orchestration Types =====
@@ -52,20 +62,21 @@ export type ConnectionState =
   | 'failed'
 
 // ===== WebSocket Envelope Types (aligned with backend) =====
+// 📖 See: /docs/contracts/websocket.md
 
 export type MessageType = 
   | 'session.hello' 
   | 'session.welcome'
   | 'session.heartbeat'
   | 'session.ack'
-  | 'asr.partial' 
-  | 'asr.final'
-  | 'mt.final'
+  | 'asr.partial'     // 📖 /docs/contracts/asr-streaming.md
+  | 'asr.final'       // 📖 /docs/contracts/asr-streaming.md
+  | 'mt.final'        // 📖 /docs/contracts/translation.md
   | 'status.update'
-  | 'model.download.started'
-  | 'model.download.progress'
-  | 'model.download.completed'
-  | 'model.download.failed'
+  | 'model.download.started'   // 📖 /docs/contracts/downloads-api.md
+  | 'model.download.progress'  // 📖 /docs/contracts/downloads-api.md
+  | 'model.download.completed' // 📖 /docs/contracts/downloads-api.md
+  | 'model.download.failed'    // 📖 /docs/contracts/downloads-api.md
 
 export interface WSEnvelope<TData = Record<string, unknown>> {
   v: number // Schema version
@@ -80,6 +91,7 @@ export interface WSEnvelope<TData = Record<string, unknown>> {
 }
 
 // ===== Event Data Types =====
+// 📖 See contract documentation for detailed schemas
 
 export interface ASRPartialData {
   text: string
@@ -140,7 +152,8 @@ export interface DownloadFailedData {
   code?: string
 }
 
-// ===== REST API Types =====
+// ===== REST API Types =====  
+// 📖 See: /docs/contracts/downloads-api.md, /docs/contracts/models-api.md
 
 export interface RestResponse<T = unknown> {
   ok: boolean
