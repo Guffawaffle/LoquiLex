@@ -292,7 +292,13 @@ class Translator:
         """
         text = text.strip()
         if not text:
-            return TranslationResult("", "echo")
+            return TranslationResult(
+                "",
+                "echo",
+                src_lang="en",
+                tgt_lang="zh",
+                duration_ms=0.0,
+            )
 
         # Draft via M2M
         try:
@@ -312,7 +318,13 @@ class Translator:
                     pad_token_id=getattr(tok, "pad_token_id", None),
                 )
             out = tok.batch_decode(gen, skip_special_tokens=True)[0]
-            return TranslationResult(out, f"{MT.m2m_model}:draft")
+            return TranslationResult(
+                out,
+                f"{MT.m2m_model}:draft",
+                src_lang="en",
+                tgt_lang="zh",
+                duration_ms=0.0,
+            )
         except Exception as e:
             _log(f"m2m draft failed: {e}")
 
@@ -334,8 +346,20 @@ class Translator:
                     pad_token_id=getattr(tok, "pad_token_id", None),
                 )
             out = tok.batch_decode(gen, skip_special_tokens=True)[0]
-            return TranslationResult(out, f"{MT.nllb_model}:draft")
+            return TranslationResult(
+                out,
+                f"{MT.nllb_model}:draft",
+                src_lang="en",
+                tgt_lang="zh",
+                duration_ms=0.0,
+            )
         except Exception as e:
             _log(f"nllb draft failed: {e}")
 
-        return TranslationResult(text, "echo:draft")
+        return TranslationResult(
+            text,
+            "echo:draft",
+            src_lang="en",
+            tgt_lang="zh",
+            duration_ms=0.0,
+        )
