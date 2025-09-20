@@ -1,0 +1,20 @@
+name: Preexec Guard
+
+on: [push, pull_request]
+
+jobs:
+  grep-preexec:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Grep for preexec_fn
+        run: |
+          set -euo pipefail
+          if grep -RIn "preexec_fn=" loquilex | tee /tmp/preexec_matches; then
+            echo "preexec_fn occurrences found:" >&2
+            cat /tmp/preexec_matches >&2
+            exit 1
+          else
+            echo "No preexec_fn found under loquilex/"
+          fi
