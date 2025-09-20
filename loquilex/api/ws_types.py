@@ -14,6 +14,7 @@ Envelope design supports:
 
 from __future__ import annotations
 
+import os
 import time
 import uuid
 from dataclasses import dataclass, field
@@ -308,6 +309,22 @@ class SessionState:
     last_ack_seq: int = 0
     replay_buffer: Dict[int, WSEnvelope] = field(default_factory=dict)
     resume_window_sec: int = 300
+    # Rolling session storage for transcript/event history
+    _session_storage: Optional[Any] = field(default=None, init=False)
+
+    def __post_init__(self):
+        """Initialize session storage after dataclass creation."""
+        # Import here to avoid circular dependency
+        from .session_storage import SessionStorage, StorageConfig
+
+        # Configure storage based on environment or defaults
+        storage_config = StorageConfig(
+            max_commits=int(os.environ.get("LX_SESSION_MAX_COMMITS", "100")),
+            max_size_bytes=int(os.environ.get("LX_SESSION_MAX_SIZE_BYTES", str(1024 * 1024))),
+            max_age_seconds=float(os.environ.get("LX_SESSION_MAX_AGE_SECONDS", "3600.0")),
+        )
+
+        self._session_storage = SessionStorage(self.sid, storage_config)
 
     def next_seq(self) -> int:
         """Get next sequence number."""
@@ -357,6 +374,43 @@ class SessionState:
             self.replay_buffer.pop(ack_seq, None)
             if ack_seq > self.last_ack_seq:
                 self.last_ack_seq = ack_seq
+
+    def add_session_commit(self, commit_type: str, data: Dict[str, Any]) -> Optional[Any]:
+        """Add a finalized commit to session storage.
+
+        Args:
+            commit_type: Type of commit ("transcript", "translation", "status")
+            data: Commit data payload
+
+        Returns:
+            SessionCommit object if storage is available, None otherwise
+        """
+        if self._session_storage:
+            return self._session_storage.add_commit(commit_type, data, seq=self.seq)
+        return None
+
+    def get_session_snapshot(self, max_commits: int = 20) -> Optional[Dict[str, Any]]:
+        """Get session storage snapshot for rehydration.
+
+        Args:
+            max_commits: Maximum number of recent commits to include
+
+        Returns:
+            Snapshot data or None if storage not available
+        """
+        if self._session_storage:
+            return self._session_storage.get_snapshot(max_commits)
+        return None
+
+    def get_session_storage_stats(self) -> Optional[Dict[str, Any]]:
+        """Get session storage statistics.
+
+        Returns:
+            Storage stats or None if storage not available
+        """
+        if self._session_storage:
+            return self._session_storage.get_stats()
+        return None
 
 
 # New resilient comms payload types

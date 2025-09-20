@@ -87,22 +87,21 @@ def main() -> int:
     try:
         zh_warm = tr.translate_en_to_zh_draft(warmup_text_en).text
         zh_warm = post_process(zh_warm)
-        # Emit initial drafts to files if requested and print once
-        if args.live_draft_files:
-            # ensure directory exists
-            try:
-                with open(out_live_en, "w", encoding="utf-8") as f:
-                    f.write(warmup_text_en + "\n")
+    except Exception:
+        zh_warm = ""
+    # Emit initial drafts to files if requested and print once
+    if args.live_draft_files:
+        try:
+            with open(out_live_en, "w", encoding="utf-8") as f:
+                f.write(warmup_text_en + "\n")
+            if zh_warm:
                 with open(out_live_zh, "w", encoding="utf-8") as f:
                     f.write(zh_warm + "\n")
-            except Exception:
-                pass
-        print(f"EN ≫ {warmup_text_en}")
-        if zh_warm:
-            print(f"ZH* ≫ {zh_warm}")
-    except Exception:
-        pass
-
+        except Exception:
+            pass
+    print(f"EN ≫ {warmup_text_en}")
+    if zh_warm:
+        print(f"ZH* ≫ {zh_warm}")
     # Then initialize ASR
     eng = WhisperEngine()
     eng.warmup()
@@ -437,7 +436,7 @@ def main() -> int:
             except Exception:
                 pass
 
-    th_mt = threading.Thread(target=mt_worker, daemon=True)
+    th_mt = threading.Thread(target=mt_worker)
     th_mt.start()
 
     # Graceful shutdown handling

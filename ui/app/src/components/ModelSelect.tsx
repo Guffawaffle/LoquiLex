@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ASRModel, MTModel, SessionConfig } from '../types';
+import { applySettingsToSessionConfig } from '../utils/settings';
 
 export function ModelSelect() {
   const navigate = useNavigate();
@@ -27,6 +28,9 @@ export function ModelSelect() {
 
   useEffect(() => {
     loadModels();
+    // Load saved settings and apply as defaults
+    const defaultConfig = applySettingsToSessionConfig({});
+    setConfig(defaultConfig);
   }, []);
 
   const loadModels = async () => {
@@ -120,6 +124,15 @@ export function ModelSelect() {
           <p className="model-select__subtitle">
             Live captioning and translation - local-first and offline-ready
           </p>
+          <div className="model-select__nav">
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() => navigate('/settings')}
+            >
+              ⚙️ Settings
+            </button>
+          </div>
         </div>
 
         {error && (

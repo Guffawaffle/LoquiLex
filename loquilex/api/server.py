@@ -13,7 +13,7 @@ from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Requ
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from .model_discovery import list_asr_models, list_mt_models, mt_supported_languages
 from .supervisor import SessionConfig, SessionManager, StreamingSession
@@ -127,7 +127,7 @@ MANAGER = SessionManager()
 class CreateSessionReq(BaseModel):
     name: Optional[str] = Field(default=None)
     asr_model_id: str
-    mt_enabled: bool = Field(default=True)
+    mt_enabled: bool = Field(default=False)
     mt_model_id: Optional[str] = Field(default=None)
     dest_lang: str = Field(default="zho_Hans")
     device: str = Field(default="auto")  # auto|cuda|cpu
@@ -138,6 +138,16 @@ class CreateSessionReq(BaseModel):
     partial_word_cap: int = Field(default=10)
     save_audio: str = Field(default="off")  # off|wav|flac
     streaming_mode: bool = Field(default=False)  # Enable new streaming ASR pipeline
+
+    # Validate MT settings: require model id only when enabled
+    @model_validator(mode="before")
+    @classmethod
+    def _validate_mt(cls, values: Dict[str, Any]):
+        # Mirror field default: treat missing as disabled to ease minimal payloads
+        mt_enabled = values.get("mt_enabled", False)
+        if mt_enabled and not values.get("mt_model_id"):
+            raise ValueError("mt_model_id is required when mt_enabled=True")
+        return values
 
 
 class CreateSessionResp(BaseModel):
@@ -175,6 +185,57 @@ class SelfTestResp(BaseModel):
 
 # Simple profiles CRUD on disk under loquilex/ui/profiles
 PROFILES_DIR = os.path.join("loquilex", "ui", "profiles")
+
+
+@app.get("/sessions/{sid}/storage/stats")
+async def get_session_storage_stats(sid: str) -> Dict[str, Any]:
+    """Get session storage statistics."""
+    sess = MANAGER._sessions.get(sid)
+    if not sess:
+        raise HTTPException(status_code=404, detail="session not found")
+
+    if hasattr(sess, "state") and sess.state:
+        stats = sess.state.get_session_storage_stats()
+        if stats:
+            return stats
+        else:
+            raise HTTPException(status_code=503, detail="session storage not available")
+    else:
+        raise HTTPException(status_code=400, detail="session does not support storage")
+
+
+@app.get("/sessions/{sid}/storage/commits")
+async def get_session_commits(
+    sid: str,
+    limit: Optional[int] = None,
+    commit_type: Optional[str] = None,
+    since_timestamp: Optional[float] = None,
+) -> Dict[str, Any]:
+    """Get session commits with optional filtering."""
+    sess = MANAGER._sessions.get(sid)
+    if not sess:
+        raise HTTPException(status_code=404, detail="session not found")
+
+    if hasattr(sess, "state") and sess.state and sess.state._session_storage:
+        commits = sess.state._session_storage.get_commits(
+            limit=limit, commit_type=commit_type, since_timestamp=since_timestamp
+        )
+        return {
+            "session_id": sid,
+            "commits": [
+                {
+                    "id": c.id,
+                    "timestamp": c.timestamp,
+                    "seq": c.seq,
+                    "type": c.commit_type,
+                    "data": c.data,
+                }
+                for c in commits
+            ],
+            "total_returned": len(commits),
+        }
+    else:
+        raise HTTPException(status_code=400, detail="session does not support storage")
 
 
 @app.get("/profiles")
@@ -451,6 +512,14 @@ async def get_snapshot(sid: str) -> Dict[str, Any]:
         except Exception:
             pass  # MT status is optional
 
+    # Get session storage snapshot if available
+    session_storage_snapshot = None
+    if hasattr(sess, "state") and sess.state:
+        try:
+            session_storage_snapshot = sess.state.get_session_snapshot()
+        except Exception:
+            pass  # Session storage is optional
+
     # Determine status correctly for both regular and streaming sessions
     if hasattr(sess, "_audio_thread") and sess._audio_thread is not None:
         # Streaming session - check audio thread
@@ -474,6 +543,9 @@ async def get_snapshot(sid: str) -> Dict[str, Any]:
 
     if mt_status:
         base_snapshot["mt"] = mt_status
+
+    if session_storage_snapshot:
+        base_snapshot["session_storage"] = session_storage_snapshot
 
     return base_snapshot
 

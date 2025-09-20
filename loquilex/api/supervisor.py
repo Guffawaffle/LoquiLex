@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import weakref
 import os
 import queue
 import signal
@@ -16,9 +17,27 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 
 from fastapi import WebSocket
 
+
+def _session_manager_finalize_stop(self_proxy: Any) -> None:
+    """Module-level finalizer that doesn't keep strong refs to self."""
+    try:
+        setattr(self_proxy, "_stop", True)
+        sessions = (getattr(self_proxy, "_sessions", {}) or {}).values()
+        for sess in sessions:
+            try:
+                stop = getattr(sess, "stop", None)
+                if callable(stop):
+                    stop()
+            except Exception:
+                pass
+    except Exception:
+        pass
+
+
 from .events import EventStamper
 from .ws_protocol import WSProtocolManager
 from .ws_types import MessageType, HeartbeatConfig, ServerLimits
+from ..logging import PerformanceMetrics, create_logger
 
 logger = logging.getLogger(__name__)
 
@@ -49,6 +68,24 @@ class StreamingSession:
         # MT integration
         self.mt_integration: Optional[Any] = None  # MTIntegration
 
+    async def __aenter__(self):
+        """Support async context manager for automatic cleanup."""
+        return self
+
+    async def __aexit__(self, exc_type, exc, tb):
+        """Ensure cleanup when exiting context manager."""
+        self.stop()
+
+    def __del__(self):
+        """Destructor to ensure cleanup if not already done."""
+        # If audio thread is still running, set stop event and attempt join
+        if self._audio_thread and self._audio_thread.is_alive():
+            self._stop_evt.set()
+            try:
+                self._audio_thread.join(timeout=1.0)
+            except Exception:
+                pass
+
     def set_broadcast_fn(self, broadcast_fn) -> None:
         """Set the broadcast function for emitting events."""
         self._broadcast_fn = broadcast_fn
@@ -59,15 +96,36 @@ class StreamingSession:
 
     def _schedule_broadcast(self, event: Dict[str, Any]) -> None:
         """Safely schedule a broadcast coroutine from any thread."""
-        if self._event_loop is None or self._broadcast_fn is None:
-            print("[StreamingSession] dropping event (no loop or broadcast_fn)")
+        loop = self._event_loop
+        if loop is None or self._broadcast_fn is None:
+            return
+        # Avoid scheduling onto a closed loop during teardown
+        # Assume open if loop lacks is_closed (e.g., mock in tests)
+        if getattr(loop, "is_closed", lambda: False)():
             return
 
-        # Ensure _broadcast_fn returns a coroutine
-        def coro():
-            return self._broadcast_fn(self.sid, event)
+        # Capture the broadcast function into a local variable so mypy
+        # understands it's not None inside the nested invoker.
+        broadcast_fn = self._broadcast_fn
 
-        self._event_loop.call_soon_threadsafe(lambda: asyncio.create_task(coro()))
+        def _invoke() -> None:
+            try:
+                result = broadcast_fn(self.sid, event)
+                if asyncio.iscoroutine(result):
+                    try:
+                        asyncio.get_running_loop().create_task(result)
+                    except RuntimeError:
+                        # No running loop available; drop
+                        pass
+            except Exception:
+                # Swallow exceptions during teardown
+                pass
+
+        try:
+            loop.call_soon_threadsafe(_invoke)
+        except RuntimeError:
+            # Event loop may be closing; drop silently
+            pass
 
     def start(self) -> None:
         """Start the streaming ASR session."""
@@ -162,7 +220,7 @@ class StreamingSession:
                         except Exception:
                             logger.exception("stop_capture failed")
 
-            self._audio_thread = threading.Thread(target=audio_worker, daemon=True)
+            self._audio_thread = threading.Thread(target=audio_worker)
             self._audio_thread.start()
 
         except Exception as e:
@@ -277,10 +335,10 @@ class StreamingSession:
 
 @dataclass
 class SessionConfig:
+    # required (no defaults)
     name: str
     asr_model_id: str
     mt_enabled: bool
-    mt_model_id: Optional[str]
     dest_lang: str
     device: str
     vad: bool
@@ -289,8 +347,15 @@ class SessionConfig:
     segment_max_sec: float
     partial_word_cap: int
     save_audio: str
+    # optional (with defaults) — MUST come after all required fields
+    mt_model_id: Optional[str] = None
     # New streaming mode flag
     streaming_mode: bool = False
+
+    def __post_init__(self) -> None:
+        # Require mt_model_id only when MT is enabled
+        if self.mt_enabled and not self.mt_model_id:
+            raise ValueError("mt_model_id is required when mt_enabled=True")
 
 
 class Session:
@@ -303,6 +368,31 @@ class Session:
         self.queue: "queue.Queue[str]" = queue.Queue(maxsize=1000)
         self._reader_thread: Optional[threading.Thread] = None
         self.stamper = EventStamper.new()
+
+    async def __aenter__(self):
+        """Support async context manager for automatic cleanup."""
+        return self
+
+    async def __aexit__(self, exc_type, exc, tb):
+        """Ensure cleanup when exiting context manager."""
+        self.stop()
+
+    def __del__(self):
+        """Destructor to ensure cleanup if not already done."""
+        # Stop subprocess if still running
+        if self.proc and self.proc.poll() is None:
+            self._stop_evt.set()
+            try:
+                self.proc.terminate()
+            except Exception:
+                pass
+        # Join reader thread
+        if self._reader_thread and self._reader_thread.is_alive():
+            self._stop_evt.set()
+            try:
+                self._reader_thread.join(timeout=1.0)
+            except Exception:
+                pass
 
     def start(self) -> None:
         env = os.environ.copy()
@@ -317,12 +407,18 @@ class Session:
         env["LX_SAVE_AUDIO"] = self.cfg.save_audio
 
         script = [sys.executable, "-m", "loquilex.cli.live_en_to_zh", "--seconds", "-1"]
+        creationflags = 0
+        if os.name == "nt":
+            # Windows: create new process group to enable CTRL_BREAK_EVENT
+            creationflags = getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
+        # POSIX: rely on start_new_session=True for killpg compatibility
         self.proc = subprocess.Popen(
             script,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             env=env,
-            start_new_session=True,
+            start_new_session=(os.name != "nt"),
+            creationflags=creationflags,
         )
 
         def _reader() -> None:
@@ -345,23 +441,43 @@ class Session:
                     except Exception:
                         pass
 
-        self._reader_thread = threading.Thread(target=_reader, daemon=True)
+        self._reader_thread = threading.Thread(target=_reader)
         self._reader_thread.start()
 
     def stop(self) -> None:
         if self.proc and self.proc.poll() is None:
             try:
-                try:
-                    os.killpg(self.proc.pid, signal.SIGTERM)
-                except Exception:
-                    self.proc.terminate()
+                if os.name == "nt":
+                    try:
+                        self.proc.send_signal(getattr(signal, "CTRL_BREAK_EVENT", signal.SIGTERM))
+                    except Exception:
+                        self.proc.terminate()
+                else:
+                    try:
+                        pgid = os.getpgid(self.proc.pid)
+                    except Exception:
+                        pgid = None
+                    if pgid and pgid == self.proc.pid:
+                        try:
+                            os.killpg(pgid, signal.SIGTERM)
+                        except Exception:
+                            self.proc.terminate()
+                    else:
+                        self.proc.terminate()
                 try:
                     self.proc.wait(timeout=3)
                 except subprocess.TimeoutExpired:
-                    try:
-                        os.killpg(self.proc.pid, signal.SIGKILL)
-                    except Exception:
+                    if os.name == "nt":
                         self.proc.kill()
+                    else:
+                        try:
+                            pgid = os.getpgid(self.proc.pid)
+                        except Exception:
+                            pgid = None
+                        if pgid and pgid == self.proc.pid:
+                            os.killpg(pgid, signal.SIGKILL)
+                        else:
+                            self.proc.kill()
             except Exception:
                 pass
         self._stop_evt.set()
@@ -375,21 +491,39 @@ class Session:
         # Send SIGSTOP to process group to pause audio ingest and decoding
         if self.proc and self.proc.poll() is None:
             try:
-                os.killpg(self.proc.pid, signal.SIGSTOP)
+                pgid = None
+                try:
+                    pgid = os.getpgid(self.proc.pid)
+                except Exception:
+                    pass
+                if pgid and pgid == self.proc.pid:
+                    os.killpg(pgid, signal.SIGSTOP)
             except Exception:
                 pass
 
     def resume(self) -> None:
         if self.proc and self.proc.poll() is None:
             try:
-                os.killpg(self.proc.pid, signal.SIGCONT)
+                pgid = None
+                try:
+                    pgid = os.getpgid(self.proc.pid)
+                except Exception:
+                    pass
+                if pgid and pgid == self.proc.pid:
+                    os.killpg(pgid, signal.SIGCONT)
             except Exception:
                 pass
 
     def finalize_now(self) -> None:
         if self.proc and self.proc.poll() is None:
             try:
-                os.killpg(self.proc.pid, signal.SIGUSR1)
+                pgid = None
+                try:
+                    pgid = os.getpgid(self.proc.pid)
+                except Exception:
+                    pass
+                if pgid and pgid == self.proc.pid:
+                    os.killpg(pgid, signal.SIGUSR1)
             except Exception:
                 pass
 
@@ -420,45 +554,143 @@ class SessionManager:
             max_msg_bytes=int(os.getenv("LX_WS_MAX_MSG_BYTES", "131072")),
         )
 
-        t = threading.Thread(target=self._log_pump, daemon=True)
+        # Initialize structured logging and metrics
+        self.logger = create_logger(
+            component="session_manager",
+            session_id="supervisor",
+        )
+        self.metrics = PerformanceMetrics(
+            logger=self.logger,
+            component="session_manager",
+        )
+
+        # Set performance thresholds
+        self.metrics.set_threshold("session_startup_time", warning=5000.0, critical=15000.0)
+        self.metrics.set_threshold("websocket_message_latency", warning=100.0, critical=500.0)
+
+        self.logger.info(
+            "SessionManager initialized",
+            max_cuda_sessions=self._max_cuda_sessions,
+            websocket_config={
+                "heartbeat_interval_ms": self._default_hb_config.interval_ms,
+                "heartbeat_timeout_ms": self._default_hb_config.timeout_ms,
+                "max_in_flight": self._default_limits.max_in_flight,
+                "max_msg_bytes": self._default_limits.max_msg_bytes,
+            },
+        )
+
+        def _bg_runner(self_ref: Any) -> None:
+            try:
+                mgr = self_ref()
+                if mgr is None:
+                    return
+                mgr._log_pump()
+            except Exception:
+                pass
+
+        t = threading.Thread(target=_bg_runner, args=(weakref.ref(self),))
+        t.daemon = True
         t.start()
         self._bg_threads.append(t)
+
+        # Register finalizer to ensure best-effort stop on GC
+        # Declare attribute as Optional[Any] so assigning None is compatible
+        # with static type checkers when finalizer registration fails.
+        self._finalizer: Optional[Any] = None
+        try:
+            self._finalizer = weakref.finalize(
+                self, _session_manager_finalize_stop, weakref.proxy(self)
+            )
+        except Exception:
+            self._finalizer = None
 
     def start_session(self, cfg: SessionConfig) -> str:
         if cfg.device == "cuda":
             with self._lock:
                 running_cuda = sum(1 for s in self._sessions.values() if s.cfg.device == "cuda")
             if running_cuda >= self._max_cuda_sessions:
-                raise RuntimeError("GPU busy: maximum concurrent CUDA sessions reached")
+                raise RuntimeError("GPU busy: maximum concgurrent CUDA sessions reached")
 
         sid = str(uuid.uuid4())
         run_dir = Path("loquilex/out") / sid
         run_dir.mkdir(parents=True, exist_ok=True)
 
-        # Choose session type based on streaming_mode flag
-        sess: Union[Session, StreamingSession]
-        if cfg.streaming_mode:
-            sess = StreamingSession(sid, cfg, run_dir)
-            sess.set_broadcast_fn(self._broadcast)
-        else:
-            sess = Session(sid, cfg, run_dir)
+        self.logger.info("Starting session", session_id=sid, config=cfg.__dict__)
+        self.metrics.start_timer(f"session_startup_{sid}")
 
-        sess.start()
+        try:
+            # Choose session type based on streaming_mode flag
+            sess: Union[Session, StreamingSession]
+            if cfg.streaming_mode:
+                sess = StreamingSession(sid, cfg, run_dir)
+                sess.set_broadcast_fn(self._broadcast)
+                session_type = "streaming"
+            else:
+                sess = Session(sid, cfg, run_dir)
+                session_type = "subprocess"
 
-        with self._lock:
-            self._sessions[sid] = sess
-            self._stampers[sid] = sess.stamper
+            sess.start()
 
-        asyncio.create_task(self._broadcast(sid, {"type": "status", "stage": "initializing"}))
-        return sid
+            with self._lock:
+                self._sessions[sid] = sess
+                self._stampers[sid] = sess.stamper
+
+            startup_time_ms = self.metrics.end_timer(f"session_startup_{sid}")
+            self.metrics.increment_counter("sessions_started")
+            self.metrics.set_gauge("active_sessions", len(self._sessions))
+
+            self.logger.info(
+                "Session started successfully",
+                session_id=sid,
+                session_type=session_type,
+                startup_time_ms=startup_time_ms,
+                total_sessions=len(self._sessions),
+                run_dir=str(run_dir),
+            )
+
+            try:
+                loop = asyncio.get_running_loop()
+                loop.create_task(self._broadcast(sid, {"type": "status", "stage": "initializing"}))
+            except RuntimeError:
+                # No running loop in this context; best-effort skip
+                pass
+            return sid
+
+        except Exception as e:
+            self.logger.error(
+                "Failed to start session",
+                session_id=sid,
+                error=str(e),
+                config=cfg.__dict__,
+            )
+            self.metrics.increment_counter("session_start_failures")
+            raise
 
     def stop_session(self, sid: str) -> bool:
+        self.logger.info("Stopping session", session_id=sid)
+
         with self._lock:
             sess = self._sessions.pop(sid, None)
+
         if not sess:
+            self.logger.warning("Attempted to stop non-existent session", session_id=sid)
             return False
+
         sess.stop()
-        asyncio.create_task(self._broadcast(sid, {"type": "status", "stage": "stopped"}))
+        self.metrics.increment_counter("sessions_stopped")
+        self.metrics.set_gauge("active_sessions", len(self._sessions))
+
+        self.logger.info(
+            "Session stopped successfully",
+            session_id=sid,
+            total_sessions=len(self._sessions),
+        )
+
+        try:
+            loop = asyncio.get_running_loop()
+            loop.create_task(self._broadcast(sid, {"type": "status", "stage": "stopped"}))
+        except RuntimeError:
+            pass
         return True
 
     async def register_ws(self, sid: str, ws: WebSocket) -> None:
@@ -499,6 +731,8 @@ class SessionManager:
         """Cleanup callback for protocol manager."""
         with self._lock:
             self._ws_protocols.pop(sid, None)
+            # Also drop legacy list to avoid leaks when unregister isn't called
+            self._ws.pop(sid, None)
 
     async def _get_session_snapshot(self, sid: str) -> Optional[Dict[str, Any]]:
         """Get session snapshot data for resume functionality."""
@@ -583,6 +817,17 @@ class SessionManager:
             except Exception:
                 pass
 
+    def _safe_broadcast(self, sid: str, payload: Dict[str, Any]) -> None:
+        """Best-effort schedule of a broadcast without requiring a running loop.
+        Drops silently if no event loop is running (e.g., during shutdown or
+        when called from sync/test contexts).
+        """
+        try:
+            loop = asyncio.get_running_loop()
+            loop.create_task(self._broadcast(sid, payload))
+        except RuntimeError:
+            pass
+
     def _log_pump(self) -> None:
         while not self._stop:
             time.sleep(0.2)
@@ -622,64 +867,48 @@ class SessionManager:
                         payload = {"type": "status", "stage": "operational", "log": text}
                     else:
                         payload = {"type": "status", "log": text}
-                    try:
-                        asyncio.run(self._broadcast(sid, payload))
-                    except RuntimeError:
-                        loop = asyncio.get_event_loop()
-                        loop.create_task(self._broadcast(sid, payload))
+                    self._safe_broadcast(sid, payload)
 
     # Download management
     def start_download_job(self, job_id: str, repo_id: str, _typ: str) -> None:
-        t = threading.Thread(
-            target=self._download_worker, args=(job_id, repo_id, _typ), daemon=True
-        )
+        t = threading.Thread(target=self._download_worker, args=(job_id, repo_id, _typ))
         t.start()
         self._bg_threads.append(t)
 
     def _download_worker(self, job_id: str, repo_id: str, _typ: str) -> None:
         chan = f"_download/{job_id}"
-        try:
-            asyncio.run(
-                self._broadcast(
-                    chan,
-                    {"type": "download_progress", "job_id": job_id, "repo_id": repo_id, "pct": 0},
-                )
-            )
-        except RuntimeError:
-            loop = asyncio.get_event_loop()
-            loop.create_task(
-                self._broadcast(
-                    chan,
-                    {"type": "download_progress", "job_id": job_id, "repo_id": repo_id, "pct": 0},
-                )
-            )
-
-        code = (
-            "from huggingface_hub import snapshot_download;"
-            f"p=snapshot_download('{repo_id}', local_dir=None);"
-            "print(p)"
+        # Initial progress
+        self._safe_broadcast(
+            chan,
+            {"type": "download_progress", "job_id": job_id, "repo_id": repo_id, "pct": 0},
         )
+
+        # Launch downloader subprocess
         try:
+            creationflags = (
+                getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0) if os.name == "nt" else 0
+            )
+            start_new_session = os.name != "nt"
             proc = subprocess.Popen(
-                [sys.executable, "-c", code],
+                [
+                    sys.executable,
+                    "-c",
+                    (
+                        "from huggingface_hub import snapshot_download; import sys; "
+                        "p = snapshot_download(sys.argv[1], local_dir=None); print(p)"
+                    ),
+                    "--",
+                    repo_id,
+                ],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
-                start_new_session=True,
+                start_new_session=start_new_session,
+                creationflags=creationflags,
             )
         except Exception as e:
-            try:
-                asyncio.run(
-                    self._broadcast(
-                        chan, {"type": "download_error", "job_id": job_id, "message": str(e)}
-                    )
-                )
-            except RuntimeError:
-                loop = asyncio.get_event_loop()
-                loop.create_task(
-                    self._broadcast(
-                        chan, {"type": "download_error", "job_id": job_id, "message": str(e)}
-                    )
-                )
+            self._safe_broadcast(
+                chan, {"type": "download_error", "job_id": job_id, "message": str(e)}
+            )
             return
 
         with self._lock:
@@ -687,40 +916,26 @@ class SessionManager:
             if chan not in self._stampers:
                 self._stampers[chan] = EventStamper.new()
 
+        # Heartbeat thread emitting progress
         def heartbeats() -> None:
             pct = 0
             while proc.poll() is None and not self._stop:
-                try:
-                    asyncio.run(
-                        self._broadcast(
-                            chan,
-                            {
-                                "type": "download_progress",
-                                "job_id": job_id,
-                                "repo_id": repo_id,
-                                "pct": pct,
-                            },
-                        )
-                    )
-                except RuntimeError:
-                    loop = asyncio.get_event_loop()
-                    loop.create_task(
-                        self._broadcast(
-                            chan,
-                            {
-                                "type": "download_progress",
-                                "job_id": job_id,
-                                "repo_id": repo_id,
-                                "pct": pct,
-                            },
-                        )
-                    )
+                self._safe_broadcast(
+                    chan,
+                    {
+                        "type": "download_progress",
+                        "job_id": job_id,
+                        "repo_id": repo_id,
+                        "pct": pct,
+                    },
+                )
                 pct = min(99, pct + 1)
                 time.sleep(1.0)
 
-        hb = threading.Thread(target=heartbeats, daemon=True)
+        hb = threading.Thread(target=heartbeats)
         hb.start()
 
+        # Read output and wait
         out = ""
         try:
             if proc.stdout:
@@ -733,36 +948,20 @@ class SessionManager:
             with self._lock:
                 self._dl_procs.pop(job_id, None)
 
+        try:
+            hb.join(timeout=1.0)
+        except Exception:
+            pass
+
+        # Final status
         if ret == 0:
-            try:
-                asyncio.run(
-                    self._broadcast(
-                        chan, {"type": "download_done", "job_id": job_id, "local_path": out}
-                    )
-                )
-            except RuntimeError:
-                loop = asyncio.get_event_loop()
-                loop.create_task(
-                    self._broadcast(
-                        chan, {"type": "download_done", "job_id": job_id, "local_path": out}
-                    )
-                )
+            self._safe_broadcast(
+                chan, {"type": "download_done", "job_id": job_id, "local_path": out}
+            )
         else:
-            try:
-                asyncio.run(
-                    self._broadcast(
-                        chan,
-                        {"type": "download_error", "job_id": job_id, "message": out or f"rc={ret}"},
-                    )
-                )
-            except RuntimeError:
-                loop = asyncio.get_event_loop()
-                loop.create_task(
-                    self._broadcast(
-                        chan,
-                        {"type": "download_error", "job_id": job_id, "message": out or f"rc={ret}"},
-                    )
-                )
+            self._safe_broadcast(
+                chan, {"type": "download_error", "job_id": job_id, "message": out or f"rc={ret}"}
+            )
 
     def cancel_download(self, job_id: str) -> bool:
         with self._lock:
@@ -770,11 +969,37 @@ class SessionManager:
         if not proc or proc.poll() is not None:
             return False
         try:
-            os.killpg(proc.pid, signal.SIGTERM)
+            if os.name == "nt":
+                try:
+                    proc.send_signal(getattr(signal, "CTRL_BREAK_EVENT", signal.SIGTERM))
+                except Exception:
+                    proc.terminate()
+            else:
+                try:
+                    pgid = os.getpgid(proc.pid)
+                except Exception:
+                    pgid = None
+                if pgid and pgid == proc.pid:
+                    try:
+                        os.killpg(pgid, signal.SIGTERM)
+                    except Exception:
+                        proc.terminate()
+                else:
+                    proc.terminate()
             try:
                 proc.wait(timeout=3)
             except subprocess.TimeoutExpired:
-                os.killpg(proc.pid, signal.SIGKILL)
+                if os.name == "nt":
+                    proc.kill()
+                else:
+                    try:
+                        pgid = os.getpgid(proc.pid)
+                    except Exception:
+                        pgid = None
+                    if pgid and pgid == proc.pid:
+                        os.killpg(pgid, signal.SIGKILL)
+                    else:
+                        proc.kill()
             return True
         except Exception:
             try:
@@ -782,3 +1007,57 @@ class SessionManager:
                 return True
             except Exception:
                 return False
+
+    async def shutdown(self) -> None:
+        """Shutdown all sessions and cleanup resources."""
+        logger.info("SessionManager shutdown initiated")
+
+        # Stop flag to halt background threads
+        self._stop = True
+
+        # Stop all active sessions
+        with self._lock:
+            session_ids = list(self._sessions.keys())
+
+        for sid in session_ids:
+            try:
+                self.stop_session(sid)
+            except Exception as e:
+                logger.warning(f"Error stopping session {sid}: {e}")
+
+        # Close all WebSocket protocol managers
+        with self._lock:
+            protocol_managers = list(self._ws_protocols.values())
+
+        for protocol_manager in protocol_managers:
+            try:
+                await protocol_manager.close()
+            except Exception as e:
+                logger.warning(f"Error closing protocol manager: {e}")
+
+        # Cancel all download processes
+        with self._lock:
+            download_procs = list(self._dl_procs.items())
+
+        for job_id, proc in download_procs:
+            try:
+                self.cancel_download(job_id)
+            except Exception as e:
+                logger.warning(f"Error canceling download {job_id}: {e}")
+
+        # Wait for background threads to finish
+        for thread in self._bg_threads:
+            if thread.is_alive():
+                try:
+                    thread.join(timeout=3.0)
+                except Exception as e:
+                    logger.warning(f"Error joining background thread: {e}")
+
+        logger.info("SessionManager shutdown completed")
+
+    def __del__(self):
+        """Best-effort, non-async cleanup for tests; no heavy work."""
+        try:
+            _session_manager_finalize_stop(self)
+        except Exception:
+            pass

@@ -2,9 +2,10 @@ from __future__ import annotations
 
 import contextlib
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Optional
 
 from loquilex.config.defaults import MT, pick_device
+from ..logging import PerformanceMetrics, create_logger
 
 
 from typing import Any
@@ -48,10 +49,14 @@ def _dtype_kwargs(torch_mod, device_str: str):
 class TranslationResult:
     text: str
     model: str
+    src_lang: str
+    tgt_lang: str
+    duration_ms: float
+    confidence: Optional[float] = None
 
 
 class Translator:
-    def __init__(self) -> None:
+    def __init__(self, session_id: Optional[str] = None) -> None:
         device, _ = pick_device()
         self.device_str = device
         is_cuda = False
@@ -64,40 +69,117 @@ class Translator:
         self._nllb = None
         self._m2m = None
 
+        # Initialize structured logging and metrics
+        self.logger = create_logger(
+            component="mt_translator",
+            session_id=session_id,
+        )
+        self.metrics = PerformanceMetrics(
+            logger=self.logger,
+            component="mt_translator",
+        )
+
+        # Set performance thresholds for MT latency
+        self.metrics.set_threshold("translation_latency", warning=1500.0, critical=3000.0)
+        self.metrics.set_threshold("model_load_time", warning=10000.0, critical=30000.0)
+
+        self.logger.info(
+            "Translator initialized",
+            device=self.device_str,
+            torch_device=self.torch_device,
+            cuda_available=is_cuda,
+        )
+
     def _load_nllb(self):
         if self._nllb is None:
-            from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
+            self.logger.info("Loading NLLB model", model=MT.nllb_model)
+            self.metrics.start_timer("model_load_nllb")
 
-            tok = AutoTokenizer.from_pretrained(MT.nllb_model, use_safetensors=True)
-            model = AutoModelForSeq2SeqLM.from_pretrained(
-                MT.nllb_model,
-                device_map=None,
-                **_dtype_kwargs(torch, self.torch_device),
-            )
-            model.to(self.torch_device).eval()
-            self._nllb = (tok, model)
-            _log(f"loaded={MT.nllb_model}")
+            try:
+                from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
+
+                tok = AutoTokenizer.from_pretrained(MT.nllb_model, use_safetensors=True)
+                model = AutoModelForSeq2SeqLM.from_pretrained(
+                    MT.nllb_model,
+                    device_map=None,
+                    **_dtype_kwargs(torch, self.torch_device),
+                )
+                model.to(self.torch_device).eval()
+                self._nllb = (tok, model)
+
+                load_time_ms = self.metrics.end_timer("model_load_nllb")
+                self.logger.info(
+                    "NLLB model loaded successfully",
+                    model=MT.nllb_model,
+                    load_time_ms=load_time_ms,
+                    device=self.torch_device,
+                )
+                _log(f"loaded={MT.nllb_model}")
+
+            except Exception as e:
+                self.logger.error(
+                    "Failed to load NLLB model",
+                    model=MT.nllb_model,
+                    error=str(e),
+                )
+                raise
         return self._nllb
 
     def _load_m2m(self):
         if self._m2m is None:
-            from transformers import M2M100ForConditionalGeneration, M2M100Tokenizer
+            self.logger.info("Loading M2M model", model=MT.m2m_model)
+            self.metrics.start_timer("model_load_m2m")
 
-            tok = M2M100Tokenizer.from_pretrained(MT.m2m_model, use_safetensors=True)
-            model = M2M100ForConditionalGeneration.from_pretrained(
-                MT.m2m_model,
-                device_map=None,
-                **_dtype_kwargs(torch, self.torch_device),
-            )
-            model.to(self.torch_device).eval()
-            self._m2m = (tok, model)
-            _log(f"loaded={MT.m2m_model}")
+            try:
+                from transformers import M2M100ForConditionalGeneration, M2M100Tokenizer
+
+                tok = M2M100Tokenizer.from_pretrained(MT.m2m_model, use_safetensors=True)
+                model = M2M100ForConditionalGeneration.from_pretrained(
+                    MT.m2m_model,
+                    device_map=None,
+                    **_dtype_kwargs(torch, self.torch_device),
+                )
+                model.to(self.torch_device).eval()
+                self._m2m = (tok, model)
+
+                load_time_ms = self.metrics.end_timer("model_load_m2m")
+                self.logger.info(
+                    "M2M model loaded successfully",
+                    model=MT.m2m_model,
+                    load_time_ms=load_time_ms,
+                    device=self.torch_device,
+                )
+                _log(f"loaded={MT.m2m_model}")
+
+            except Exception as e:
+                self.logger.error(
+                    "Failed to load M2M model",
+                    model=MT.m2m_model,
+                    error=str(e),
+                )
+                raise
         return self._m2m
 
     def translate_en_to_zh(self, text: str) -> TranslationResult:
         text = text.strip()
         if not text:
-            return TranslationResult("", "echo")
+            return TranslationResult(
+                "",
+                "echo",
+                src_lang="en",
+                tgt_lang="zh",
+                duration_ms=0.0,
+            )
+
+        self.logger.debug(
+            "Starting translation",
+            text_length=len(text),
+            src_lang="en",
+            tgt_lang="zh",
+        )
+
+        self.metrics.start_timer("translation_latency")
+
         # Try NLLB first
         try:
             tok, model = self._load_nllb()
@@ -114,9 +196,35 @@ class Translator:
                     max_new_tokens=MT.max_new_tokens,
                 )
             out = tok.batch_decode(gen, skip_special_tokens=True)[0]
-            return TranslationResult(out, MT.nllb_model)
+
+            duration_ms = self.metrics.end_timer("translation_latency")
+            self.metrics.increment_counter("translations_success")
+
+            result = TranslationResult(
+                out,
+                MT.nllb_model,
+                src_lang="en",
+                tgt_lang="zh",
+                duration_ms=duration_ms,
+            )
+
+            self.logger.info(
+                "Translation completed successfully",
+                method="nllb",
+                input_length=len(text),
+                output_length=len(out),
+                duration_ms=duration_ms,
+            )
+
+            return result
+
         except Exception as e:
-            _log(f"nllb failed: {e}")
+            self.logger.warning(
+                "NLLB translation failed, trying M2M",
+                error=str(e),
+                text_length=len(text),
+            )
+            self.metrics.increment_counter("nllb_failures")
 
         # Fallback M2M
         try:
@@ -134,12 +242,45 @@ class Translator:
                     max_new_tokens=MT.max_new_tokens,
                 )
             out = tok.batch_decode(gen, skip_special_tokens=True)[0]
-            return TranslationResult(out, MT.m2m_model)
+
+            duration_ms = self.metrics.end_timer("translation_latency")
+            self.metrics.increment_counter("translations_success")
+
+            result = TranslationResult(
+                out,
+                MT.m2m_model,
+                src_lang="en",
+                tgt_lang="zh",
+                duration_ms=duration_ms,
+            )
+
+            self.logger.info(
+                "Translation completed successfully",
+                method="m2m",
+                input_length=len(text),
+                output_length=len(out),
+                duration_ms=duration_ms,
+            )
+
+            return result
+
         except Exception as e:
-            _log(f"m2m failed: {e}")
+            self.logger.error(
+                "Both NLLB and M2M translation failed",
+                error=str(e),
+                text_length=len(text),
+            )
+            self.metrics.increment_counter("translations_failed")
+            duration_ms = self.metrics.end_timer("translation_latency")
 
         # Echo fallback
-        return TranslationResult(text, "echo")
+        return TranslationResult(
+            text,
+            "echo",
+            src_lang="en",
+            tgt_lang="zh",
+            duration_ms=duration_ms,
+        )
 
     def translate_en_to_zh_draft(self, text: str) -> TranslationResult:
         """Low-latency 'draft' translation for live partials.
@@ -149,7 +290,13 @@ class Translator:
         """
         text = text.strip()
         if not text:
-            return TranslationResult("", "echo")
+            return TranslationResult(
+                "",
+                "echo",
+                src_lang="en",
+                tgt_lang="zh",
+                duration_ms=0.0,
+            )
 
         # Draft via M2M
         try:
@@ -169,7 +316,13 @@ class Translator:
                     pad_token_id=getattr(tok, "pad_token_id", None),
                 )
             out = tok.batch_decode(gen, skip_special_tokens=True)[0]
-            return TranslationResult(out, f"{MT.m2m_model}:draft")
+            return TranslationResult(
+                out,
+                f"{MT.m2m_model}:draft",
+                src_lang="en",
+                tgt_lang="zh",
+                duration_ms=0.0,
+            )
         except Exception as e:
             _log(f"m2m draft failed: {e}")
 
@@ -191,8 +344,20 @@ class Translator:
                     pad_token_id=getattr(tok, "pad_token_id", None),
                 )
             out = tok.batch_decode(gen, skip_special_tokens=True)[0]
-            return TranslationResult(out, f"{MT.nllb_model}:draft")
+            return TranslationResult(
+                out,
+                f"{MT.nllb_model}:draft",
+                src_lang="en",
+                tgt_lang="zh",
+                duration_ms=0.0,
+            )
         except Exception as e:
             _log(f"nllb draft failed: {e}")
 
-        return TranslationResult(text, "echo:draft")
+        return TranslationResult(
+            text,
+            "echo:draft",
+            src_lang="en",
+            tgt_lang="zh",
+            duration_ms=0.0,
+        )

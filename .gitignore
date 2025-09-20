@@ -10,6 +10,7 @@ loquilex.egg-info/
 
 .direnv/
 .venv/
+.venv-*/
 .env
 .env.*
 build/
@@ -48,5 +49,5 @@ ui/app/.vite/
 ui/app/playwright-report/
 ui/app/test-results/
 
-# Local drop zone (symlink to D:)
-/dropoff
+# Local gitignores
+.gitignore.local

@@ -35,6 +35,22 @@ class RollingTextFile:
         if ensure_dir:
             _ensure_parent_dir(self.path)
 
+    def __enter__(self):
+        """Support context manager for automatic cleanup."""
+        return self
+
+    def __exit__(self, exc_type, exc, tb):
+        """Cleanup when exiting context manager."""
+        # For file-based operations, no explicit cleanup needed
+        # as we use atomic writes with proper context managers
+        pass
+
+    def __del__(self):
+        """Destructor to ensure cleanup if not already done."""
+        # No explicit cleanup needed for file operations
+        # as we use atomic writes with proper context managers
+        pass
+
     # Utilities
     def _serialize(self, draft: Optional[str]) -> str:
         parts: List[str] = []

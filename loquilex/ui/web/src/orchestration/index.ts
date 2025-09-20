@@ -24,6 +24,9 @@ export * from './worker/worker-channel'
 // ===== Store Helpers =====
 export * from './store/helpers'
 
+// ===== Structured Logging =====
+export * from './logging'
+
 // ===== Convenience Re-exports =====
 
 import { 
@@ -49,6 +52,7 @@ import {
   isSuccess,
   isError
 } from './store/helpers'
+import { createLogger, PerformanceMetrics } from './logging'
 
 // Re-export for convenience
 export {
@@ -69,7 +73,9 @@ export {
   createErrorOperation,
   isLoading,
   isSuccess,
-  isError
+  isError,
+  createLogger,
+  PerformanceMetrics
 }
 
 // ===== Version Information =====
@@ -104,5 +110,15 @@ export const DEFAULT_CONFIGS = {
     maxHz: 5,
     leading: true,
     trailing: true
+  },
+  logging: {
+    console_enabled: true,
+    local_storage_key: 'loquilex_ui_logs',
+    performance_window_size: 1000,
+    thresholds: {
+      websocket_latency: { warning: 100, critical: 500 },
+      http_latency: { warning: 1000, critical: 5000 },
+      render_time: { warning: 16, critical: 100 }
+    }
   }
 } as const

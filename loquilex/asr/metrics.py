@@ -7,6 +7,8 @@ from collections import deque
 from dataclasses import dataclass, field
 from typing import Any, Deque, Dict, Optional
 
+from ..logging import StructuredLogger, PerformanceMetrics, create_logger
+
 __all__ = ["ASRMetrics"]
 
 
@@ -57,11 +59,23 @@ class LatencyMetrics:
 class ASRMetrics:
     """Collect and report ASR performance metrics."""
 
-    def __init__(self, stream_id: str) -> None:
+    def __init__(self, stream_id: str, logger: Optional[StructuredLogger] = None) -> None:
         self.stream_id = stream_id
         self.start_time = time.monotonic()
 
-        # Latency tracking
+        # Initialize structured logger
+        self.logger = logger or create_logger(
+            component="asr_metrics",
+            session_id=stream_id,
+        )
+
+        # Initialize performance metrics
+        self.perf_metrics = PerformanceMetrics(
+            logger=self.logger,
+            component="asr",
+        )
+
+        # Latency tracking (keep existing for compatibility)
         self.partial_intervals = LatencyMetrics()  # Time between partials
         self.final_latency = LatencyMetrics()  # Time from last partial to final
 
@@ -74,6 +88,12 @@ class ASRMetrics:
         self.last_partial_time: Optional[float] = None
         self.segment_start_time: Optional[float] = None
 
+        # Set performance thresholds
+        self.perf_metrics.set_threshold("partial_interval", warning=200.0, critical=300.0)
+        self.perf_metrics.set_threshold("final_latency", warning=800.0, critical=1200.0)
+
+        self.logger.info("ASR metrics initialized", stream_id=stream_id)
+
     def on_partial_event(self, event_dict: Dict[str, Any]) -> None:
         """Record partial event for metrics."""
         current_time = time.monotonic()
@@ -82,7 +102,16 @@ class ASRMetrics:
         # Track inter-partial interval
         if self.last_partial_time is not None:
             interval = current_time - self.last_partial_time
-            self.partial_intervals.add(interval * 1000)  # Convert to ms
+            interval_ms = interval * 1000  # Convert to ms
+            self.partial_intervals.add(interval_ms)
+
+            # Record to performance metrics
+            self.perf_metrics.record_latency(
+                "partial_interval",
+                interval_ms,
+                segment_id=event_dict.get("segment_id"),
+                text_length=len(event_dict.get("text", "")),
+            )
 
         self.last_partial_time = current_time
 
@@ -109,7 +138,16 @@ class ASRMetrics:
         # Track finalization latency (from last partial to final)
         if self.last_partial_time is not None:
             latency = current_time - self.last_partial_time
-            self.final_latency.add(latency * 1000)  # Convert to ms
+            latency_ms = latency * 1000  # Convert to ms
+            self.final_latency.add(latency_ms)
+
+            # Record to performance metrics
+            self.perf_metrics.record_latency(
+                "final_latency",
+                latency_ms,
+                segment_id=event_dict.get("segment_id"),
+                eou_reason=event_dict.get("eou_reason", "unknown"),
+            )
 
         # Track EOU reasons
         eou_reason = event_dict.get("eou_reason", "unknown")
@@ -138,17 +176,13 @@ class ASRMetrics:
 
     def _log_event(self, event_type: str, details: Dict[str, Any]) -> None:
         """Log structured event with metrics."""
-        log_data = {
-            "type": f"asr_metrics.{event_type}",
-            "stream_id": self.stream_id,
-            "timestamp": time.time(),
-            "session_duration": time.monotonic() - self.start_time,
+        self.logger.info(
+            f"ASR event: {event_type}",
+            event_type=event_type,
+            stream_id=self.stream_id,
+            session_duration=time.monotonic() - self.start_time,
             **details,
-        }
-
-        # For now, just print structured logs
-        # In production, this could send to proper logging infrastructure
-        print(f"[ASR_METRICS] {log_data}")
+        )
 
     def get_summary(self) -> Dict[str, Any]:
         """Generate a summary of all metrics."""
@@ -203,3 +237,8 @@ class ASRMetrics:
         self.last_partial_time = None
         self.segment_start_time = None
         self.start_time = time.monotonic()
+
+        # Reset performance metrics
+        self.perf_metrics.reset()
+
+        self.logger.info("ASR metrics reset", stream_id=self.stream_id)
