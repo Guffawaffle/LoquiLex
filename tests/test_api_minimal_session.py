@@ -29,4 +29,6 @@ def test_minimal_session_lifecycle():
     start_time = time.time()
     while sid in manager._sessions and (time.time() - start_time) < timeout:
         time.sleep(poll_interval)
-    assert sid not in manager._sessions, f"Session {sid} was not cleaned up within {timeout} seconds"
+    assert (
+        sid not in manager._sessions
+    ), f"Session {sid} was not cleaned up within {timeout} seconds"
