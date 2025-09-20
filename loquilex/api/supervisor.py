@@ -19,6 +19,7 @@ from fastapi import WebSocket
 from .events import EventStamper
 from .ws_protocol import WSProtocolManager
 from .ws_types import MessageType, HeartbeatConfig, ServerLimits
+from ..logging import PerformanceMetrics, create_logger
 
 logger = logging.getLogger(__name__)
 
@@ -463,6 +464,31 @@ class SessionManager:
             max_msg_bytes=int(os.getenv("LX_WS_MAX_MSG_BYTES", "131072")),
         )
 
+        # Initialize structured logging and metrics
+        self.logger = create_logger(
+            component="session_manager",
+            session_id="supervisor",
+        )
+        self.metrics = PerformanceMetrics(
+            logger=self.logger,
+            component="session_manager",
+        )
+
+        # Set performance thresholds
+        self.metrics.set_threshold("session_startup_time", warning=5000.0, critical=15000.0)
+        self.metrics.set_threshold("websocket_message_latency", warning=100.0, critical=500.0)
+
+        self.logger.info(
+            "SessionManager initialized",
+            max_cuda_sessions=self._max_cuda_sessions,
+            websocket_config={
+                "heartbeat_interval_ms": self._default_hb_config.interval_ms,
+                "heartbeat_timeout_ms": self._default_hb_config.timeout_ms,
+                "max_in_flight": self._default_limits.max_in_flight,
+                "max_msg_bytes": self._default_limits.max_msg_bytes,
+            }
+        )
+
         t = threading.Thread(target=self._log_pump, daemon=True)
         t.start()
         self._bg_threads.append(t)
@@ -478,29 +504,72 @@ class SessionManager:
         run_dir = Path("loquilex/out") / sid
         run_dir.mkdir(parents=True, exist_ok=True)
 
-        # Choose session type based on streaming_mode flag
-        sess: Union[Session, StreamingSession]
-        if cfg.streaming_mode:
-            sess = StreamingSession(sid, cfg, run_dir)
-            sess.set_broadcast_fn(self._broadcast)
-        else:
-            sess = Session(sid, cfg, run_dir)
+        self.logger.info("Starting session", session_id=sid, config=cfg.__dict__)
+        self.metrics.start_timer(f"session_startup_{sid}")
 
-        sess.start()
+        try:
+            # Choose session type based on streaming_mode flag
+            sess: Union[Session, StreamingSession]
+            if cfg.streaming_mode:
+                sess = StreamingSession(sid, cfg, run_dir)
+                sess.set_broadcast_fn(self._broadcast)
+                session_type = "streaming"
+            else:
+                sess = Session(sid, cfg, run_dir)
+                session_type = "subprocess"
 
-        with self._lock:
-            self._sessions[sid] = sess
-            self._stampers[sid] = sess.stamper
+            sess.start()
 
-        asyncio.create_task(self._broadcast(sid, {"type": "status", "stage": "initializing"}))
-        return sid
+            with self._lock:
+                self._sessions[sid] = sess
+                self._stampers[sid] = sess.stamper
+
+            startup_time_ms = self.metrics.end_timer(f"session_startup_{sid}")
+            self.metrics.increment_counter("sessions_started")
+            self.metrics.set_gauge("active_sessions", len(self._sessions))
+
+            self.logger.info(
+                "Session started successfully",
+                session_id=sid,
+                session_type=session_type,
+                startup_time_ms=startup_time_ms,
+                total_sessions=len(self._sessions),
+                run_dir=str(run_dir),
+            )
+
+            asyncio.create_task(self._broadcast(sid, {"type": "status", "stage": "initializing"}))
+            return sid
+
+        except Exception as e:
+            self.logger.error(
+                "Failed to start session",
+                session_id=sid,
+                error=str(e),
+                config=cfg.__dict__,
+            )
+            self.metrics.increment_counter("session_start_failures")
+            raise
 
     def stop_session(self, sid: str) -> bool:
+        self.logger.info("Stopping session", session_id=sid)
+
         with self._lock:
             sess = self._sessions.pop(sid, None)
+
         if not sess:
+            self.logger.warning("Attempted to stop non-existent session", session_id=sid)
             return False
+
         sess.stop()
+        self.metrics.increment_counter("sessions_stopped")
+        self.metrics.set_gauge("active_sessions", len(self._sessions))
+
+        self.logger.info(
+            "Session stopped successfully",
+            session_id=sid,
+            total_sessions=len(self._sessions),
+        )
+
         asyncio.create_task(self._broadcast(sid, {"type": "status", "stage": "stopped"}))
         return True
 
