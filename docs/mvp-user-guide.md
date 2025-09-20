@@ -383,6 +383,7 @@ docker run --gpus all -p 8000:8000 -e LX_DEVICE=cuda loquilex:latest
 
 ### System Service
 
+> **Note:** The file `scripts/loquilex.service` is an example systemd service file. You may need to create or customize this file for your environment. If it does not exist, create it based on your deployment requirements.
 ```bash
 # Install as system service
 sudo cp scripts/loquilex.service /etc/systemd/system/

@@ -117,7 +117,7 @@ Perfect for:
 
 ## Getting Help
 
-- Check [Troubleshooting](#troubleshooting) section in the MVP User Guide
+- Check [Troubleshooting](./mvp-user-guide.md#troubleshooting) section in the MVP User Guide
 - Review [CI-TESTING.md](../CI-TESTING.md) for development environment issues
 - Open an issue on GitHub for bugs or feature requests
 
