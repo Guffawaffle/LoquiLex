@@ -76,11 +76,9 @@ class TestASRMetrics:
         assert metrics.partial_count == 1
 
         # Test final event
-        metrics.on_final_event({
-            "text": "hello world",
-            "segment_id": "seg1",
-            "eou_reason": "silence"
-        })
+        metrics.on_final_event(
+            {"text": "hello world", "segment_id": "seg1", "eou_reason": "silence"}
+        )
         assert metrics.final_count == 1
         assert metrics.eou_reasons["silence"] == 1
 
@@ -98,11 +96,13 @@ class TestASRMetrics:
             metrics.on_partial_event({"text": "hello", "segment_id": "seg1"})
 
             # Test final event logging
-            metrics.on_final_event({
-                "text": "hello world",
-                "segment_id": "seg1",
-                "eou_reason": "silence",
-            })
+            metrics.on_final_event(
+                {
+                    "text": "hello world",
+                    "segment_id": "seg1",
+                    "eou_reason": "silence",
+                }
+            )
 
             # Verify structured logging calls
             assert mock_logger.info.call_count >= 3  # init + events

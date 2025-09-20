@@ -146,24 +146,23 @@ def resource_monitoring():
     final_thread_count = threading.active_count()
     if final_thread_count > initial_thread_count + 2:  # Allow some variance
         import warnings
+
         warnings.warn(
             f"Thread count increased from {initial_thread_count} to {final_thread_count}. "
             "This may indicate a thread leak.",
-            ResourceWarning
+            ResourceWarning,
         )
 
     # Check memory usage
     if tracemalloc.is_tracing():
         final_snapshot = tracemalloc.take_snapshot()
-        top_stats = final_snapshot.compare_to(initial_snapshot, 'lineno')
+        top_stats = final_snapshot.compare_to(initial_snapshot, "lineno")
         # Only warn about significant memory growth
         for stat in top_stats[:3]:  # Top 3 memory changes
             if stat.size_diff > 1024 * 1024:  # More than 1MB growth
                 import warnings
-                warnings.warn(
-                    f"Significant memory growth detected: {stat}",
-                    ResourceWarning
-                )
+
+                warnings.warn(f"Significant memory growth detected: {stat}", ResourceWarning)
         tracemalloc.stop()
     else:
         # Tracing stopped elsewhere; skip snapshot

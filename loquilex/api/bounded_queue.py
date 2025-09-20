@@ -156,6 +156,7 @@ class BoundedQueue(Generic[T]):
             self._queue.clear()
             self.metrics = DropMetrics()
             self._closed = True
+
     def close(self) -> None:
         self.cleanup()
 

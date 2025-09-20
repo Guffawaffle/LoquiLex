@@ -194,7 +194,7 @@ async def get_session_storage_stats(sid: str) -> Dict[str, Any]:
     if not sess:
         raise HTTPException(status_code=404, detail="session not found")
 
-    if hasattr(sess, 'state') and sess.state:
+    if hasattr(sess, "state") and sess.state:
         stats = sess.state.get_session_storage_stats()
         if stats:
             return stats
@@ -209,18 +209,16 @@ async def get_session_commits(
     sid: str,
     limit: Optional[int] = None,
     commit_type: Optional[str] = None,
-    since_timestamp: Optional[float] = None
+    since_timestamp: Optional[float] = None,
 ) -> Dict[str, Any]:
     """Get session commits with optional filtering."""
     sess = MANAGER._sessions.get(sid)
     if not sess:
         raise HTTPException(status_code=404, detail="session not found")
 
-    if hasattr(sess, 'state') and sess.state and sess.state._session_storage:
+    if hasattr(sess, "state") and sess.state and sess.state._session_storage:
         commits = sess.state._session_storage.get_commits(
-            limit=limit,
-            commit_type=commit_type,
-            since_timestamp=since_timestamp
+            limit=limit, commit_type=commit_type, since_timestamp=since_timestamp
         )
         return {
             "session_id": sid,
@@ -516,7 +514,7 @@ async def get_snapshot(sid: str) -> Dict[str, Any]:
 
     # Get session storage snapshot if available
     session_storage_snapshot = None
-    if hasattr(sess, 'state') and sess.state:
+    if hasattr(sess, "state") and sess.state:
         try:
             session_storage_snapshot = sess.state.get_session_snapshot()
         except Exception:

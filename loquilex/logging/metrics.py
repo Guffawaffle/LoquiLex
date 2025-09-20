@@ -75,12 +75,7 @@ class PerformanceMetrics:
         # Performance thresholds for alerting
         self.thresholds: Dict[str, Dict[str, float]] = {}
 
-    def record_latency(
-        self,
-        name: str,
-        duration_ms: float,
-        **metadata: Any
-    ) -> None:
+    def record_latency(self, name: str, duration_ms: float, **metadata: Any) -> None:
         """Record latency measurement.
 
         Args:
@@ -90,12 +85,7 @@ class PerformanceMetrics:
         """
         self._add_measurement(name, duration_ms, MetricType.LATENCY, metadata)
 
-    def record_throughput(
-        self,
-        name: str,
-        count: float,
-        **metadata: Any
-    ) -> None:
+    def record_throughput(self, name: str, count: float, **metadata: Any) -> None:
         """Record throughput measurement.
 
         Args:
@@ -255,12 +245,7 @@ class PerformanceMetrics:
         if critical is not None:
             self.thresholds[name]["critical"] = critical
 
-    def _check_thresholds(
-        self,
-        name: str,
-        value: float,
-        metric_type: MetricType
-    ) -> None:
+    def _check_thresholds(self, name: str, value: float, metric_type: MetricType) -> None:
         """Check if metric value exceeds thresholds."""
         if name not in self.thresholds or not self.logger:
             return
