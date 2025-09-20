@@ -61,6 +61,14 @@ class WSProtocolManager:
         resume_window: Optional[ResumeWindow] = None,
         limits: Optional[ServerLimits] = None,
     ):
+        # Ensure a current event loop exists for non-async contexts (e.g., tests)
+        try:
+            asyncio.get_running_loop()
+        except RuntimeError:
+            # No running loop; create and set one without using deprecated get_event_loop
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+
         self.sid = sid
         self.state = SessionState(
             sid=sid,
