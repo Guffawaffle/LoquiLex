@@ -96,7 +96,13 @@ LoquiLex uses a structured GitHub Copilot Coding Agent workflow for development 
 
 See [`.github/copilot/README.md`](.github/copilot/README.md) for complete workflow documentation.
 
-## Architecture & Documentation
+## Documentation
+
+### Quick Start
+- **[Quick Start Guide](./docs/quickstart.md)** - Get running in under 5 minutes
+- **[MVP User Guide](./docs/mvp-user-guide.md)** - Complete workflows and troubleshooting
+
+### Architecture & Development
 
 LoquiLex follows a **JS-first architecture** where JavaScript orchestrates workflows and Python executes ML tasks:
 
