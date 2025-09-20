@@ -13,19 +13,24 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     LX_OFFLINE=1
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    git build-essential && \
+    git build-essential curl && \
     rm -rf /var/lib/apt/lists/*
 
 RUN python -m venv $VENV
 
 WORKDIR /app
 
-COPY requirements.txt requirements-ci.txt requirements-dev.txt ./
-RUN if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+COPY requirements.txt ./
+RUN if [ -f requirements.txt ]; then pip install --no-cache-dir -r requirements.txt; fi
 
 RUN pip install --upgrade pip && \
     pip install ruff black mypy pytest
 
 COPY . .
+
+# Healthcheck: probe the FastAPI settings endpoint to report container readiness
+# uses LX_API_PORT env var if set, falls back to 8000
+HEALTHCHECK --interval=30s --timeout=3s --start-period=20s \
+    CMD curl -fsS "http://localhost:${LX_API_PORT:-8000}/settings" || exit 1
 
 ## no ENTRYPOINT; use --entrypoint at runtime if you need a shell
