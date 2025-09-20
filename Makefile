@@ -23,7 +23,7 @@ PIP         := $(if $(wildcard $(VENV_PIP)),$(VENV_PIP),$(SYS_PIP))
 ## Phony targets
 .PHONY: help install-venv install-base install-ml-minimal install-ml-cpu \
         prefetch-asr models-tiny dev dev-minimal dev-ml-cpu \
-        lint fmt fmt-check typecheck test unit test-e2e e2e ci clean \
+        lint fmt fmt-check typecheck test unit test-e2e e2e ci clean clean-logs \
         docker-ci docker-ci-build docker-ci-run docker-ci-test docker-ci-shell \
         docker-build docker-run docker-gpu docker-stop docker-clean docker-test \
         sec-scan dead-code-analysis dead-code-report clean-artifacts \
@@ -50,6 +50,7 @@ help:
 	@echo "  dead-code-analysis - run comprehensive dead code detection tools"
 	@echo "  dead-code-report   - generate reports locally (no CI gating)"
 	@echo "  clean-artifacts    - remove all generated artifacts"
+	@echo "  clean-logs         - cleanup old log files (uses LX_LOG_DIR)"
 	@echo "Vars:"
 	@echo "  USE_VENV=0       - use system Python instead of creating .venv (good for CI)"
 	@echo "  ASR_MODEL=...    - model to prefetch (default: tiny.en)"
@@ -184,6 +185,15 @@ run-ci-mode: ci
 clean:
 	rm -rf .pytest_cache .coverage $(VENV) dist build
 	cd ui/app && rm -rf node_modules dist .vite || true
+
+clean-logs:
+	@echo "=== Cleaning old log files ==="
+	@if [ -n "$$LX_LOG_DIR" ] && [ -d "$$LX_LOG_DIR" ]; then \
+		$(PY) -c "from loquilex.logging import cleanup_old_logs; print(f'Deleted {cleanup_old_logs(\"$$LX_LOG_DIR\", max_age_hours=1)} log files')"; \
+	else \
+		echo "No LX_LOG_DIR set or directory not found"; \
+	fi
+	@rm -rf .artifacts/logs || true
 
 ## ------------------------------
 ## UI targets
@@ -328,3 +338,4 @@ dead-code-report:
 .PHONY: clean-artifacts
 clean-artifacts:
 	@rm -rf .artifacts || true
+	@echo "=== Cleaned build and test artifacts ==="
