@@ -109,6 +109,7 @@ LoquiLex follows a **JS-first architecture** where JavaScript orchestrates workf
 - **[JS-First Architecture Guide](./docs/architecture/js-first.md)** - Core principles, patterns, and implementation guidelines
 - **[API Contracts Reference](./docs/contracts/README.md)** - WebSocket, REST, and data type contracts
 - **[Orchestration Module](./loquilex/ui/web/src/orchestration/README.md)** - Client-side utilities and patterns
+ - **[Resource Management (Shutdown Contract)](./docs/RESOURCE_MANAGEMENT.md)** - Expectations for clean shutdown of threads, tasks, and subprocesses
 
 ### Key Features
 

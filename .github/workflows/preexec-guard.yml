@@ -15,11 +15,12 @@ jobs:
       - name: Grep for preexec_fn
         run: |
           set -euo pipefail
-          # Scope to project sources; exclude vendored dirs if added later
-          if git grep -n "preexec_fn=" -- 'loquilex/**/*.py' ':!loquilex/vendor/**' | tee /tmp/preexec_matches; then
-            echo "preexec_fn occurrences found:" >&2
+          # Repo-wide scan of tracked Python files; exclude common vendor/venv paths
+          if git grep -n -E "preexec_fn\s*=" -- "**/*.py" \
+               ':!**/.venv/**' ':!**/node_modules/**' ':!**/vendor/**' ':!**/.git/**' | tee /tmp/preexec_matches; then
+            echo "::error::preexec_fn occurrences found:" >&2
             cat /tmp/preexec_matches >&2
             exit 1
           else
-            echo "No preexec_fn found under loquilex/"
+            echo "No preexec_fn found in tracked Python sources"
           fi
