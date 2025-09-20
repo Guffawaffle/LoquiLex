@@ -1,0 +1,21 @@
+# GPU-specific Docker Compose override
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.gpu.yml up
+
+services:
+  loquilex:
+    build:
+      args:
+        INSTALL_GPU_SUPPORT: true
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    environment:
+      - LX_DEVICE=cuda
+      # Override to use GPU-optimized models by default
+      - LX_ASR_MODEL=${LX_ASR_MODEL:-base.en}
+      - LX_NLLB_MODEL=${LX_NLLB_MODEL:-facebook/nllb-200-1.3B}
+    restart: unless-stopped

@@ -25,6 +25,7 @@ PIP         := $(if $(wildcard $(VENV_PIP)),$(VENV_PIP),$(SYS_PIP))
         prefetch-asr models-tiny dev dev-minimal dev-ml-cpu \
         lint fmt fmt-check typecheck test unit test-e2e e2e ci clean \
         docker-ci docker-ci-build docker-ci-run docker-ci-test docker-ci-shell \
+        docker-build docker-run docker-gpu docker-stop docker-clean docker-test \
         sec-scan dead-code-analysis dead-code-report clean-artifacts \
         ui-setup ui-dev ui-build ui-start ui-test ui-e2e
 
@@ -40,6 +41,12 @@ help:
 	@echo "  ui-start         - start FastAPI serving built UI"
 	@echo "  ui-test          - run UI unit tests"
 	@echo "  ui-e2e           - run UI end-to-end tests"
+	@echo "  docker-build     - build production Docker image (CPU-only)"
+	@echo "  docker-run       - run LoquiLex in Docker (CPU-only)"
+	@echo "  docker-gpu       - run LoquiLex in Docker with GPU support"
+	@echo "  docker-stop      - stop running Docker containers"
+	@echo "  docker-clean     - remove Docker containers and images"
+	@echo "  docker-test      - test Docker setup and configuration"
 	@echo "  dead-code-analysis - run comprehensive dead code detection tools"
 	@echo "  dead-code-report   - generate reports locally (no CI gating)"
 	@echo "  clean-artifacts    - remove all generated artifacts"
@@ -252,6 +259,60 @@ docker-ci-shell: docker-ci-build
 # Secret scanning using Gitleaks
 sec-scan:
 	@docker run --rm -v "$(PWD_SHELL)":/repo zricethezav/gitleaks:latest detect -s /repo --no-git --redact
+
+## ------------------------------
+## Docker local runtime (production)
+
+DOCKER_IMAGE_PROD ?= loquilex
+DOCKER_CONTAINER_NAME ?= loquilex-app
+
+docker-build:
+	@echo "=== Building production Docker image (CPU-only) ==="
+	@echo "First building UI..."
+	$(MAKE) ui-build
+	@echo "Building Docker image..."
+	DOCKER_BUILDKIT=1 docker build -t $(DOCKER_IMAGE_PROD):latest . --progress=plain
+
+docker-build-gpu:
+	@echo "=== Building production Docker image with GPU support ==="
+	@echo "First building UI..."
+	$(MAKE) ui-build
+	@echo "Building Docker image with GPU support..."
+	DOCKER_BUILDKIT=1 docker build --build-arg INSTALL_GPU_SUPPORT=true -t $(DOCKER_IMAGE_PROD):gpu . --progress=plain
+
+docker-run: docker-build
+	@echo "=== Starting LoquiLex (CPU-only) ==="
+	@echo "FastAPI + UI will be available at http://localhost:8000"
+	docker-compose up -d
+	@echo "Use 'make docker-logs' to view logs, 'make docker-stop' to stop"
+
+docker-gpu: docker-build-gpu
+	@echo "=== Starting LoquiLex with GPU support ==="
+	@echo "FastAPI + UI will be available at http://localhost:8000"
+	@echo "Requires: Docker with nvidia-container-runtime"
+	INSTALL_GPU_SUPPORT=true docker-compose -f docker-compose.yml -f docker-compose.gpu.yml up -d
+	@echo "Use 'make docker-logs' to view logs, 'make docker-stop' to stop"
+
+docker-logs:
+	@echo "=== Viewing LoquiLex container logs ==="
+	docker-compose logs -f
+
+docker-stop:
+	@echo "=== Stopping LoquiLex containers ==="
+	docker-compose down
+
+docker-clean: docker-stop
+	@echo "=== Removing LoquiLex containers and images ==="
+	docker-compose down -v --rmi all --remove-orphans
+	docker rmi $(DOCKER_IMAGE_PROD):latest $(DOCKER_IMAGE_PROD):gpu 2>/dev/null || true
+
+docker-shell:
+	@echo "=== Opening shell in running LoquiLex container ==="
+	docker exec -it $(DOCKER_CONTAINER_NAME) /bin/bash
+
+docker-test:
+	@echo "=== Testing Docker setup ==="
+	./scripts/test-docker.sh
 
 # Dead code analysis using multiple detection tools
 dead-code-analysis: install-base
