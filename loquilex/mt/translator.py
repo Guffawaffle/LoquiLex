@@ -179,7 +179,6 @@ class Translator:
             tgt_lang="zh",
         )
 
-        start_time = time.time() #noqa: F841
         self.metrics.start_timer("translation_latency")
 
         # Try NLLB first
