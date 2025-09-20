@@ -103,9 +103,13 @@ class StreamingSession:
         if getattr(loop, "is_closed", lambda: False)():
             return
 
+        # Capture the broadcast function into a local variable so mypy
+        # understands it's not None inside the nested invoker.
+        broadcast_fn = self._broadcast_fn
+
         def _invoke() -> None:
             try:
-                result = self._broadcast_fn(self.sid, event)
+                result = broadcast_fn(self.sid, event)
                 if asyncio.iscoroutine(result):
                     try:
                         asyncio.get_running_loop().create_task(result)
@@ -589,6 +593,9 @@ class SessionManager:
         self._bg_threads.append(t)
 
         # Register finalizer to ensure best-effort stop on GC
+        # Declare attribute as Optional[Any] so assigning None is compatible
+        # with static type checkers when finalizer registration fails.
+        self._finalizer: Optional[Any] = None
         try:
             self._finalizer = weakref.finalize(self, _session_manager_finalize_stop, weakref.proxy(self))
         except Exception:
