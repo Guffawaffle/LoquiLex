@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Optional
 
 from loquilex.config.defaults import MT, pick_device
-from ..logging import StructuredLogger, PerformanceMetrics, create_logger #noqa: F401
+from ..logging import StructuredLogger, PerformanceMetrics, create_logger
 
 
 from typing import Any
