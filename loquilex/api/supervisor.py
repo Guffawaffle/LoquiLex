@@ -33,6 +33,7 @@ def _session_manager_finalize_stop(self_proxy: Any) -> None:
     except Exception:
         pass
 
+
 from .events import EventStamper
 from .ws_protocol import WSProtocolManager
 from .ws_types import MessageType, HeartbeatConfig, ServerLimits
@@ -346,7 +347,6 @@ class SessionConfig:
     segment_max_sec: float
     partial_word_cap: int
     save_audio: str
-
     # optional (with defaults) — MUST come after all required fields
     mt_model_id: Optional[str] = None
     # New streaming mode flag
@@ -440,6 +440,7 @@ class Session:
                         _ = self.queue.get_nowait()
                     except Exception:
                         pass
+
         self._reader_thread = threading.Thread(target=_reader)
         self._reader_thread.start()
 
@@ -575,7 +576,7 @@ class SessionManager:
                 "heartbeat_timeout_ms": self._default_hb_config.timeout_ms,
                 "max_in_flight": self._default_limits.max_in_flight,
                 "max_msg_bytes": self._default_limits.max_msg_bytes,
-            }
+            },
         )
 
         def _bg_runner(self_ref: Any) -> None:
@@ -597,7 +598,9 @@ class SessionManager:
         # with static type checkers when finalizer registration fails.
         self._finalizer: Optional[Any] = None
         try:
-            self._finalizer = weakref.finalize(self, _session_manager_finalize_stop, weakref.proxy(self))
+            self._finalizer = weakref.finalize(
+                self, _session_manager_finalize_stop, weakref.proxy(self)
+            )
         except Exception:
             self._finalizer = None
 
@@ -645,7 +648,12 @@ class SessionManager:
                 run_dir=str(run_dir),
             )
 
-            asyncio.create_task(self._broadcast(sid, {"type": "status", "stage": "initializing"}))
+            try:
+                loop = asyncio.get_running_loop()
+                loop.create_task(self._broadcast(sid, {"type": "status", "stage": "initializing"}))
+            except RuntimeError:
+                # No running loop in this context; best-effort skip
+                pass
             return sid
 
         except Exception as e:
@@ -678,7 +686,11 @@ class SessionManager:
             total_sessions=len(self._sessions),
         )
 
-        asyncio.create_task(self._broadcast(sid, {"type": "status", "stage": "stopped"}))
+        try:
+            loop = asyncio.get_running_loop()
+            loop.create_task(self._broadcast(sid, {"type": "status", "stage": "stopped"}))
+        except RuntimeError:
+            pass
         return True
 
     async def register_ws(self, sid: str, ws: WebSocket) -> None:
@@ -805,6 +817,17 @@ class SessionManager:
             except Exception:
                 pass
 
+    def _safe_broadcast(self, sid: str, payload: Dict[str, Any]) -> None:
+        """Best-effort schedule of a broadcast without requiring a running loop.
+        Drops silently if no event loop is running (e.g., during shutdown or
+        when called from sync/test contexts).
+        """
+        try:
+            loop = asyncio.get_running_loop()
+            loop.create_task(self._broadcast(sid, payload))
+        except RuntimeError:
+            pass
+
     def _log_pump(self) -> None:
         while not self._stop:
             time.sleep(0.2)
@@ -844,41 +867,28 @@ class SessionManager:
                         payload = {"type": "status", "stage": "operational", "log": text}
                     else:
                         payload = {"type": "status", "log": text}
-                    try:
-                        asyncio.run(self._broadcast(sid, payload))
-                    except RuntimeError:
-                        loop = asyncio.get_event_loop()
-                        loop.create_task(self._broadcast(sid, payload))
+                    self._safe_broadcast(sid, payload)
 
     # Download management
     def start_download_job(self, job_id: str, repo_id: str, _typ: str) -> None:
-        t = threading.Thread(
-            target=self._download_worker, args=(job_id, repo_id, _typ)
-        )
+        t = threading.Thread(target=self._download_worker, args=(job_id, repo_id, _typ))
         t.start()
         self._bg_threads.append(t)
 
     def _download_worker(self, job_id: str, repo_id: str, _typ: str) -> None:
         chan = f"_download/{job_id}"
-        try:
-            asyncio.run(
-                self._broadcast(
-                    chan,
-                    {"type": "download_progress", "job_id": job_id, "repo_id": repo_id, "pct": 0},
-                )
-            )
-        except RuntimeError:
-            loop = asyncio.get_event_loop()
-            loop.create_task(
-                self._broadcast(
-                    chan,
-                    {"type": "download_progress", "job_id": job_id, "repo_id": repo_id, "pct": 0},
-                )
-            )
+        # Initial progress
+        self._safe_broadcast(
+            chan,
+            {"type": "download_progress", "job_id": job_id, "repo_id": repo_id, "pct": 0},
+        )
 
+        # Launch downloader subprocess
         try:
-            creationflags = getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0) if os.name == "nt" else 0
-            start_new_session = (os.name != "nt")
+            creationflags = (
+                getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0) if os.name == "nt" else 0
+            )
+            start_new_session = os.name != "nt"
             proc = subprocess.Popen(
                 [
                     sys.executable,
@@ -896,19 +906,9 @@ class SessionManager:
                 creationflags=creationflags,
             )
         except Exception as e:
-            try:
-                asyncio.run(
-                    self._broadcast(
-                        chan, {"type": "download_error", "job_id": job_id, "message": str(e)}
-                    )
-                )
-            except RuntimeError:
-                loop = asyncio.get_event_loop()
-                loop.create_task(
-                    self._broadcast(
-                        chan, {"type": "download_error", "job_id": job_id, "message": str(e)}
-                    )
-                )
+            self._safe_broadcast(
+                chan, {"type": "download_error", "job_id": job_id, "message": str(e)}
+            )
             return
 
         with self._lock:
@@ -916,40 +916,26 @@ class SessionManager:
             if chan not in self._stampers:
                 self._stampers[chan] = EventStamper.new()
 
+        # Heartbeat thread emitting progress
         def heartbeats() -> None:
             pct = 0
             while proc.poll() is None and not self._stop:
-                try:
-                    asyncio.run(
-                        self._broadcast(
-                            chan,
-                            {
-                                "type": "download_progress",
-                                "job_id": job_id,
-                                "repo_id": repo_id,
-                                "pct": pct,
-                            },
-                        )
-                    )
-                except RuntimeError:
-                    loop = asyncio.get_event_loop()
-                    loop.create_task(
-                        self._broadcast(
-                            chan,
-                            {
-                                "type": "download_progress",
-                                "job_id": job_id,
-                                "repo_id": repo_id,
-                                "pct": pct,
-                            },
-                        )
-                    )
+                self._safe_broadcast(
+                    chan,
+                    {
+                        "type": "download_progress",
+                        "job_id": job_id,
+                        "repo_id": repo_id,
+                        "pct": pct,
+                    },
+                )
                 pct = min(99, pct + 1)
                 time.sleep(1.0)
 
         hb = threading.Thread(target=heartbeats)
         hb.start()
 
+        # Read output and wait
         out = ""
         try:
             if proc.stdout:
@@ -961,41 +947,21 @@ class SessionManager:
         finally:
             with self._lock:
                 self._dl_procs.pop(job_id, None)
+
         try:
             hb.join(timeout=1.0)
         except Exception:
             pass
 
+        # Final status
         if ret == 0:
-            try:
-                asyncio.run(
-                    self._broadcast(
-                        chan, {"type": "download_done", "job_id": job_id, "local_path": out}
-                    )
-                )
-            except RuntimeError:
-                loop = asyncio.get_event_loop()
-                loop.create_task(
-                    self._broadcast(
-                        chan, {"type": "download_done", "job_id": job_id, "local_path": out}
-                    )
-                )
+            self._safe_broadcast(
+                chan, {"type": "download_done", "job_id": job_id, "local_path": out}
+            )
         else:
-            try:
-                asyncio.run(
-                    self._broadcast(
-                        chan,
-                        {"type": "download_error", "job_id": job_id, "message": out or f"rc={ret}"},
-                    )
-                )
-            except RuntimeError:
-                loop = asyncio.get_event_loop()
-                loop.create_task(
-                    self._broadcast(
-                        chan,
-                        {"type": "download_error", "job_id": job_id, "message": out or f"rc={ret}"},
-                    )
-                )
+            self._safe_broadcast(
+                chan, {"type": "download_error", "job_id": job_id, "message": out or f"rc={ret}"}
+            )
 
     def cancel_download(self, job_id: str) -> bool:
         with self._lock:

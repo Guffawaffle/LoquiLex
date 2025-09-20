@@ -1,6 +1,6 @@
 """Resource Management Tests: Ensure clean termination and release of all resources.
 
-This module tests proper cleanup of threads, asyncio tasks, subprocesses, 
+This module tests proper cleanup of threads, asyncio tasks, subprocesses,
 and other resources across normal and error conditions.
 """
 
@@ -72,9 +72,20 @@ class TestStreamingSessionResourceManagement:
 
         session = StreamingSession("test_session", cfg, run_dir)
 
-        # Simulate an audio thread
+        # Simulate an audio thread. Important note for future maintainers:
+        # Historically this test used a closure that referenced `session` in
+        # the `dummy_thread` function. That pattern caused intermittent
+        # failures and a NameError when sessions were garbage-collected or
+        # when test runners attempted to introspect thread locals. To avoid
+        # capturing the `session` object (and to ensure the thread can
+        # observe the stop condition without keeping the session alive), we
+        # capture only the session's `_stop_evt` and reference that in the
+        # thread. Do not revert this to closing over `session` — automated
+        # edits have reverted this before and reintroduced flakiness.
+        stop_evt = session._stop_evt
+
         def dummy_thread():
-            while not session._stop_evt.is_set():
+            while not stop_evt.is_set():
                 time.sleep(0.1)
 
         session._audio_thread = threading.Thread(target=dummy_thread, daemon=True)
