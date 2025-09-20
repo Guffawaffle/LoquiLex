@@ -2,6 +2,10 @@ name: Preexec Guard
 
 on: [push, pull_request]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   grep-preexec:
     runs-on: ubuntu-latest
@@ -11,7 +15,8 @@ jobs:
       - name: Grep for preexec_fn
         run: |
           set -euo pipefail
-          if grep -RIn "preexec_fn=" loquilex | tee /tmp/preexec_matches; then
+          # Scope to project sources; exclude vendored dirs if added later
+          if git grep -n "preexec_fn=" -- 'loquilex/**/*.py' ':!loquilex/vendor/**' | tee /tmp/preexec_matches; then
             echo "preexec_fn occurrences found:" >&2
             cat /tmp/preexec_matches >&2
             exit 1
