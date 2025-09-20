@@ -177,6 +177,59 @@ class SelfTestResp(BaseModel):
 PROFILES_DIR = os.path.join("loquilex", "ui", "profiles")
 
 
+@app.get("/sessions/{sid}/storage/stats")
+async def get_session_storage_stats(sid: str) -> Dict[str, Any]:
+    """Get session storage statistics."""
+    sess = MANAGER._sessions.get(sid)
+    if not sess:
+        raise HTTPException(status_code=404, detail="session not found")
+
+    if hasattr(sess, 'state') and sess.state:
+        stats = sess.state.get_session_storage_stats()
+        if stats:
+            return stats
+        else:
+            raise HTTPException(status_code=503, detail="session storage not available")
+    else:
+        raise HTTPException(status_code=400, detail="session does not support storage")
+
+
+@app.get("/sessions/{sid}/storage/commits")
+async def get_session_commits(
+    sid: str, 
+    limit: Optional[int] = None,
+    commit_type: Optional[str] = None,
+    since_timestamp: Optional[float] = None
+) -> Dict[str, Any]:
+    """Get session commits with optional filtering."""
+    sess = MANAGER._sessions.get(sid)
+    if not sess:
+        raise HTTPException(status_code=404, detail="session not found")
+
+    if hasattr(sess, 'state') and sess.state and sess.state._session_storage:
+        commits = sess.state._session_storage.get_commits(
+            limit=limit,
+            commit_type=commit_type,
+            since_timestamp=since_timestamp
+        )
+        return {
+            "session_id": sid,
+            "commits": [
+                {
+                    "id": c.id,
+                    "timestamp": c.timestamp,
+                    "seq": c.seq,
+                    "type": c.commit_type,
+                    "data": c.data,
+                }
+                for c in commits
+            ],
+            "total_returned": len(commits),
+        }
+    else:
+        raise HTTPException(status_code=400, detail="session does not support storage")
+
+
 @app.get("/profiles")
 def get_profiles() -> List[str]:
     if not os.path.isdir(PROFILES_DIR):
@@ -451,6 +504,14 @@ async def get_snapshot(sid: str) -> Dict[str, Any]:
         except Exception:
             pass  # MT status is optional
 
+    # Get session storage snapshot if available
+    session_storage_snapshot = None
+    if hasattr(sess, 'state') and sess.state:
+        try:
+            session_storage_snapshot = sess.state.get_session_snapshot()
+        except Exception:
+            pass  # Session storage is optional
+
     # Determine status correctly for both regular and streaming sessions
     if hasattr(sess, "_audio_thread") and sess._audio_thread is not None:
         # Streaming session - check audio thread
@@ -474,6 +535,9 @@ async def get_snapshot(sid: str) -> Dict[str, Any]:
 
     if mt_status:
         base_snapshot["mt"] = mt_status
+
+    if session_storage_snapshot:
+        base_snapshot["session_storage"] = session_storage_snapshot
 
     return base_snapshot
 
