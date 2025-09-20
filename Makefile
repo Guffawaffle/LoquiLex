@@ -408,8 +408,12 @@ ui-verify: ui-test
 ## Bucketed Commands
 
 # Install bucket
-install: install-base
-	@echo "✓ Base installation complete"
+install: 
+	@if [ -f ".venv/bin/python" ] && .venv/bin/python -c "import pytest" 2>/dev/null; then \
+		echo "✓ Dependencies already installed"; \
+	else \
+		$(MAKE) install-base; \
+	fi
 
 # Test bucket  
 test-all: test
@@ -424,6 +428,27 @@ test-all: test
 # Quality bucket
 qual-all: lint fmt-check typecheck
 	@echo "✓ Quality checks complete"
+
+## Pattern rules for command discovery
+test-%: 
+	@if [ "$*" = "all" ]; then $(MAKE) test-all; \
+	elif [ "$*" = "online" ]; then $(MAKE) test-online; \
+	elif [ "$*" = "e2e" ]; then $(MAKE) test-e2e; \
+	else echo "Unknown test target: test-$*"; exit 1; fi
+
+qual-%:
+	@if [ "$*" = "all" ]; then $(MAKE) qual-all; \
+	elif [ "$*" = "lint" ]; then .venv/bin/python -m ruff check loquilex tests; \
+	elif [ "$*" = "fmt" ]; then .venv/bin/python -m black loquilex tests; \
+	elif [ "$*" = "fmt-check" ]; then .venv/bin/python -m black --check --diff loquilex tests; \
+	elif [ "$*" = "typecheck" ]; then .venv/bin/python -m mypy loquilex; \
+	else echo "Unknown quality target: qual-$*"; exit 1; fi
+
+ui-%:
+	@if [ "$*" = "verify" ]; then $(MAKE) ui-verify; \
+	elif [ "$*" = "dev-bg" ]; then $(MAKE) ui-dev-bg; \
+	elif [ "$*" = "start-bg" ]; then $(MAKE) ui-start-bg; \
+	else echo "Unknown UI target: ui-$*"; exit 1; fi
 
 ## ------------------------------
 ## Docker CI parity (optional)
