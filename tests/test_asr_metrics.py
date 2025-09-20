@@ -6,7 +6,7 @@ import time
 from unittest.mock import patch
 
 from loquilex.asr.metrics import ASRMetrics, LatencyMetrics
-from loquilex.logging import StructuredLogger
+from loquilex.logging import StructuredLogger #noqa: F401
 
 
 class TestLatencyMetrics:
@@ -69,40 +69,40 @@ class TestASRMetrics:
     def test_basic_metrics(self):
         """Test basic ASR metrics functionality."""
         metrics = ASRMetrics("test_stream")
-        
+
         # Test partial event
         metrics.on_partial_event({"text": "hello", "segment_id": "seg1"})
         assert metrics.partial_count == 1
-        
-        # Test final event  
+
+        # Test final event
         metrics.on_final_event({
-            "text": "hello world", 
+            "text": "hello world",
             "segment_id": "seg1",
             "eou_reason": "silence"
         })
         assert metrics.final_count == 1
         assert metrics.eou_reasons["silence"] == 1
-    
+
     def test_asr_metrics_with_structured_logging(self):
         """Test ASR metrics with structured logging integration."""
         with patch("loquilex.logging.structured.StructuredLogger") as mock_logger_class:
             mock_logger = mock_logger_class.return_value
-            
+
             metrics = ASRMetrics("test_stream", logger=mock_logger)
-            
+
             # Verify logger was used for initialization
             mock_logger.info.assert_called()
-            
+
             # Test partial event logging
             metrics.on_partial_event({"text": "hello", "segment_id": "seg1"})
-            
-            # Test final event logging  
+
+            # Test final event logging
             metrics.on_final_event({
-                "text": "hello world", 
+                "text": "hello world",
                 "segment_id": "seg1",
                 "eou_reason": "silence",
             })
-            
+
             # Verify structured logging calls
             assert mock_logger.info.call_count >= 3  # init + events
 

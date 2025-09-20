@@ -19,7 +19,7 @@ from fastapi import WebSocket
 from .events import EventStamper
 from .ws_protocol import WSProtocolManager
 from .ws_types import MessageType, HeartbeatConfig, ServerLimits
-from ..logging import StructuredLogger, PerformanceMetrics, create_logger
+from ..logging import StructuredLogger, PerformanceMetrics, create_logger #noqa: F401
 
 logger = logging.getLogger(__name__)
 
@@ -420,7 +420,7 @@ class SessionManager:
             max_in_flight=int(os.getenv("LX_WS_MAX_IN_FLIGHT", "64")),
             max_msg_bytes=int(os.getenv("LX_WS_MAX_MSG_BYTES", "131072")),
         )
-        
+
         # Initialize structured logging and metrics
         self.logger = create_logger(
             component="session_manager",
@@ -430,11 +430,11 @@ class SessionManager:
             logger=self.logger,
             component="session_manager",
         )
-        
+
         # Set performance thresholds
         self.metrics.set_threshold("session_startup_time", warning=5000.0, critical=15000.0)
         self.metrics.set_threshold("websocket_message_latency", warning=100.0, critical=500.0)
-        
+
         self.logger.info(
             "SessionManager initialized",
             max_cuda_sessions=self._max_cuda_sessions,
@@ -460,7 +460,7 @@ class SessionManager:
         sid = str(uuid.uuid4())
         run_dir = Path("loquilex/out") / sid
         run_dir.mkdir(parents=True, exist_ok=True)
-        
+
         self.logger.info("Starting session", session_id=sid, config=cfg.__dict__)
         self.metrics.start_timer(f"session_startup_{sid}")
 
@@ -480,11 +480,11 @@ class SessionManager:
             with self._lock:
                 self._sessions[sid] = sess
                 self._stampers[sid] = sess.stamper
-            
+
             startup_time_ms = self.metrics.end_timer(f"session_startup_{sid}")
             self.metrics.increment_counter("sessions_started")
             self.metrics.set_gauge("active_sessions", len(self._sessions))
-            
+
             self.logger.info(
                 "Session started successfully",
                 session_id=sid,
@@ -496,7 +496,7 @@ class SessionManager:
 
             asyncio.create_task(self._broadcast(sid, {"type": "status", "stage": "initializing"}))
             return sid
-            
+
         except Exception as e:
             self.logger.error(
                 "Failed to start session",
@@ -509,24 +509,24 @@ class SessionManager:
 
     def stop_session(self, sid: str) -> bool:
         self.logger.info("Stopping session", session_id=sid)
-        
+
         with self._lock:
             sess = self._sessions.pop(sid, None)
-            
+
         if not sess:
             self.logger.warning("Attempted to stop non-existent session", session_id=sid)
             return False
-            
+
         sess.stop()
         self.metrics.increment_counter("sessions_stopped")
         self.metrics.set_gauge("active_sessions", len(self._sessions))
-        
+
         self.logger.info(
             "Session stopped successfully",
             session_id=sid,
             total_sessions=len(self._sessions),
         )
-        
+
         asyncio.create_task(self._broadcast(sid, {"type": "status", "stage": "stopped"}))
         return True
 

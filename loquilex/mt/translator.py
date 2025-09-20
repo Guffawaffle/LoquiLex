@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Optional
 
 from loquilex.config.defaults import MT, pick_device
-from ..logging import StructuredLogger, PerformanceMetrics, create_logger
+from ..logging import StructuredLogger, PerformanceMetrics, create_logger #noqa: F401
 
 
 from typing import Any
@@ -69,7 +69,7 @@ class Translator:
         self.torch_device = "cuda" if is_cuda else "cpu"
         self._nllb = None
         self._m2m = None
-        
+
         # Initialize structured logging and metrics
         self.logger = create_logger(
             component="mt_translator",
@@ -79,13 +79,13 @@ class Translator:
             logger=self.logger,
             component="mt_translator",
         )
-        
+
         # Set performance thresholds for MT latency
         self.metrics.set_threshold("translation_latency", warning=1500.0, critical=3000.0)
         self.metrics.set_threshold("model_load_time", warning=10000.0, critical=30000.0)
-        
+
         self.logger.info(
-            "Translator initialized", 
+            "Translator initialized",
             device=self.device_str,
             torch_device=self.torch_device,
             cuda_available=is_cuda,
@@ -95,7 +95,7 @@ class Translator:
         if self._nllb is None:
             self.logger.info("Loading NLLB model", model=MT.nllb_model)
             self.metrics.start_timer("model_load_nllb")
-            
+
             try:
                 from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
 
@@ -107,16 +107,16 @@ class Translator:
                 )
                 model.to(self.torch_device).eval()
                 self._nllb = (tok, model)
-                
+
                 load_time_ms = self.metrics.end_timer("model_load_nllb")
                 self.logger.info(
-                    "NLLB model loaded successfully", 
+                    "NLLB model loaded successfully",
                     model=MT.nllb_model,
                     load_time_ms=load_time_ms,
                     device=self.torch_device,
                 )
                 _log(f"loaded={MT.nllb_model}")
-                
+
             except Exception as e:
                 self.logger.error(
                     "Failed to load NLLB model",
@@ -130,7 +130,7 @@ class Translator:
         if self._m2m is None:
             self.logger.info("Loading M2M model", model=MT.m2m_model)
             self.metrics.start_timer("model_load_m2m")
-            
+
             try:
                 from transformers import M2M100ForConditionalGeneration, M2M100Tokenizer
 
@@ -142,16 +142,16 @@ class Translator:
                 )
                 model.to(self.torch_device).eval()
                 self._m2m = (tok, model)
-                
+
                 load_time_ms = self.metrics.end_timer("model_load_m2m")
                 self.logger.info(
-                    "M2M model loaded successfully", 
+                    "M2M model loaded successfully",
                     model=MT.m2m_model,
                     load_time_ms=load_time_ms,
                     device=self.torch_device,
                 )
                 _log(f"loaded={MT.m2m_model}")
-                
+
             except Exception as e:
                 self.logger.error(
                     "Failed to load M2M model",
@@ -165,23 +165,23 @@ class Translator:
         text = text.strip()
         if not text:
             return TranslationResult(
-                "", 
+                "",
                 "echo",
                 src_lang="en",
-                tgt_lang="zh", 
+                tgt_lang="zh",
                 duration_ms=0.0,
             )
-            
+
         self.logger.debug(
             "Starting translation",
             text_length=len(text),
             src_lang="en",
             tgt_lang="zh",
         )
-        
-        start_time = time.time()
+
+        start_time = time.time() #noqa: F841
         self.metrics.start_timer("translation_latency")
-        
+
         # Try NLLB first
         try:
             tok, model = self._load_nllb()
@@ -198,28 +198,28 @@ class Translator:
                     max_new_tokens=MT.max_new_tokens,
                 )
             out = tok.batch_decode(gen, skip_special_tokens=True)[0]
-            
+
             duration_ms = self.metrics.end_timer("translation_latency")
             self.metrics.increment_counter("translations_success")
-            
+
             result = TranslationResult(
-                out, 
+                out,
                 MT.nllb_model,
                 src_lang="en",
                 tgt_lang="zh",
                 duration_ms=duration_ms,
             )
-            
+
             self.logger.info(
                 "Translation completed successfully",
-                method="nllb", 
+                method="nllb",
                 input_length=len(text),
                 output_length=len(out),
                 duration_ms=duration_ms,
             )
-            
+
             return result
-            
+
         except Exception as e:
             self.logger.warning(
                 "NLLB translation failed, trying M2M",
@@ -244,28 +244,28 @@ class Translator:
                     max_new_tokens=MT.max_new_tokens,
                 )
             out = tok.batch_decode(gen, skip_special_tokens=True)[0]
-            
+
             duration_ms = self.metrics.end_timer("translation_latency")
             self.metrics.increment_counter("translations_success")
-            
+
             result = TranslationResult(
                 out,
                 MT.m2m_model,
-                src_lang="en", 
+                src_lang="en",
                 tgt_lang="zh",
                 duration_ms=duration_ms,
             )
-            
+
             self.logger.info(
-                "Translation completed successfully", 
+                "Translation completed successfully",
                 method="m2m",
                 input_length=len(text),
                 output_length=len(out),
                 duration_ms=duration_ms,
             )
-            
+
             return result
-            
+
         except Exception as e:
             self.logger.error(
                 "Both NLLB and M2M translation failed",
@@ -277,10 +277,10 @@ class Translator:
 
         # Echo fallback
         return TranslationResult(
-            text, 
+            text,
             "echo",
             src_lang="en",
-            tgt_lang="zh", 
+            tgt_lang="zh",
             duration_ms=duration_ms,
         )
 
