@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import weakref
 import os
 import queue
 import signal
@@ -15,6 +16,22 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 from fastapi import WebSocket
+
+
+def _session_manager_finalize_stop(self_proxy: Any) -> None:
+    """Module-level finalizer that doesn't keep strong refs to self."""
+    try:
+        setattr(self_proxy, "_stop", True)
+        sessions = (getattr(self_proxy, "_sessions", {}) or {}).values()
+        for sess in sessions:
+            try:
+                stop = getattr(sess, "stop", None)
+                if callable(stop):
+                    stop()
+            except Exception:
+                pass
+    except Exception:
+        pass
 
 from .events import EventStamper
 from .ws_protocol import WSProtocolManager
@@ -78,15 +95,32 @@ class StreamingSession:
 
     def _schedule_broadcast(self, event: Dict[str, Any]) -> None:
         """Safely schedule a broadcast coroutine from any thread."""
-        if self._event_loop is None or self._broadcast_fn is None:
-            print("[StreamingSession] dropping event (no loop or broadcast_fn)")
+        loop = self._event_loop
+        if loop is None or self._broadcast_fn is None:
+            return
+        # Avoid scheduling onto a closed loop during teardown
+        # Assume open if loop lacks is_closed (e.g., mock in tests)
+        if getattr(loop, "is_closed", lambda: False)():
             return
 
-        # Ensure _broadcast_fn returns a coroutine
-        def coro():
-            return self._broadcast_fn(self.sid, event)
+        def _invoke() -> None:
+            try:
+                result = self._broadcast_fn(self.sid, event)
+                if asyncio.iscoroutine(result):
+                    try:
+                        asyncio.get_running_loop().create_task(result)
+                    except RuntimeError:
+                        # No running loop available; drop
+                        pass
+            except Exception:
+                # Swallow exceptions during teardown
+                pass
 
-        self._event_loop.call_soon_threadsafe(lambda: asyncio.create_task(coro()))
+        try:
+            loop.call_soon_threadsafe(_invoke)
+        except RuntimeError:
+            # Event loop may be closing; drop silently
+            pass
 
     def start(self) -> None:
         """Start the streaming ASR session."""
@@ -181,7 +215,7 @@ class StreamingSession:
                         except Exception:
                             logger.exception("stop_capture failed")
 
-            self._audio_thread = threading.Thread(target=audio_worker, daemon=True)
+            self._audio_thread = threading.Thread(target=audio_worker)
             self._audio_thread.start()
 
         except Exception as e:
@@ -296,10 +330,10 @@ class StreamingSession:
 
 @dataclass
 class SessionConfig:
+    # required (no defaults)
     name: str
     asr_model_id: str
     mt_enabled: bool
-    mt_model_id: Optional[str]
     dest_lang: str
     device: str
     vad: bool
@@ -308,8 +342,16 @@ class SessionConfig:
     segment_max_sec: float
     partial_word_cap: int
     save_audio: str
+
+    # optional (with defaults) — MUST come after all required fields
+    mt_model_id: Optional[str] = None
     # New streaming mode flag
     streaming_mode: bool = False
+
+    def __post_init__(self) -> None:
+        # Require mt_model_id only when MT is enabled
+        if self.mt_enabled and not self.mt_model_id:
+            raise ValueError("mt_model_id is required when mt_enabled=True")
 
 
 class Session:
@@ -361,12 +403,18 @@ class Session:
         env["LX_SAVE_AUDIO"] = self.cfg.save_audio
 
         script = [sys.executable, "-m", "loquilex.cli.live_en_to_zh", "--seconds", "-1"]
+        creationflags = 0
+        if os.name == "nt":
+            # Windows: create new process group to enable CTRL_BREAK_EVENT
+            creationflags = getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
+        # POSIX: rely on start_new_session=True for killpg compatibility
         self.proc = subprocess.Popen(
             script,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             env=env,
-            start_new_session=True,
+            start_new_session=(os.name != "nt"),
+            creationflags=creationflags,
         )
 
         def _reader() -> None:
@@ -388,24 +436,43 @@ class Session:
                         _ = self.queue.get_nowait()
                     except Exception:
                         pass
-
-        self._reader_thread = threading.Thread(target=_reader, daemon=True)
+        self._reader_thread = threading.Thread(target=_reader)
         self._reader_thread.start()
 
     def stop(self) -> None:
         if self.proc and self.proc.poll() is None:
             try:
-                try:
-                    os.killpg(self.proc.pid, signal.SIGTERM)
-                except Exception:
-                    self.proc.terminate()
+                if os.name == "nt":
+                    try:
+                        self.proc.send_signal(getattr(signal, "CTRL_BREAK_EVENT", signal.SIGTERM))
+                    except Exception:
+                        self.proc.terminate()
+                else:
+                    try:
+                        pgid = os.getpgid(self.proc.pid)
+                    except Exception:
+                        pgid = None
+                    if pgid and pgid == self.proc.pid:
+                        try:
+                            os.killpg(pgid, signal.SIGTERM)
+                        except Exception:
+                            self.proc.terminate()
+                    else:
+                        self.proc.terminate()
                 try:
                     self.proc.wait(timeout=3)
                 except subprocess.TimeoutExpired:
-                    try:
-                        os.killpg(self.proc.pid, signal.SIGKILL)
-                    except Exception:
+                    if os.name == "nt":
                         self.proc.kill()
+                    else:
+                        try:
+                            pgid = os.getpgid(self.proc.pid)
+                        except Exception:
+                            pgid = None
+                        if pgid and pgid == self.proc.pid:
+                            os.killpg(pgid, signal.SIGKILL)
+                        else:
+                            self.proc.kill()
             except Exception:
                 pass
         self._stop_evt.set()
@@ -419,21 +486,39 @@ class Session:
         # Send SIGSTOP to process group to pause audio ingest and decoding
         if self.proc and self.proc.poll() is None:
             try:
-                os.killpg(self.proc.pid, signal.SIGSTOP)
+                pgid = None
+                try:
+                    pgid = os.getpgid(self.proc.pid)
+                except Exception:
+                    pass
+                if pgid and pgid == self.proc.pid:
+                    os.killpg(pgid, signal.SIGSTOP)
             except Exception:
                 pass
 
     def resume(self) -> None:
         if self.proc and self.proc.poll() is None:
             try:
-                os.killpg(self.proc.pid, signal.SIGCONT)
+                pgid = None
+                try:
+                    pgid = os.getpgid(self.proc.pid)
+                except Exception:
+                    pass
+                if pgid and pgid == self.proc.pid:
+                    os.killpg(pgid, signal.SIGCONT)
             except Exception:
                 pass
 
     def finalize_now(self) -> None:
         if self.proc and self.proc.poll() is None:
             try:
-                os.killpg(self.proc.pid, signal.SIGUSR1)
+                pgid = None
+                try:
+                    pgid = os.getpgid(self.proc.pid)
+                except Exception:
+                    pass
+                if pgid and pgid == self.proc.pid:
+                    os.killpg(pgid, signal.SIGUSR1)
             except Exception:
                 pass
 
@@ -489,9 +574,25 @@ class SessionManager:
             }
         )
 
-        t = threading.Thread(target=self._log_pump, daemon=True)
+        def _bg_runner(self_ref: Any) -> None:
+            try:
+                mgr = self_ref()
+                if mgr is None:
+                    return
+                mgr._log_pump()
+            except Exception:
+                pass
+
+        t = threading.Thread(target=_bg_runner, args=(weakref.ref(self),))
+        t.daemon = True
         t.start()
         self._bg_threads.append(t)
+
+        # Register finalizer to ensure best-effort stop on GC
+        try:
+            self._finalizer = weakref.finalize(self, _session_manager_finalize_stop, weakref.proxy(self))
+        except Exception:
+            self._finalizer = None
 
     def start_session(self, cfg: SessionConfig) -> str:
         if cfg.device == "cuda":
@@ -743,7 +844,7 @@ class SessionManager:
     # Download management
     def start_download_job(self, job_id: str, repo_id: str, _typ: str) -> None:
         t = threading.Thread(
-            target=self._download_worker, args=(job_id, repo_id, _typ), daemon=True
+            target=self._download_worker, args=(job_id, repo_id, _typ)
         )
         t.start()
         self._bg_threads.append(t)
@@ -772,11 +873,19 @@ class SessionManager:
             "print(p)"
         )
         try:
+            creationflags = 0
+            start_new_session = False
+            if os.name == "nt":
+                creationflags = getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
+                start_new_session = False
+            else:
+                start_new_session = True
             proc = subprocess.Popen(
                 [sys.executable, "-c", code],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
-                start_new_session=True,
+                start_new_session=start_new_session,
+                creationflags=creationflags,
             )
         except Exception as e:
             try:
@@ -830,7 +939,7 @@ class SessionManager:
                 pct = min(99, pct + 1)
                 time.sleep(1.0)
 
-        hb = threading.Thread(target=heartbeats, daemon=True)
+        hb = threading.Thread(target=heartbeats)
         hb.start()
 
         out = ""
@@ -844,6 +953,10 @@ class SessionManager:
         finally:
             with self._lock:
                 self._dl_procs.pop(job_id, None)
+        try:
+            hb.join(timeout=1.0)
+        except Exception:
+            pass
 
         if ret == 0:
             try:
@@ -882,11 +995,37 @@ class SessionManager:
         if not proc or proc.poll() is not None:
             return False
         try:
-            os.killpg(proc.pid, signal.SIGTERM)
+            if os.name == "nt":
+                try:
+                    proc.send_signal(getattr(signal, "CTRL_BREAK_EVENT", signal.SIGTERM))
+                except Exception:
+                    proc.terminate()
+            else:
+                try:
+                    pgid = os.getpgid(proc.pid)
+                except Exception:
+                    pgid = None
+                if pgid and pgid == proc.pid:
+                    try:
+                        os.killpg(pgid, signal.SIGTERM)
+                    except Exception:
+                        proc.terminate()
+                else:
+                    proc.terminate()
             try:
                 proc.wait(timeout=3)
             except subprocess.TimeoutExpired:
-                os.killpg(proc.pid, signal.SIGKILL)
+                if os.name == "nt":
+                    proc.kill()
+                else:
+                    try:
+                        pgid = os.getpgid(proc.pid)
+                    except Exception:
+                        pgid = None
+                    if pgid and pgid == proc.pid:
+                        os.killpg(pgid, signal.SIGKILL)
+                    else:
+                        proc.kill()
             return True
         except Exception:
             try:
@@ -898,40 +1037,40 @@ class SessionManager:
     async def shutdown(self) -> None:
         """Shutdown all sessions and cleanup resources."""
         logger.info("SessionManager shutdown initiated")
-        
+
         # Stop flag to halt background threads
         self._stop = True
-        
+
         # Stop all active sessions
         with self._lock:
             session_ids = list(self._sessions.keys())
-            
+
         for sid in session_ids:
             try:
                 self.stop_session(sid)
             except Exception as e:
                 logger.warning(f"Error stopping session {sid}: {e}")
-                
+
         # Close all WebSocket protocol managers
         with self._lock:
             protocol_managers = list(self._ws_protocols.values())
-            
+
         for protocol_manager in protocol_managers:
             try:
                 await protocol_manager.close()
             except Exception as e:
                 logger.warning(f"Error closing protocol manager: {e}")
-                
+
         # Cancel all download processes
         with self._lock:
             download_procs = list(self._dl_procs.items())
-            
+
         for job_id, proc in download_procs:
             try:
                 self.cancel_download(job_id)
             except Exception as e:
                 logger.warning(f"Error canceling download {job_id}: {e}")
-                
+
         # Wait for background threads to finish
         for thread in self._bg_threads:
             if thread.is_alive():
@@ -939,19 +1078,12 @@ class SessionManager:
                     thread.join(timeout=3.0)
                 except Exception as e:
                     logger.warning(f"Error joining background thread: {e}")
-                    
+
         logger.info("SessionManager shutdown completed")
 
     def __del__(self):
-        """Destructor to ensure cleanup if not already done."""
-        # Set stop flag for background threads
-        self._stop = True
-        
-        # Stop all sessions
-        with self._lock:
-            sessions = list(self._sessions.values())
-        for session in sessions:
-            try:
-                session.stop()
-            except Exception:
-                pass
+        """Best-effort, non-async cleanup for tests; no heavy work."""
+        try:
+            _session_manager_finalize_stop(self)
+        except Exception:
+            pass

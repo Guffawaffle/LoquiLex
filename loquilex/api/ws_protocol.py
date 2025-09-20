@@ -52,16 +52,6 @@ class WSProtocolManager:
     async def __aexit__(self, exc_type, exc, tb):
         await self.close()
 
-    def __del__(self):
-        """Destructor to ensure cleanup if not already done."""
-        # If tasks are still running, schedule their cancellation
-        if self._hb_task and not self._hb_task.done():
-            self._hb_task.cancel()
-        if self._hb_timeout_task and not self._hb_timeout_task.done():
-            self._hb_timeout_task.cancel()
-        if self._system_hb_task and not self._system_hb_task.done():
-            self._system_hb_task.cancel()
-
     """Manages WebSocket protocol for a single session."""
 
     def __init__(
@@ -141,6 +131,9 @@ class WSProtocolManager:
             },
         }
 
+        # Lifecycle guard
+        self._closed: bool = False
+
     def set_disconnect_callback(self, callback: Callable[[str], None]) -> None:
         """Set callback for when session should be cleaned up."""
         self._on_disconnect = callback
@@ -151,6 +144,9 @@ class WSProtocolManager:
 
     async def add_connection(self, ws: WebSocket) -> None:
         """Add a new WebSocket connection."""
+        if self._closed:
+            # Ignore late connections after close
+            return
         self.connections.add(ws)
 
         # Send welcome message
@@ -438,6 +434,8 @@ class WSProtocolManager:
 
         Returns True if message was sent, False if flow control prevented it.
         """
+        if self._closed:
+            return False
         if not self.state.can_send_message():
             logger.warning(f"Flow control prevents sending {event_type}")
             return False
@@ -481,7 +479,7 @@ class WSProtocolManager:
 
     async def _broadcast(self, envelope: WSEnvelope) -> None:
         """Broadcast envelope to all connections."""
-        if not self.connections:
+        if self._closed or not self.connections:
             return
 
         # Convert to JSON once
@@ -666,16 +664,18 @@ class WSProtocolManager:
 
     async def _cleanup_session(self) -> None:
         """Clean up session resources.
-        
+
         Resource Lifecycle Management:
         - Stops heartbeat tasks (heartbeat and system heartbeat)
         - Closes all WebSocket connections gracefully
-        - Clears outbound message queues 
+        - Clears outbound message queues
         - Calls disconnect callback to notify parent manager
-        
+
         This method ensures all tasks are cancelled and connections
         are properly closed to prevent resource leaks.
         """
+        if self._closed:
+            return
         await self._stop_heartbeat()
         await self._stop_system_heartbeat()
 
@@ -695,9 +695,17 @@ class WSProtocolManager:
                 pass
         self._outbound_queues.clear()
 
+        # Cleanup replay buffer as well
+        try:
+            self._replay_buffer.cleanup()
+        except Exception:
+            pass
+
         # Notify parent to remove session
         if self._on_disconnect:
             self._on_disconnect(self.sid)
+
+        self._closed = True
 
     async def close(self) -> None:
         """Gracefully close the session."""

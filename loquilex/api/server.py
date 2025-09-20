@@ -13,7 +13,7 @@ from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Requ
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from .model_discovery import list_asr_models, list_mt_models, mt_supported_languages
 from .supervisor import SessionConfig, SessionManager, StreamingSession
@@ -127,7 +127,7 @@ MANAGER = SessionManager()
 class CreateSessionReq(BaseModel):
     name: Optional[str] = Field(default=None)
     asr_model_id: str
-    mt_enabled: bool = Field(default=True)
+    mt_enabled: bool = Field(default=False)
     mt_model_id: Optional[str] = Field(default=None)
     dest_lang: str = Field(default="zho_Hans")
     device: str = Field(default="auto")  # auto|cuda|cpu
@@ -138,6 +138,16 @@ class CreateSessionReq(BaseModel):
     partial_word_cap: int = Field(default=10)
     save_audio: str = Field(default="off")  # off|wav|flac
     streaming_mode: bool = Field(default=False)  # Enable new streaming ASR pipeline
+
+    # Validate MT settings: require model id only when enabled
+    @model_validator(mode="before")
+    @classmethod
+    def _validate_mt(cls, values: Dict[str, Any]):
+        # Mirror field default: treat missing as disabled to ease minimal payloads
+        mt_enabled = values.get("mt_enabled", False)
+        if mt_enabled and not values.get("mt_model_id"):
+            raise ValueError("mt_model_id is required when mt_enabled=True")
+        return values
 
 
 class CreateSessionResp(BaseModel):
@@ -196,7 +206,7 @@ async def get_session_storage_stats(sid: str) -> Dict[str, Any]:
 
 @app.get("/sessions/{sid}/storage/commits")
 async def get_session_commits(
-    sid: str, 
+    sid: str,
     limit: Optional[int] = None,
     commit_type: Optional[str] = None,
     since_timestamp: Optional[float] = None

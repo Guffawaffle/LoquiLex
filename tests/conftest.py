@@ -129,19 +129,19 @@ def resource_monitoring():
     import threading
     import tracemalloc
     import gc
-    
+
     # Start memory tracing
     tracemalloc.start(25)  # Keep 25 frames for stack traces
-    
+
     # Record initial state
     initial_thread_count = threading.active_count()
     initial_snapshot = tracemalloc.take_snapshot()
-    
+
     yield
-    
+
     # Cleanup and check for leaks
     gc.collect()
-    
+
     # Check thread count
     final_thread_count = threading.active_count()
     if final_thread_count > initial_thread_count + 2:  # Allow some variance
@@ -151,21 +151,23 @@ def resource_monitoring():
             "This may indicate a thread leak.",
             ResourceWarning
         )
-    
+
     # Check memory usage
-    final_snapshot = tracemalloc.take_snapshot()
-    top_stats = final_snapshot.compare_to(initial_snapshot, 'lineno')
-    
-    # Only warn about significant memory growth
-    for stat in top_stats[:3]:  # Top 3 memory changes
-        if stat.size_diff > 1024 * 1024:  # More than 1MB growth
-            import warnings
-            warnings.warn(
-                f"Significant memory growth detected: {stat}",
-                ResourceWarning
-            )
-    
-    tracemalloc.stop()
+    if tracemalloc.is_tracing():
+        final_snapshot = tracemalloc.take_snapshot()
+        top_stats = final_snapshot.compare_to(initial_snapshot, 'lineno')
+        # Only warn about significant memory growth
+        for stat in top_stats[:3]:  # Top 3 memory changes
+            if stat.size_diff > 1024 * 1024:  # More than 1MB growth
+                import warnings
+                warnings.warn(
+                    f"Significant memory growth detected: {stat}",
+                    ResourceWarning
+                )
+        tracemalloc.stop()
+    else:
+        # Tracing stopped elsewhere; skip snapshot
+        pass
 
 
 @pytest.fixture
@@ -173,10 +175,10 @@ def temp_dir():
     """Provide a temporary directory that gets cleaned up."""
     import tempfile
     import shutil
-    
+
     temp_path = tempfile.mkdtemp(prefix="loquilex_test_")
     yield temp_path
-    
+
     # Cleanup
     try:
         shutil.rmtree(temp_path)

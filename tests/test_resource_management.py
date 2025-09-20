@@ -15,7 +15,7 @@ from pathlib import Path
 
 from loquilex.api.supervisor import StreamingSession, Session, SessionManager, SessionConfig
 from loquilex.api.ws_protocol import WSProtocolManager
-from loquilex.api.bounded_queue import BoundedQueue, ReplayBuffer
+from loquilex.api.bounded_queue import BoundedQueue
 from loquilex.output.text_io import RollingTextFile
 
 
