@@ -33,6 +33,7 @@ def _session_manager_finalize_stop(self_proxy: Any) -> None:
     except Exception:
         pass
 
+
 from .events import EventStamper
 from .ws_protocol import WSProtocolManager
 from .ws_types import MessageType, HeartbeatConfig, ServerLimits
@@ -439,6 +440,7 @@ class Session:
                         _ = self.queue.get_nowait()
                     except Exception:
                         pass
+
         self._reader_thread = threading.Thread(target=_reader)
         self._reader_thread.start()
 
@@ -574,7 +576,7 @@ class SessionManager:
                 "heartbeat_timeout_ms": self._default_hb_config.timeout_ms,
                 "max_in_flight": self._default_limits.max_in_flight,
                 "max_msg_bytes": self._default_limits.max_msg_bytes,
-            }
+            },
         )
 
         def _bg_runner(self_ref: Any) -> None:
@@ -596,7 +598,9 @@ class SessionManager:
         # with static type checkers when finalizer registration fails.
         self._finalizer: Optional[Any] = None
         try:
-            self._finalizer = weakref.finalize(self, _session_manager_finalize_stop, weakref.proxy(self))
+            self._finalizer = weakref.finalize(
+                self, _session_manager_finalize_stop, weakref.proxy(self)
+            )
         except Exception:
             self._finalizer = None
 
@@ -861,9 +865,7 @@ class SessionManager:
 
     # Download management
     def start_download_job(self, job_id: str, repo_id: str, _typ: str) -> None:
-        t = threading.Thread(
-            target=self._download_worker, args=(job_id, repo_id, _typ)
-        )
+        t = threading.Thread(target=self._download_worker, args=(job_id, repo_id, _typ))
         t.start()
         self._bg_threads.append(t)
 
@@ -882,8 +884,10 @@ class SessionManager:
             pass
 
         try:
-            creationflags = getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0) if os.name == "nt" else 0
-            start_new_session = (os.name != "nt")
+            creationflags = (
+                getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0) if os.name == "nt" else 0
+            )
+            start_new_session = os.name != "nt"
             proc = subprocess.Popen(
                 [
                     sys.executable,
@@ -966,7 +970,9 @@ class SessionManager:
             try:
                 loop = asyncio.get_running_loop()
                 loop.create_task(
-                    self._broadcast(chan, {"type": "download_done", "job_id": job_id, "local_path": out})
+                    self._broadcast(
+                        chan, {"type": "download_done", "job_id": job_id, "local_path": out}
+                    )
                 )
             except RuntimeError:
                 pass
@@ -975,7 +981,8 @@ class SessionManager:
                 loop = asyncio.get_running_loop()
                 loop.create_task(
                     self._broadcast(
-                        chan, {"type": "download_error", "job_id": job_id, "message": out or f"rc={ret}"}
+                        chan,
+                        {"type": "download_error", "job_id": job_id, "message": out or f"rc={ret}"},
                     )
                 )
             except RuntimeError:

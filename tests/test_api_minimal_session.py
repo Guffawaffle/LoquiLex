@@ -1,4 +1,3 @@
-import pytest
 import time
 
 from loquilex.api.supervisor import SessionConfig, SessionManager
