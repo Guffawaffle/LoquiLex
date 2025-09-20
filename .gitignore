@@ -43,6 +43,7 @@ htmlcov/
 .artifacts/
 
 # UI Node.js
+node_modules/
 ui/app/node_modules/
 ui/app/dist/
 ui/app/.vite/

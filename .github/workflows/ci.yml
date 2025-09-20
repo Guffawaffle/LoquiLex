@@ -49,3 +49,25 @@ jobs:
               echo "No test files found; skipping pytest."
             fi
           fi
+
+  docs-quality:
+    name: Documentation Quality
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+
+      - name: Install markdown-link-check
+        run: npm install --no-save markdown-link-check
+
+      - name: Check links in README and docs
+        run: |
+          echo "=== Checking links in README.md and docs/ ==="
+          npx markdown-link-check README.md --config .markdown-link-check.json
+          find docs -name "*.md" -exec npx markdown-link-check {} --config .markdown-link-check.json \;
