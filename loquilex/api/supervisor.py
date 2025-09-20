@@ -682,7 +682,11 @@ class SessionManager:
             total_sessions=len(self._sessions),
         )
 
-        asyncio.create_task(self._broadcast(sid, {"type": "status", "stage": "stopped"}))
+        try:
+            loop = asyncio.get_running_loop()
+            loop.create_task(self._broadcast(sid, {"type": "status", "stage": "stopped"}))
+        except RuntimeError:
+            pass
         return True
 
     async def register_ws(self, sid: str, ws: WebSocket) -> None:
