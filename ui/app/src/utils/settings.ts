@@ -4,7 +4,7 @@ export interface AppSettings {
   asr_model_id: string;
   mt_model_id: string;
   device: string;
-  cadence_threshold: number; // Word count for EN→ZH translation (1-8)  
+  cadence_threshold: number; // Word count threshold for triggering EN→ZH translation (1-8). Lower values provide faster but potentially less accurate translations.
   show_timestamps: boolean;
 }
 
@@ -12,7 +12,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   asr_model_id: '',
   mt_model_id: '',
   device: 'auto',
-  cadence_threshold: 3, // Default from PRODUCT_GOALS.md
+  cadence_threshold: 3, // Default: 3 (chosen as a balanced word count for EN→ZH translation)
   show_timestamps: true,
 };
 

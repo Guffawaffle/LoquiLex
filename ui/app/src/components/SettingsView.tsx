@@ -41,14 +41,14 @@ export function SettingsView() {
       const loadedSettings = loadSettings();
       
       // Auto-select first available models if not set
-      if (!loadedSettings.asr_model_id && asrData.length > 0) {
-        loadedSettings.asr_model_id = asrData[0].id;
+      const updatedSettings = { ...loadedSettings };
+      if (!updatedSettings.asr_model_id && asrData.length > 0) {
+        updatedSettings.asr_model_id = asrData[0].id;
       }
-      if (!loadedSettings.mt_model_id && mtData.length > 0) {
-        loadedSettings.mt_model_id = mtData[0].id;
+      if (!updatedSettings.mt_model_id && mtData.length > 0) {
+        updatedSettings.mt_model_id = mtData[0].id;
       }
-      
-      setSettings(loadedSettings);
+      setSettings(updatedSettings);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load models');
     } finally {
