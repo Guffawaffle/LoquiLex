@@ -35,7 +35,7 @@ if docker build -t loquilex-test . --quiet; then
     echo "✅ Docker build successful"
     
     # Clean up test image
-    docker rmi loquilex-test &> /dev/null || true
+    docker rmi loquilex-test || true
 else
     echo "❌ Docker build failed"
     echo "This may be due to network connectivity issues in the build environment."

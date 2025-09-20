@@ -20,8 +20,8 @@ services:
       - LX_SKIP_MODEL_PREFETCH=${LX_SKIP_MODEL_PREFETCH:-0}
     volumes:
       - loquilex_outputs:/app/outputs
-      - loquilex_models:/root/.cache/huggingface
-      - loquilex_whisper:/root/.cache/whisper
+      - loquilex_models:/home/loquilex/.cache/huggingface
+      - loquilex_whisper:/home/loquilex/.cache/whisper
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:${LX_API_PORT:-8000}/healthz"]
@@ -30,21 +30,6 @@ services:
       retries: 3
       start_period: 40s
 
-  # GPU-enabled variant (use via separate compose file)
-  loquilex-gpu:
-    extends:
-      service: loquilex
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [gpu]
-    environment:
-      - LX_DEVICE=cuda
-    profiles:
-      - gpu
 
 volumes:
   loquilex_outputs:
