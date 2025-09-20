@@ -346,7 +346,6 @@ class SessionConfig:
     segment_max_sec: float
     partial_word_cap: int
     save_audio: str
-
     # optional (with defaults) — MUST come after all required fields
     mt_model_id: Optional[str] = None
     # New streaming mode flag
@@ -645,7 +644,12 @@ class SessionManager:
                 run_dir=str(run_dir),
             )
 
-            asyncio.create_task(self._broadcast(sid, {"type": "status", "stage": "initializing"}))
+            try:
+                loop = asyncio.get_running_loop()
+                loop.create_task(self._broadcast(sid, {"type": "status", "stage": "initializing"}))
+            except RuntimeError:
+                # No running loop in this context; best-effort skip
+                pass
             return sid
 
         except Exception as e:
@@ -845,10 +849,11 @@ class SessionManager:
                     else:
                         payload = {"type": "status", "log": text}
                     try:
-                        asyncio.run(self._broadcast(sid, payload))
-                    except RuntimeError:
-                        loop = asyncio.get_event_loop()
+                        loop = asyncio.get_running_loop()
                         loop.create_task(self._broadcast(sid, payload))
+                    except RuntimeError:
+                        # No running loop in this thread (likely shutdown); best-effort skip
+                        pass
 
     # Download management
     def start_download_job(self, job_id: str, repo_id: str, _typ: str) -> None:
@@ -861,20 +866,16 @@ class SessionManager:
     def _download_worker(self, job_id: str, repo_id: str, _typ: str) -> None:
         chan = f"_download/{job_id}"
         try:
-            asyncio.run(
-                self._broadcast(
-                    chan,
-                    {"type": "download_progress", "job_id": job_id, "repo_id": repo_id, "pct": 0},
-                )
-            )
-        except RuntimeError:
-            loop = asyncio.get_event_loop()
+            loop = asyncio.get_running_loop()
             loop.create_task(
                 self._broadcast(
                     chan,
                     {"type": "download_progress", "job_id": job_id, "repo_id": repo_id, "pct": 0},
                 )
             )
+        except RuntimeError:
+            # No running loop in this thread — best-effort skip
+            pass
 
         try:
             creationflags = getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0) if os.name == "nt" else 0
@@ -920,19 +921,7 @@ class SessionManager:
             pct = 0
             while proc.poll() is None and not self._stop:
                 try:
-                    asyncio.run(
-                        self._broadcast(
-                            chan,
-                            {
-                                "type": "download_progress",
-                                "job_id": job_id,
-                                "repo_id": repo_id,
-                                "pct": pct,
-                            },
-                        )
-                    )
-                except RuntimeError:
-                    loop = asyncio.get_event_loop()
+                    loop = asyncio.get_running_loop()
                     loop.create_task(
                         self._broadcast(
                             chan,
@@ -944,6 +933,9 @@ class SessionManager:
                             },
                         )
                     )
+                except RuntimeError:
+                    # No running loop — skip
+                    pass
                 pct = min(99, pct + 1)
                 time.sleep(1.0)
 
@@ -968,34 +960,22 @@ class SessionManager:
 
         if ret == 0:
             try:
-                asyncio.run(
-                    self._broadcast(
-                        chan, {"type": "download_done", "job_id": job_id, "local_path": out}
-                    )
+                loop = asyncio.get_running_loop()
+                loop.create_task(
+                    self._broadcast(chan, {"type": "download_done", "job_id": job_id, "local_path": out})
                 )
             except RuntimeError:
-                loop = asyncio.get_event_loop()
-                loop.create_task(
-                    self._broadcast(
-                        chan, {"type": "download_done", "job_id": job_id, "local_path": out}
-                    )
-                )
+                pass
         else:
             try:
-                asyncio.run(
+                loop = asyncio.get_running_loop()
+                loop.create_task(
                     self._broadcast(
-                        chan,
-                        {"type": "download_error", "job_id": job_id, "message": out or f"rc={ret}"},
+                        chan, {"type": "download_error", "job_id": job_id, "message": out or f"rc={ret}"}
                     )
                 )
             except RuntimeError:
-                loop = asyncio.get_event_loop()
-                loop.create_task(
-                    self._broadcast(
-                        chan,
-                        {"type": "download_error", "job_id": job_id, "message": out or f"rc={ret}"},
-                    )
-                )
+                pass
 
     def cancel_download(self, job_id: str) -> bool:
         with self._lock:
