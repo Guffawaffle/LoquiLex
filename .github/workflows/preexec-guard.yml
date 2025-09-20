@@ -2,6 +2,9 @@ name: Preexec Guard
 
 on: [push, pull_request]
 
+permissions:
+  contents: read
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -12,14 +15,30 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
       - name: Grep for preexec_fn
+        shell: bash
         run: |
           set -euo pipefail
-          # Repo-wide scan of tracked Python files; exclude common vendor/venv paths
-          if git grep -n -E "preexec_fn\s*=" -- "**/*.py" \
-               ':!**/.venv/**' ':!**/node_modules/**' ':!**/vendor/**' ':!**/.git/**' | tee /tmp/preexec_matches; then
-            echo "::error::preexec_fn occurrences found:" >&2
-            cat /tmp/preexec_matches >&2
+
+          # Search all tracked Python files (recursive), exclude common vendor/virtualenv dirs.
+          # NOTE: Use [[:space:]]* for POSIX ERE; \s requires -P (PCRE).
+          if git grep -n -E 'preexec_fn[[:space:]]*=' -- \
+              ':(glob)**/*.py' \
+              ':(exclude,glob)**/.venv/**' \
+              ':(exclude,glob)**/venv/**' \
+              ':(exclude,glob)**/node_modules/**' \
+              ':(exclude,glob)**/vendor/**' \
+              ':(exclude,glob)**/.git/**' | tee /tmp/preexec_matches; then
+
+            echo "::group::preexec_fn occurrences"
+            # Annotate each hit so it shows inline in PR checks
+            while IFS=: read -r file line rest; do
+              # Guard empty reads (e.g., trailing newline)
+              [[ -n "${file:-}" && -n "${line:-}" ]] || continue
+              echo "::error file=${file},line=${line}::preexec_fn usage is disallowed in this repository"
+            done < /tmp/preexec_matches
+            echo "::endgroup::"
             exit 1
           else
             echo "No preexec_fn found in tracked Python sources"
