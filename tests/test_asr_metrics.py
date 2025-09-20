@@ -6,6 +6,8 @@ import time
 from unittest.mock import patch
 
 from loquilex.asr.metrics import ASRMetrics, LatencyMetrics
+from loquilex.asr.aggregator import PartialFinalAggregator
+from loquilex.asr.stream import ASRPartialEvent, ASRFinalEvent, ASRWord
 from loquilex.logging import StructuredLogger #noqa: F401
 
 
