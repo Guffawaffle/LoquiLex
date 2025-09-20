@@ -1,12 +1,11 @@
 from __future__ import annotations
 
 import contextlib
-import time
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Optional
 
 from loquilex.config.defaults import MT, pick_device
-from ..logging import StructuredLogger, PerformanceMetrics, create_logger
+from ..logging import PerformanceMetrics, create_logger
 
 
 from typing import Any

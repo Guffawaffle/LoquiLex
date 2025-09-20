@@ -19,7 +19,7 @@ from fastapi import WebSocket
 from .events import EventStamper
 from .ws_protocol import WSProtocolManager
 from .ws_types import MessageType, HeartbeatConfig, ServerLimits
-from ..logging import StructuredLogger, PerformanceMetrics, create_logger
+from ..logging import PerformanceMetrics, create_logger
 
 logger = logging.getLogger(__name__)
 
