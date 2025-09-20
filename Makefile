@@ -158,6 +158,14 @@ e2e: install-base
 	$(PY) -m pytest -m e2e -vv -rA $(PYTEST_FLAGS)
 
 ci: lint typecheck test
+
+# Resource leak testing
+test-resource-leaks: install-base
+	$(PY) -m pytest tests/test_resource_management.py -v --tb=short
+
+# Comprehensive testing with resource monitoring
+test-comprehensive: install-base
+	$(PY) -W default::ResourceWarning -m pytest -v --tb=short
 	@echo "✓ CI checks passed locally"
 
 .PHONY: run-ci-mode

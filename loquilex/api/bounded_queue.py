@@ -59,6 +59,7 @@ class BoundedQueue(Generic[T]):
         import threading
 
         self._lock = threading.RLock()
+        self._closed = False
 
     def _ensure_lock(self):
         """No-op: lock is created in __init__ (kept for API compatibility)."""
@@ -71,6 +72,8 @@ class BoundedQueue(Generic[T]):
         """
         self._ensure_lock()
         with self._lock:
+            if self._closed:
+                raise RuntimeError(f"Queue '{self.name}' is closed")
             # Check if we're at capacity before adding
             dropped = len(self._queue) == self.maxsize
             # Add item (deque automatically drops oldest if at maxlen)
@@ -146,6 +149,17 @@ class BoundedQueue(Generic[T]):
             self._queue.clear()
             return items
 
+    def cleanup(self) -> None:
+        """Explicit cleanup method for resources."""
+        self._ensure_lock()
+        with self._lock:
+            self._queue.clear()
+            self.metrics = DropMetrics()
+            self._closed = True
+
+    def close(self) -> None:
+        self.cleanup()
+
 
 class ReplayBuffer(BoundedQueue[Any]):
     """Specialized bounded queue for WebSocket message replay.
@@ -162,6 +176,8 @@ class ReplayBuffer(BoundedQueue[Any]):
         """Add message with sequence number and automatic cleanup (thread-safe)."""
         self._ensure_lock()
         with self._lock:
+            if self._closed:
+                raise RuntimeError("ReplayBuffer is closed")
             # Clean up expired messages first under the same lock
             self._cleanup_expired(locked=True)
             # Store message with metadata

@@ -75,7 +75,7 @@ def capture_stream(callback: Callable[[AudioFrame], None]) -> Callable[[], None]
                 mono = block.reshape(-1).astype(np.float32)
                 callback(AudioFrame(mono, t0, t1))
 
-        th = threading.Thread(target=worker, daemon=True)
+        th = threading.Thread(target=worker)
         th.start()
 
         def stop() -> None:
@@ -138,7 +138,7 @@ def capture_stream(callback: Callable[[AudioFrame], None]) -> Callable[[], None]
                 t0 = t1 - (arr.size / SAMPLE_RATE)
                 callback(AudioFrame(arr, t0, t1))
 
-        th = threading.Thread(target=reader, daemon=True)
+        th = threading.Thread(target=reader)
         th.start()
 
         def stop() -> None:

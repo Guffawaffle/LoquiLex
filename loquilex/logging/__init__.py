@@ -6,7 +6,7 @@ from .redaction import DataRedactor
 
 __all__ = [
     "StructuredLogger",
-    "LogLevel", 
+    "LogLevel",
     "create_logger",
     "PerformanceMetrics",
     "MetricType",

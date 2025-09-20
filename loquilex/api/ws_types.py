@@ -316,14 +316,14 @@ class SessionState:
         """Initialize session storage after dataclass creation."""
         # Import here to avoid circular dependency
         from .session_storage import SessionStorage, StorageConfig
-        
+
         # Configure storage based on environment or defaults
         storage_config = StorageConfig(
             max_commits=int(os.environ.get("LX_SESSION_MAX_COMMITS", "100")),
             max_size_bytes=int(os.environ.get("LX_SESSION_MAX_SIZE_BYTES", str(1024 * 1024))),
-            max_age_seconds=float(os.environ.get("LX_SESSION_MAX_AGE_SECONDS", "3600.0"))
+            max_age_seconds=float(os.environ.get("LX_SESSION_MAX_AGE_SECONDS", "3600.0")),
         )
-        
+
         self._session_storage = SessionStorage(self.sid, storage_config)
 
     def next_seq(self) -> int:
@@ -377,11 +377,11 @@ class SessionState:
 
     def add_session_commit(self, commit_type: str, data: Dict[str, Any]) -> Optional[Any]:
         """Add a finalized commit to session storage.
-        
+
         Args:
             commit_type: Type of commit ("transcript", "translation", "status")
             data: Commit data payload
-            
+
         Returns:
             SessionCommit object if storage is available, None otherwise
         """
@@ -391,10 +391,10 @@ class SessionState:
 
     def get_session_snapshot(self, max_commits: int = 20) -> Optional[Dict[str, Any]]:
         """Get session storage snapshot for rehydration.
-        
+
         Args:
             max_commits: Maximum number of recent commits to include
-            
+
         Returns:
             Snapshot data or None if storage not available
         """
@@ -404,7 +404,7 @@ class SessionState:
 
     def get_session_storage_stats(self) -> Optional[Dict[str, Any]]:
         """Get session storage statistics.
-        
+
         Returns:
             Storage stats or None if storage not available
         """

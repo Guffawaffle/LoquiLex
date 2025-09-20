@@ -10,6 +10,7 @@ loquilex.egg-info/
 
 .direnv/
 .venv/
+.venv-*/
 .env
 .env.*
 build/

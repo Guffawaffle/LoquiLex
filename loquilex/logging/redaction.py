@@ -19,18 +19,20 @@ class DataRedactor:
         # Standard sensitive data patterns
         self.patterns = [
             # File paths (keep only filename) - improved to handle Windows paths
-            re.compile(r'([A-Za-z]:\\|/)[^/\\\s]*[/\\]([^/\\\s]+\.(py|json|yaml|yml|txt|log|bin|ckpt|pt|pth|safetensors))'),
-
+            re.compile(
+                r"([A-Za-z]:\\|/)[^/\\\s]*[/\\]([^/\\\s]+\.(py|json|yaml|yml|txt|log|bin|ckpt|pt|pth|safetensors))"
+            ),
             # Model paths and cache directories
-            re.compile(r'(/.+/)?(\.cache|models|checkpoints)/[^\s]+'),
-
+            re.compile(r"(/.+/)?(\.cache|models|checkpoints)/[^\s]+"),
             # Tokens and API keys (common patterns)
-            re.compile(r'(token|key|secret|password|api_key|credential)["\']?\s*[=:]\s*["\']?[a-zA-Z0-9_-]{8,}["\']?', re.IGNORECASE),
-
+            re.compile(
+                r'(token|key|secret|password|api_key|credential)["\']?\s*[=:]\s*["\']?[a-zA-Z0-9_-]{8,}["\']?',
+                re.IGNORECASE,
+            ),
             # User home directories
-            re.compile(r'/home/[^/\s]+'),
-            re.compile(r'/Users/[^/\s]+'),
-            re.compile(r'C:\\Users\\[^\\s]+'),
+            re.compile(r"/home/[^/\s]+"),
+            re.compile(r"/Users/[^/\s]+"),
+            re.compile(r"C:\\Users\\[^\\s]+"),
         ]
 
         if custom_patterns:
@@ -38,9 +40,21 @@ class DataRedactor:
 
         # Sensitive field names to redact entirely
         self.sensitive_fields = {
-            'password', 'token', 'secret', 'key', 'auth', 'credential',
-            'user_data', 'personal_info', 'email', 'phone', 'address',
-            'api_key', 'access_token', 'refresh_token', 'auth_token'
+            "password",
+            "token",
+            "secret",
+            "key",
+            "auth",
+            "credential",
+            "user_data",
+            "personal_info",
+            "email",
+            "phone",
+            "address",
+            "api_key",
+            "access_token",
+            "refresh_token",
+            "auth_token",
         }
 
     def redact_string(self, text: str) -> str:
@@ -57,9 +71,9 @@ class DataRedactor:
         for pattern in self.patterns:
             if pattern.groups >= 2:
                 # Keep certain parts (like filenames)
-                result = pattern.sub(r'[REDACTED]/\2', result)
+                result = pattern.sub(r"[REDACTED]/\2", result)
             else:
-                result = pattern.sub('[REDACTED]', result)
+                result = pattern.sub("[REDACTED]", result)
 
         return result
 
@@ -100,14 +114,16 @@ class DataRedactor:
                 result[key] = self.redact_dict(value)
             elif isinstance(value, list):
                 result[key] = [
-                    self.redact_dict(item) if isinstance(item, dict)
-                    else self.redact_string(str(item)) if isinstance(item, str)
-                    else item
+                    (
+                        self.redact_dict(item)
+                        if isinstance(item, dict)
+                        else self.redact_string(str(item)) if isinstance(item, str) else item
+                    )
                     for item in value
                 ]
             elif isinstance(value, str):
                 result[key] = self.redact_string(value)
-            elif isinstance(value, (Path, )):
+            elif isinstance(value, (Path,)):
                 result[key] = self.redact_path(value)
             else:
                 result[key] = value
