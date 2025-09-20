@@ -278,3 +278,107 @@ class TestPerformanceMetrics:
         assert metrics.get_stats("test") is None
         assert len(metrics.counters) == 0
         assert len(metrics.gauges) == 0
+
+
+class TestLogRetention:
+    """Test log rotation and cleanup functionality."""
+
+    def test_log_rotation_by_size(self):
+        """Test log file rotation when size limit is exceeded."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            log_file = Path(temp_dir) / "test.jsonl"
+
+            # Create logger with tiny size limit for testing
+            logger = StructuredLogger(
+                component="test",
+                output_file=str(log_file),
+                max_log_size_mb=0.001,  # 1KB limit
+                enable_console=False,
+            )
+
+            # Write enough logs to trigger rotation
+            for i in range(100):
+                logger.info(f"Test message {i}", data="x" * 100)
+
+            logger.close()
+
+            # Check that rotation occurred
+            rotated_file = log_file.with_suffix(".1.jsonl")
+            assert rotated_file.exists(), "Rotated log file should exist"
+            assert log_file.exists(), "Current log file should exist"
+
+    def test_log_rotation_keeps_max_files(self):
+        """Test that log rotation respects max_log_files limit."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            log_file = Path(temp_dir) / "test.jsonl"
+
+            # Create logger with small limits
+            logger = StructuredLogger(
+                component="test",
+                output_file=str(log_file),
+                max_log_size_mb=0.001,  # 1KB limit
+                max_log_files=3,
+                enable_console=False,
+            )
+
+            # Write enough logs to trigger multiple rotations
+            for i in range(500):
+                logger.info(f"Test message {i}", data="x" * 100)
+
+            logger.close()
+
+            # Count rotated files
+            rotated_files = list(Path(temp_dir).glob("test.*.jsonl"))
+            assert (
+                len(rotated_files) <= 3
+            ), f"Should keep at most 3 rotated files, found {len(rotated_files)}"
+
+    def test_ci_logger_defaults(self):
+        """Test that CI environment sets appropriate log retention defaults."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            with patch.dict("os.environ", {"CI": "true", "LX_LOG_DIR": temp_dir}):
+                logger = create_logger("test_ci")
+
+                # CI should set rotation limits automatically
+                assert logger.max_log_size_bytes is not None, "CI should set log size limit"
+                assert logger.max_log_files <= 5, "CI should limit number of log files"
+
+                logger.close()
+
+    def test_cleanup_old_logs(self):
+        """Test log cleanup functionality."""
+        from loquilex.logging import cleanup_old_logs
+        import os
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            # Create some log files with different ages
+            old_log = Path(temp_dir) / "old.jsonl"
+            recent_log = Path(temp_dir) / "recent.jsonl"
+
+            old_log.write_text('{"message": "old"}\n')
+            recent_log.write_text('{"message": "recent"}\n')
+
+            # Make old log appear old using os.utime
+            old_time = time.time() - (48 * 3600)  # 48 hours ago
+            os.utime(old_log, (old_time, old_time))
+
+            # Clean up files older than 24 hours
+            deleted_count = cleanup_old_logs(temp_dir, max_age_hours=24)
+
+            assert deleted_count == 1, "Should delete 1 old log file"
+            assert not old_log.exists(), "Old log should be deleted"
+            assert recent_log.exists(), "Recent log should remain"
+
+    def test_log_retention_env_vars(self):
+        """Test that environment variables control log retention."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            with patch.dict(
+                "os.environ",
+                {"LX_LOG_DIR": temp_dir, "LX_LOG_MAX_SIZE_MB": "2", "LX_LOG_MAX_FILES": "1"},
+            ):
+                logger = create_logger("test_env")
+
+                assert logger.max_log_size_bytes == 2 * 1024 * 1024, "Should use env var for size"
+                assert logger.max_log_files == 1, "Should use env var for max files"
+
+                logger.close()

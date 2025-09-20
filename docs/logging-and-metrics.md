@@ -118,6 +118,25 @@ metrics.endTimer('websocket_message', { message_type: 'asr_partial' })
 
 ## Configuration
 
+### CI Log Retention
+
+The logging system includes automatic log retention policies designed for CI environments:
+
+**Automatic CI Configuration:**
+When running in CI (detected via `CI=true` environment variable), the system automatically applies:
+- **10MB** maximum log file size before rotation
+- **3 rotated files** maximum retention  
+- **Automatic cleanup** of old logs after CI runs
+
+**Manual Log Management:**
+```bash
+# Clean logs older than 24 hours using Makefile
+make clean-logs
+
+# Or use Python directly for custom cleanup
+python -c "from loquilex.logging import cleanup_old_logs; cleanup_old_logs('/path/to/logs', max_age_hours=24)"
+```
+
 ### Environment Variables
 
 Configure logging behavior via environment variables:
@@ -125,6 +144,10 @@ Configure logging behavior via environment variables:
 ```bash
 # Log file directory (optional)
 export LX_LOG_DIR="/var/log/loquilex"
+
+# Log rotation settings (CI-friendly)
+export LX_LOG_MAX_SIZE_MB=5          # Max file size in MB before rotation  
+export LX_LOG_MAX_FILES=2            # Max number of rotated files to keep
 
 # WebSocket performance thresholds
 export LX_WS_HB_INTERVAL_MS=10000      # Heartbeat interval
