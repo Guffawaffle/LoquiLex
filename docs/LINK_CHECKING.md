@@ -23,10 +23,7 @@ This will:
 
 ## CI Integration
 
-Link checking runs automatically in CI as part of the "Documentation Quality" job, which:
-- Runs independently from main tests (doesn't slow down the build-test job)
-- Has a 10-minute timeout for efficiency
-- Fails the CI build if broken links are detected
+Link checking previously ran automatically in CI as part of the "Documentation Quality" job. That job has been disabled by the maintainers and link checking is no longer enforced in CI by default. You can still run the check locally using `make link-check` if needed.
 
 ## Configuration
 
