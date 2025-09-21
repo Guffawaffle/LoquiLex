@@ -1,4 +1,10 @@
 {
+  "notes": {
+    "lastEdited": "2025-09-21",
+    "author": "copilot",
+    "reason": "Two known test/placeholder domains are ignored to avoid CI failures when network/DNS is blocked.",
+    "howToRemove": "Edit .markdown-link-check.json and remove the corresponding entries from ignorePatterns; run make link-check locally to verify."
+  },
   "ignorePatterns": [
     {
       "pattern": "^http://localhost"
@@ -23,6 +29,12 @@
     },
     {
       "pattern": "^wss://127.0.0.1"
+    },
+    {
+      "pattern": "this-domain-definitely-does-not-exist-12345\\.com"
+    },
+    {
+      "pattern": "this-domain-does-not-exist-12345\\.com"
     }
   ],
   "httpHeaders": [

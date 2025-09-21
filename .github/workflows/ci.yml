@@ -64,7 +64,7 @@ jobs:
           node-version: "18"
 
       - name: Install markdown-link-check
-        run: npm install --no-save markdown-link-check
+        run: npm install --no-save markdown-link-check --yes
 
       - name: Check links in README and docs
         run: |

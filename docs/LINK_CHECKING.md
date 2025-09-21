@@ -5,7 +5,7 @@ LoquiLex includes automated link checking for documentation to prevent broken li
 ## How It Works
 
 The link checker uses [markdown-link-check](https://github.com/tcort/markdown-link-check) to validate all hyperlinks in:
-- `README.md` 
+- `README.md`
 - All `*.md` files in the `docs/` directory
 
 ## Local Usage
@@ -38,6 +38,18 @@ The following URL patterns are ignored (allowlisted):
 - `http://127.0.0.1:*` and `https://127.0.0.1:*`
 - `ws://localhost:*` and `wss://localhost:*`
 - `ws://127.0.0.1:*` and `wss://127.0.0.1:*`
+
+### CI-only Ignored Test Domains
+We intentionally ignore two placeholder/test domains which are known to be unreachable from some CI environments or blocked by corporate firewalls:
+
+- `this-domain-definitely-does-not-exist-12345.com`
+- `this-domain-does-not-exist-12345.com`
+
+These entries live in the project root file `.markdown-link-check.json` under the `ignorePatterns` array. To remove or change these rules:
+
+1. Edit `.markdown-link-check.json` and remove the corresponding `pattern` entries.
+2. Run `make link-check` locally to confirm there are no regressions.
+3. Open a PR and explain why the domains were re-enabled so reviewers can confirm network accessibility.
 
 ### Timeouts and Retries
 - 20-second timeout per link
