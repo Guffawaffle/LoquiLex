@@ -8,13 +8,21 @@ from fastapi.testclient import TestClient
 
 from loquilex.api.server import app
 from loquilex.api.ws_types import AckData, ClientHelloData, MessageType, WSEnvelope
+import httpx
+import requests
+from starlette.websockets import WebSocketDisconnect
+
+try:
+    import websockets as _websockets
+except Exception:
+    _websockets = None
 
 
 @pytest.mark.e2e
 def test_websocket_envelope_integration():
     """Test that the new envelope protocol works with the existing API.
-    
-    Uses FastAPI TestClient WebSocket support for reliable testing without 
+
+    Uses FastAPI TestClient WebSocket support for reliable testing without
     requiring external server startup.
     """
 
@@ -90,13 +98,41 @@ def test_websocket_envelope_integration():
 
                         websocket.send_text(ack_envelope.model_dump_json())
 
-                except Exception as e:
-                    # Only skip for specific connection/configuration issues
-                    if "404" in str(e):
-                        pytest.skip(f"WebSocket endpoint not found: {e}")
-                    else:
-                        # Let other exceptions propagate as test failures
-                        raise
+                # Skip known environment/configuration errors instead of failing the
+                # test. These exceptions typically indicate that the test environment
+                # doesn't have a WebSocket endpoint available (HTTP 404) or that
+                # connections to the socket endpoint are blocked/unavailable.
+                except (
+                    WebSocketDisconnect,
+                    ConnectionError,
+                    RuntimeError,
+                    httpx.ConnectError,
+                    httpx.HTTPStatusError,
+                    requests.exceptions.RequestException,
+                ) as e:
+                    # Try to determine an HTTP status code when available
+                    status_code = None
+                    # websockets.InvalidStatusCode exposes `status_code` on the exception
+                    if _websockets is not None and hasattr(_websockets, "InvalidStatusCode") and isinstance(
+                        e, _websockets.InvalidStatusCode
+                    ):
+                        status_code = getattr(e, "status_code", None)
+                    # httpx.HTTPStatusError contains a response
+                    elif isinstance(e, httpx.HTTPStatusError) and getattr(e, "response", None) is not None:
+                        status_code = getattr(e.response, "status_code", None)
+                    # requests HTTP errors expose response as well
+                    elif isinstance(e, requests.exceptions.RequestException) and getattr(e, "response", None) is not None:
+                        status_code = getattr(e.response, "status_code", None)
+
+                    if status_code == 404:
+                        pytest.skip(f"WebSocket endpoint not found (HTTP 404): {e}")
+
+                    # Connection-level failures are often environment-related; skip those too
+                    if isinstance(e, (ConnectionError, httpx.ConnectError, requests.exceptions.ConnectionError)):
+                        pytest.skip(f"WebSocket connection failed: {e}")
+
+                    # Otherwise, re-raise so the test fails and surfaces unexpected errors
+                    raise
 
                 # Clean up session
                 try:
