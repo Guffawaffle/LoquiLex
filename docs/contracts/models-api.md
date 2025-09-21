@@ -518,31 +518,31 @@ import { ModelsAPI } from '../api/models'
 
 class ModelSelector {
   private modelsAPI = new ModelsAPI()
-  
+
   async loadAvailableModels() {
     const [asrModels, mtModels] = await Promise.all([
       this.modelsAPI.getASRModels(),
       this.modelsAPI.getMTModels()
     ])
-    
+
     return {
       asr: this.filterByCapabilities(asrModels.models),
       mt: this.filterByLanguagePair(mtModels.models, 'en', 'zh')
     }
   }
-  
+
   async switchModel(modelId: string, modelType: 'asr' | 'mt') {
     // Check if model is loaded
     const status = await this.modelsAPI.getModelStatus(modelId)
-    
+
     if (status.status !== 'loaded') {
       // Start loading model
       await this.modelsAPI.loadModel(modelId)
-      
+
       // Monitor loading progress
       this.monitorModelLoading(modelId)
     }
-    
+
     // Update session configuration
     await this.modelsAPI.updateModelConfig({
       [modelType]: { model_id: modelId }
@@ -559,18 +559,18 @@ from loquilex.api.server import ModelsStatusResponse
 class ModelsController:
     def __init__(self):
         self.model_manager = ModelManager()
-    
+
     async def get_models_status(self) -> ModelsStatusResponse:
         """Get status of all models"""
         asr_status = await self.model_manager.get_asr_status()
         mt_status = await self.model_manager.get_mt_status()
-        
+
         return ModelsStatusResponse(
             asr_models=asr_status,
             mt_models=mt_status,
             system_resources=self.get_system_resources()
         )
-    
+
     async def load_model(self, model_id: str, config: LoadModelRequest):
         """Load model with configuration"""
         try:
@@ -579,7 +579,7 @@ class ModelsController:
                 device=config.compute_config.device,
                 compute_type=config.compute_config.compute_type
             )
-            
+
             # Send WebSocket notification
             await websocket_manager.broadcast({
                 'v': 1,
@@ -589,7 +589,7 @@ class ModelsController:
                     'ready_for_inference': True
                 }
             })
-            
+
         except Exception as e:
             await websocket_manager.broadcast({
                 'v': 1,
@@ -608,27 +608,27 @@ class ModelsController:
 describe('Models API', () => {
   test('load ASR model successfully', async () => {
     const modelId = 'openai/whisper-tiny.en'
-    
+
     // Start loading
     const loadResponse = await modelsAPI.loadModel(modelId)
     expect(loadResponse.status).toBe('loading')
-    
+
     // Wait for completion
     const completed = await waitForWebSocketEvent('model.load.completed', {
       filter: (event) => event.data.model_id === modelId,
       timeout: 10000
     })
-    
+
     expect(completed.data.ready_for_inference).toBe(true)
-    
+
     // Verify model is loaded
     const status = await modelsAPI.getModelStatus(modelId)
     expect(status.status).toBe('loaded')
   })
-  
+
   test('handle insufficient memory error', async () => {
     const largeModelId = 'openai/whisper-large'
-    
+
     await expect(
       modelsAPI.loadModel(largeModelId)
     ).rejects.toThrow('INSUFFICIENT_MEMORY')

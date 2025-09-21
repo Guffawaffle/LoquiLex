@@ -56,9 +56,4 @@ jobs:
             fi
           fi
 
-      - name: Cleanup CI logs
-        if: always()
-        run: |
-          if make -n clean-logs >/dev/null 2>&1; then
-            make clean-logs
-          fi
+  # docs-quality job removed: markdown link checking disabled per maintainer request

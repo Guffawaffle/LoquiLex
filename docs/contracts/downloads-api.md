@@ -341,7 +341,7 @@ const mockDownloadFlow = [
 # Test error scenarios
 @pytest.mark.parametrize("error_type", [
     "NETWORK_ERROR",
-    "INSUFFICIENT_DISK_SPACE", 
+    "INSUFFICIENT_DISK_SPACE",
     "DOWNLOAD_TIMEOUT"
 ])
 def test_download_error_handling(error_type):

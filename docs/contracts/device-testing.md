@@ -21,10 +21,10 @@ interface SelfTestReq {
   test_types: DeviceTestType[] // Tests to perform
 }
 
-type DeviceTestType = 
+type DeviceTestType =
   | 'connectivity'    // Can device be opened/accessed
   | 'audio_capture'   // Can capture audio data
-  | 'noise_level'     // Background noise assessment  
+  | 'noise_level'     // Background noise assessment
   | 'frequency_response' // Frequency range validation
   | 'asr_compatibility'  // ASR model compatibility
 ```
@@ -57,7 +57,7 @@ interface SelfTestResp {
 ```json
 {
   "test_id": "test_1705123456_def789",
-  "status": "running", 
+  "status": "running",
   "device_info": {
     "device_id": "0",
     "device_name": "Built-in Microphone",
@@ -172,7 +172,7 @@ interface AudioDevice {
       "is_default": true
     },
     {
-      "device_id": "1", 
+      "device_id": "1",
       "device_name": "USB Headset Microphone",
       "max_channels": 1,
       "supported_sample_rates": [16000, 44100, 48000],
@@ -240,15 +240,15 @@ Device testing integrates with WebSocket for real-time progress updates.
 {
   "v": 1,
   "t": "device.test.progress",
-  "sid": "sess_1234567890abcdef", 
+  "sid": "sess_1234567890abcdef",
   "data": {
     "test_id": "test_1705123456_def789",
     "progress": 60,
     "current_test": "noise_level",
     "interim_results": {
       "connectivity": { "success": true, "latency_ms": 12 },
-      "audio_capture": { 
-        "success": true, 
+      "audio_capture": {
+        "success": true,
         "samples_captured": 48000,
         "average_amplitude": 0.15
       }
@@ -365,7 +365,7 @@ const mockDeviceTestResult: DeviceTestResults = {
   status: 'completed',
   results: {
     connectivity: { success: true, latency_ms: 12 },
-    audio_capture: { 
+    audio_capture: {
       success: true,
       samples_captured: 80000,
       average_amplitude: 0.18,
@@ -376,7 +376,7 @@ const mockDeviceTestResult: DeviceTestResults = {
       success: true,
       background_db: 35,
       snr_estimate: 20,
-      noise_classification: 'quiet'  
+      noise_classification: 'quiet'
     }
   },
   overall_score: 87
@@ -387,7 +387,7 @@ const mockDeviceTestResult: DeviceTestResults = {
 ```python
 @pytest.mark.parametrize("error_scenario", [
     "DEVICE_ACCESS_DENIED",
-    "DEVICE_NOT_FOUND", 
+    "DEVICE_NOT_FOUND",
     "DEVICE_IN_USE",
     "TEST_TIMEOUT"
 ])
@@ -410,7 +410,7 @@ def test_device_error_handling(error_scenario):
 - WASAPI for low-latency audio
 - Windows Audio Session API integration
 
-### macOS  
+### macOS
 - Core Audio framework
 - Audio Unit support
 - Permission dialogs in macOS 10.14+

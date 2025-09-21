@@ -53,7 +53,7 @@ Complete transcription result for a speech segment.
 {
   "v": 1,
   "t": "asr.final",
-  "sid": "sess_1234567890abcdef", 
+  "sid": "sess_1234567890abcdef",
   "seq": 146,
   "t_wall": "2024-01-13T14:30:25.340Z",
   "t_mono_ns": 18424567890,
@@ -138,7 +138,7 @@ interface ASRPartialData {
 ```typescript
 interface ASRFinalData {
   text: string                // Complete transcription
-  segment_id: string         // Unique segment identifier  
+  segment_id: string         // Unique segment identifier
   start_ms: number           // Segment start time in milliseconds
   end_ms: number             // Segment end time in milliseconds
   language: string           // Language code (e.g., 'en', 'zh')
@@ -150,7 +150,7 @@ interface ASRFinalData {
 interface WordTiming {
   word: string               // The transcribed word
   start_ms: number          // Word start time relative to segment
-  end_ms: number            // Word end time relative to segment  
+  end_ms: number            // Word end time relative to segment
   confidence: number        // Word-level confidence 0-1
 }
 
@@ -224,11 +224,11 @@ class ASREventHandler {
     (partial: ASRPartialData) => this.updateUI(partial),
     100  // 10 Hz maximum
   )
-  
+
   handlePartialResult(envelope: WSEnvelope<ASRPartialData>) {
     this.throttledPartialUpdate(envelope.data)
   }
-  
+
   handleFinalResult(envelope: WSEnvelope<ASRFinalData>) {
     // Final results are not throttled
     this.updateTranscript(envelope.data)
@@ -245,12 +245,12 @@ interface ASRSessionState {
     start_time: number
     last_update: number
   } | null
-  
+
   completed_segments: ASRFinalData[]
-  
+
   is_processing: boolean
   model_loaded: boolean
-  
+
   stats: {
     segments_processed: number
     total_audio_ms: number
@@ -314,13 +314,13 @@ interface ASRPerformanceMetrics {
     p50_latency_ms: number           // Median latency
     p95_latency_ms: number           // 95th percentile
   }
-  
+
   accuracy: {
     avg_confidence: number           // Mean confidence score
     low_confidence_segments: number  // Count of <0.7 confidence
     word_error_rate?: number         // WER if ground truth available
   }
-  
+
   throughput: {
     segments_per_minute: number      // Processing rate
     real_time_factor: number         // Processing speed vs real-time
@@ -355,12 +355,12 @@ const mockASRSequence = [
     data: { text: 'Hello', stability: 0.6, confidence: 0.8 }
   },
   {
-    type: 'asr.partial', 
+    type: 'asr.partial',
     data: { text: 'Hello world', stability: 0.8, confidence: 0.85 }
   },
   {
     type: 'asr.final',
-    data: { 
+    data: {
       text: 'Hello world, this is a test.',
       confidence: 0.92,
       start_ms: 0,
@@ -375,16 +375,16 @@ const mockASRSequence = [
 @pytest.mark.asyncio
 async def test_asr_streaming_contract():
     """Test ASR streaming follows timing and format contracts"""
-    
+
     # Test partial result frequency
     partials = await capture_partials(duration_seconds=5)
     frequency = len(partials) / 5
     assert 2 <= frequency <= 10, f"Partial frequency {frequency}Hz out of range"
-    
+
     # Test message format
     for partial in partials:
         assert validate_asr_partial(partial.data)
-    
+
     # Test final result
     final = await wait_for_final()
     assert validate_asr_final(final.data)

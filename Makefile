@@ -73,7 +73,7 @@ endef
 ## Phony targets
 .PHONY: help install-venv install-base install-ml-minimal install-ml-cpu \
         prefetch-asr models-tiny dev dev-minimal dev-ml-cpu \
-        lint fmt fmt-check typecheck test unit test-e2e e2e ci clean clean-logs \
+	lint fmt fmt-check typecheck test unit test-e2e e2e ci clean clean-logs \
         docker-ci docker-ci-build docker-ci-run docker-ci-test docker-ci-shell \
         docker-build docker-run docker-gpu docker-stop docker-clean docker-test \
         sec-scan dead-code-analysis dead-code-report clean-artifacts \
@@ -90,24 +90,7 @@ help:
 	@echo "  dev-minimal      - base+dev deps only; no model prefetch (offline-first)"
 	@echo "  dev              - alias of dev-minimal"
 	@echo "  dev-ml-cpu       - add CPU-only ML stack and prefetch tiny model"
-	@echo "  install          - install base dependencies (alias for install-base)"
-	@echo ""
-	@echo "Test:"
-	@echo "  test             - run unit tests (offline by default)"
-	@echo "  test-online      - run unit tests with network access"
-	@echo "  test-e2e         - run end-to-end tests"
-	@echo "  e2e              - verbose end-to-end tests"
-	@echo "  test-all         - run unit + e2e (e2e skips when offline)"
-	@echo "  ci               - run lint + typecheck + test"
-	@echo ""
-	@echo "Quality:"
-	@echo "  lint             - run linting checks"
-	@echo "  fmt              - format code"
-	@echo "  fmt-check        - check code formatting"
-	@echo "  typecheck        - run type checking"
-	@echo "  qual-all         - run all quality checks"
-	@echo ""
-	@echo "UI:"
+	@echo "  lint / fmt / typecheck / test / e2e / ci"
 	@echo "  ui-setup         - install UI dependencies"
 	@echo "  ui-dev           - start dev server with proxy to FastAPI"
 	@echo "  ui-dev-bg        - start UI dev server in background"
@@ -245,6 +228,37 @@ fmt-check: install-base
 
 typecheck: install-base
 	$(PY) -m mypy loquilex
+
+# Local link-check target (not run in CI)
+link-check:
+	@echo "=== Checking links in README.md and docs/ ==="
+	@if ! command -v npm >/dev/null 2>&1; then \
+		echo "❌ npm (Node.js) not found. Please install Node.js (https://nodejs.org/) and ensure 'npm' is in your PATH."; \
+		exit 1; \
+	fi; \
+	if [ ! -f package.json ]; then \
+		echo "Installing markdown-link-check (no package.json found)..."; \
+		npm install --no-save markdown-link-check; \
+	elif ! npm list markdown-link-check >/dev/null 2>&1; then \
+		echo "Installing markdown-link-check..."; \
+		npm install --no-save markdown-link-check; \
+	fi; \
+	FAILED=0; \
+	for file in README.md $$(find docs -name "*.md"); do \
+		echo "Checking $$file..."; \
+		output=$$(npx markdown-link-check "$$file" --config .markdown-link-check.json 2>&1 || true); \
+		echo "$$output"; \
+		if echo "$$output" | grep -q "ERROR:.*dead links found"; then \
+			FAILED=1; \
+		fi; \
+	done; \
+	if [ $$FAILED -eq 1 ]; then \
+		echo "❌ Link check failed: dead links found"; \
+		exit 1; \
+	else \
+		echo "✅ All links are valid"; \
+	fi
+# link-check target removed per maintainer request
 
 test:
 	LX_OFFLINE=${LX_OFFLINE:-1} HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 HF_HUB_DISABLE_TELEMETRY=1 $(PY) -m pytest -q

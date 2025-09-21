@@ -16,12 +16,12 @@ Generates export files from session transcription and translation data.
 ```typescript
 interface ExportRequest {
   formats: ExportFormat[]           // Output formats to generate
-  content_types: ContentType[]      // What content to include  
+  content_types: ContentType[]      // What content to include
   options: ExportOptions            // Format-specific options
   filename_template?: string        // Custom filename pattern
 }
 
-type ExportFormat = 
+type ExportFormat =
   | 'srt'          // SubRip Subtitle format
   | 'vtt'          // WebVTT format
   | 'txt'          // Plain text transcript
@@ -72,7 +72,7 @@ interface ExportResponse {
 
 interface ExportFile {
   format: ExportFormat
-  content_type: ContentType  
+  content_type: ContentType
   filename: string
   size_bytes?: number
   download_url?: string        // Available when completed
@@ -87,7 +87,7 @@ interface ExportFile {
   "files": [
     {
       "format": "srt",
-      "content_type": "both", 
+      "content_type": "both",
       "filename": "session_sess123_20240113_143022_srt"
     },
     {
@@ -235,7 +235,7 @@ Duration: 00:45:23
       },
       "translation": {
         "text": "你好，欢迎参加演示。",
-        "language": "zh", 
+        "language": "zh",
         "confidence": 0.91
       }
     }
@@ -315,7 +315,7 @@ Export operations provide real-time status updates via WebSocket.
 ```json
 {
   "v": 1,
-  "t": "export.failed", 
+  "t": "export.failed",
   "sid": "sess_1234567890abcdef",
   "data": {
     "export_id": "export_1705123456_xyz789",

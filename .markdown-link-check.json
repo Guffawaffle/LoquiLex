@@ -1,0 +1,55 @@
+{
+  "notes": {
+    "lastEdited": "2025-09-21",
+    "author": "copilot",
+    "reason": "Two known test/placeholder domains are ignored to avoid CI failures when network/DNS is blocked.",
+    "aliveStatusCodesNote": "The `aliveStatusCodes` array includes 999 to treat certain non-standard responses as 'alive' (for example, LinkedIn and a few other services sometimes return a non-standard 999 status for throttled or bot-detection responses). Including 999 reduces false negatives in CI; remove or restrict this code only if you want strict HTTP status validation.",
+    "howToRemove": "Edit .markdown-link-check.json and remove the corresponding entries from ignorePatterns; run make link-check locally to verify."
+  },
+  "ignorePatterns": [
+    {
+      "pattern": "^http://localhost"
+    },
+    {
+      "pattern": "^https://localhost"
+    },
+    {
+      "pattern": "^http://127.0.0.1"
+    },
+    {
+      "pattern": "^https://127.0.0.1"
+    },
+    {
+      "pattern": "^ws://localhost"
+    },
+    {
+      "pattern": "^wss://localhost"
+    },
+    {
+      "pattern": "^ws://127.0.0.1"
+    },
+    {
+      "pattern": "^wss://127.0.0.1"
+    },
+    {
+      "pattern": "this-domain-definitely-does-not-exist-12345\\.com"
+    },
+    {
+      "pattern": "this-domain-does-not-exist-12345\\.com"
+    }
+  ],
+  "httpHeaders": [
+    {
+      "urls": ["https://github.com/"],
+      "headers": {
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "User-Agent": "LoquiLex-LinkChecker/1.0"
+      }
+    }
+  ],
+  "timeout": "20s",
+  "retryOn429": true,
+  "retryCount": 3,
+  "fallbackRetryDelay": "30s",
+  "aliveStatusCodes": [200, 206, 999]
+}

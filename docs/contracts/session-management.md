@@ -8,7 +8,7 @@ The Session Management API handles WebSocket connection lifecycle, session state
 
 ### Session States
 ```typescript
-type SessionState = 
+type SessionState =
   | 'disconnected'    // No active connection
   | 'connecting'      // WebSocket connecting
   | 'authenticating'  // Authentication in progress
@@ -376,26 +376,26 @@ interface ReconnectionConfig {
 class ReconnectionManager {
   private attempt = 0
   private config: ReconnectionConfig
-  
+
   calculateDelay(): number {
     const baseDelay = Math.min(
       this.config.initial_delay_ms * Math.pow(this.config.backoff_multiplier, this.attempt),
       this.config.max_delay_ms
     )
-    
+
     // Add jitter to prevent thundering herd
     const jitter = baseDelay * this.config.jitter_factor * Math.random()
     return baseDelay + jitter
   }
-  
+
   async reconnect(): Promise<boolean> {
     if (this.attempt >= this.config.max_attempts) {
       throw new Error('Max reconnection attempts exceeded')
     }
-    
+
     const delay = this.calculateDelay()
     await sleep(delay)
-    
+
     this.attempt++
     return this.attemptConnection()
   }
@@ -453,20 +453,20 @@ interface SessionMetrics {
     reconnect_count: number
     average_reconnect_time_ms: number
   }
-  
+
   messaging: {
     messages_per_second: number
     average_message_size_bytes: number
     message_loss_rate: number
     out_of_order_messages: number
   }
-  
+
   latency: {
     heartbeat_rtt_ms: number
     message_processing_time_ms: number
     p95_response_time_ms: number
   }
-  
+
   reliability: {
     uptime_percentage: number
     error_rate: number
@@ -516,21 +516,21 @@ describe('Session Management', () => {
   test('successful connection flow', async () => {
     const session = await createSession()
     expect(session.state).toBe('connected')
-    
+
     const heartbeat = await sendHeartbeat(session)
     expect(heartbeat.type).toBe('session.heartbeat.ack')
-    
+
     await terminateSession(session)
     expect(session.state).toBe('terminated')
   })
-  
+
   test('reconnection with message replay', async () => {
     const session = await createSession()
     await sendMessage(session, mockASRFinal)
-    
+
     // Simulate connection loss
     await simulateDisconnection(session)
-    
+
     // Reconnect and verify replay
     const reconnected = await reconnectSession(session)
     expect(reconnected.data.messages_missed).toBe(0)
@@ -543,15 +543,15 @@ describe('Session Management', () => {
 @pytest.mark.asyncio
 async def test_session_error_handling():
     """Test session handles various error scenarios"""
-    
+
     # Test authentication failure
     with pytest.raises(AuthenticationError):
         await create_session(invalid_token=True)
-    
+
     # Test session expiry
     session = await create_session()
     await simulate_idle_timeout(session)
-    
+
     # Verify session is marked as expired
     status = await get_session_status(session.id)
     assert status.state == 'expired'

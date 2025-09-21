@@ -87,7 +87,7 @@ which python
 # Solution
 cd /path/to/loquilex
 source .venv/bin/activate
-which python  
+which python
 # Should show: /path/to/loquilex/.venv/bin/python
 ```
 
@@ -211,7 +211,7 @@ if (audioInputs.length === 0) {
 ```javascript
 // Don't rely on device ID persistence
 // Use device label matching instead
-const preferredDevice = audioInputs.find(device => 
+const preferredDevice = audioInputs.find(device =>
   device.label.includes('Headset') || device.label.includes('USB')
 )
 ```
@@ -331,30 +331,30 @@ class ResilientWebSocket {
     this.maxReconnectDelay = 30000
     this.reconnectAttempts = 0
     this.maxReconnectAttempts = 10
-    
+
     this.connect()
   }
-  
+
   connect() {
     this.ws = new WebSocket(this.url)
-    
+
     this.ws.onopen = () => {
       console.log('WebSocket connected')
       this.reconnectAttempts = 0
       this.reconnectDelay = 1000
     }
-    
+
     this.ws.onclose = () => {
       if (this.reconnectAttempts < this.maxReconnectAttempts) {
         setTimeout(() => this.reconnect(), this.reconnectDelay)
       }
     }
   }
-  
+
   reconnect() {
     this.reconnectAttempts++
     this.reconnectDelay = Math.min(
-      this.reconnectDelay * 2, 
+      this.reconnectDelay * 2,
       this.maxReconnectDelay
     )
     this.connect()
@@ -442,17 +442,17 @@ class SessionManager {
   constructor() {
     this.cleanup = []
   }
-  
+
   addEventListeners() {
     const handler = (event) => this.handleEvent(event)
     websocket.addEventListener('message', handler)
-    
+
     // Store for cleanup
     this.cleanup.push(() => {
       websocket.removeEventListener('message', handler)
     })
   }
-  
+
   destroy() {
     // Clean up all resources
     this.cleanup.forEach(fn => fn())
@@ -470,16 +470,16 @@ class AudioBufferManager {
     this.buffers = []
     this.maxBuffers = maxBuffers
   }
-  
+
   addBuffer(buffer) {
     this.buffers.push(buffer)
-    
+
     // Remove old buffers
     if (this.buffers.length > this.maxBuffers) {
       this.buffers.shift()
     }
   }
-  
+
   clear() {
     this.buffers = []
   }
@@ -495,7 +495,7 @@ curl http://localhost:8000/api/models/status | jq '.asr_models[].performance_met
 
 # Optimization strategies:
 export LX_ASR_BEAM=1                    # Reduce beam search
-export LX_PARTIAL_DEBOUNCE_MS=50        # Faster partial results  
+export LX_PARTIAL_DEBOUNCE_MS=50        # Faster partial results
 export LX_DECODE_INTERVAL_SEC=0.1       # More frequent decoding
 
 # Use GPU if available
@@ -717,15 +717,15 @@ class WebSocketPool {
     this.pool = []
     this.maxConnections = maxConnections
   }
-  
+
   getConnection(url) {
     let connection = this.pool.find(conn => conn.url === url && conn.readyState === WebSocket.OPEN)
-    
+
     if (!connection && this.pool.length < this.maxConnections) {
       connection = new WebSocket(url)
       this.pool.push(connection)
     }
-    
+
     return connection
   }
 }
@@ -845,19 +845,19 @@ export LX_MT_MODEL=mock/small
 // Increase test timeouts for WebSocket operations
 describe('WebSocket Integration', () => {
   jest.setTimeout(30000) // 30 second timeout
-  
+
   test('connection and message flow', async () => {
     const websocket = new WebSocket('ws://localhost:8000/ws')
-    
+
     // Wait for connection with timeout
     await new Promise((resolve, reject) => {
       const timeout = setTimeout(() => reject(new Error('Connection timeout')), 10000)
-      
+
       websocket.onopen = () => {
         clearTimeout(timeout)
         resolve()
       }
-      
+
       websocket.onerror = (error) => {
         clearTimeout(timeout)
         reject(error)
@@ -905,7 +905,7 @@ free -s 1 -c 10 > memory-usage.log &
 
 ### Community Resources
 - **GitHub Issues**: [Report bugs and request features](https://github.com/Guffawaffle/LoquiLex/issues)
-- **Discussions**: [Ask questions and share solutions](https://github.com/Guffawaffle/LoquiLex/discussions)
+- **Discussions**: [Ask questions and share solutions](https://github.com/Guffawaffle/LoquiLex/issues)
 - **Documentation**: [Architecture and API guides](https://github.com/Guffawaffle/LoquiLex/tree/main/docs)
 
 When reporting issues, please include:

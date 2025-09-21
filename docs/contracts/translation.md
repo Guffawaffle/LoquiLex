@@ -18,7 +18,7 @@ Complete translation result for a transcribed segment.
   "t": "mt.final",
   "sid": "sess_1234567890abcdef",
   "seq": 147,
-  "t_wall": "2024-01-13T14:30:25.640Z", 
+  "t_wall": "2024-01-13T14:30:25.640Z",
   "t_mono_ns": 18724567890,
   "corr": "seg_20240113_143022_001",
   "data": {
@@ -35,7 +35,7 @@ Complete translation result for a transcribed segment.
         "confidence": 0.85
       },
       {
-        "text": "你好，这是完整的转录测试。", 
+        "text": "你好，这是完整的转录测试。",
         "confidence": 0.82
       }
     ],
@@ -124,7 +124,7 @@ interface MTErrorData {
   fallback_available: boolean // Whether fallback translation exists
 }
 
-type MTErrorCode = 
+type MTErrorCode =
   | 'MODEL_LOAD_FAILED'      // Translation model couldn't load
   | 'TRANSLATION_FAILED'     // Translation processing failed
   | 'TEXT_TOO_LONG'         // Input exceeds model limits
@@ -146,9 +146,9 @@ type MTErrorCode =
 ```mermaid
 sequenceDiagram
     participant ASR as ASR Engine
-    participant TL as Translation Engine  
+    participant TL as Translation Engine
     participant UI as JavaScript UI
-    
+
     ASR->>TL: asr.final (t=0ms)
     Note over TL: Queue translation request
     TL->>UI: mt.queued (t=5ms)
@@ -173,7 +173,7 @@ const SUPPORTED_LANGUAGES = {
   // High-resource languages
   'en': 'English',
   'zh': 'Chinese (Simplified)',
-  'zh-TW': 'Chinese (Traditional)', 
+  'zh-TW': 'Chinese (Traditional)',
   'es': 'Spanish',
   'fr': 'French',
   'de': 'German',
@@ -184,7 +184,7 @@ const SUPPORTED_LANGUAGES = {
   'hi': 'Hindi',
   'pt': 'Portuguese',
   'it': 'Italian',
-  
+
   // Medium-resource languages
   'nl': 'Dutch',
   'pl': 'Polish',
@@ -193,19 +193,19 @@ const SUPPORTED_LANGUAGES = {
   'da': 'Danish',
   'no': 'Norwegian',
   'fi': 'Finnish',
-  
+
   // Add more as needed...
 } as const
 
 type SupportedLanguage = keyof typeof SUPPORTED_LANGUAGES
 ```
 
-#### M2M-100 Model Languages  
+#### M2M-100 Model Languages
 ```typescript
 const M2M_LANGUAGES = {
   'en': 'English',
   'zh': 'Chinese',
-  'fr': 'French', 
+  'fr': 'French',
   'es': 'Spanish',
   'de': 'German',
   'ru': 'Russian',
@@ -265,7 +265,7 @@ interface RetryConfig {
   backoff_multiplier: 2
   retry_on_errors: [
     'TRANSLATION_FAILED',
-    'PROCESSING_TIMEOUT', 
+    'PROCESSING_TIMEOUT',
     'INSUFFICIENT_MEMORY'
   ]
 }
@@ -299,7 +299,7 @@ interface RetryConfig {
 ```typescript
 interface TranslationCache {
   key: string                 // Hash of source text + language pair
-  source_text: string        
+  source_text: string
   source_language: string
   target_language: string
   target_text: string
@@ -332,7 +332,7 @@ interface TranslationCache {
         "target_language": "zh"
       },
       {
-        "segment_id": "seg_002", 
+        "segment_id": "seg_002",
         "source_text": "How are you?",
         "source_language": "en",
         "target_language": "zh"
@@ -350,7 +350,7 @@ import { TranslationStore } from '../orchestration/translation-store'
 
 class TranslationHandler {
   private translationStore = TranslationStore.create()
-  
+
   handleASRFinal(envelope: WSEnvelope<ASRFinalData>) {
     // Trigger translation for completed transcription
     this.translationStore.requestTranslation({
@@ -360,13 +360,13 @@ class TranslationHandler {
       targetLanguage: 'zh'
     })
   }
-  
+
   handleMTFinal(envelope: WSEnvelope<MTFinalData>) {
     // Update UI with translation
     this.translationStore.updateTranslation(envelope.data)
     this.displayTranslation(envelope.data)
   }
-  
+
   handleMTError(envelope: WSEnvelope<MTErrorData>) {
     if (envelope.data.recoverable) {
       // Retry with exponential backoff
@@ -386,18 +386,18 @@ from loquilex.api.server import websocket_manager
 class MTEventHandler:
     def __init__(self):
         self.translation_engine = TranslationEngine()
-    
+
     async def handle_asr_final(self, envelope: WSEnvelope):
         """Process ASR final result for translation"""
         asr_data = envelope.data
-        
+
         try:
             translation = await self.translation_engine.translate(
                 text=asr_data.text,
                 source_lang=asr_data.language,
                 target_lang='zh'
             )
-            
+
             await websocket_manager.send_message({
                 'v': 1,
                 't': 'mt.final',
@@ -405,11 +405,11 @@ class MTEventHandler:
                 'corr': asr_data.segment_id,
                 'data': translation
             })
-            
+
         except Exception as e:
             await websocket_manager.send_message({
                 'v': 1,
-                't': 'mt.error', 
+                't': 'mt.error',
                 'sid': envelope.sid,
                 'corr': asr_data.segment_id,
                 'data': {
@@ -431,19 +431,19 @@ interface MTPerformanceMetrics {
     p50_latency_ms: number            // Median latency
     p95_latency_ms: number            // 95th percentile
   }
-  
+
   quality: {
     avg_confidence: number            // Mean confidence score
     low_confidence_count: number      // Translations with <0.7 confidence
     error_rate: number               // Percentage of failed translations
   }
-  
+
   throughput: {
     translations_per_minute: number   // Processing rate
     characters_per_second: number     // Character throughput
     cache_hit_rate: number           // Percentage of cache hits
   }
-  
+
   resource_usage: {
     memory_usage_mb: number          // Translation model memory
     gpu_utilization?: number         // GPU usage if applicable
@@ -484,14 +484,14 @@ const mockTranslationSequence = [
 @pytest.mark.asyncio
 async def test_translation_contract():
     """Test translation follows timing and format contracts"""
-    
+
     # Trigger ASR final
     asr_final = create_mock_asr_final()
     await websocket.send(asr_final)
-    
+
     # Wait for translation result
     mt_result = await websocket.receive(timeout=1.0)
-    
+
     # Validate contract
     assert mt_result.t == 'mt.final'
     assert mt_result.corr == asr_final.data.segment_id

@@ -25,7 +25,7 @@ interface WSEnvelope<TData = Record<string, unknown>> {
 ### Message Types
 
 ```typescript
-type MessageType = 
+type MessageType =
   | 'session.hello'            // Client connection initiation
   | 'session.welcome'          // Server connection acknowledgment
   | 'session.heartbeat'        // Keep-alive ping/pong
@@ -195,7 +195,7 @@ except ValidationError as e:
 - Validate all incoming messages
 - Handle connection state changes gracefully
 
-### Server Responsibilities  
+### Server Responsibilities
 - Maintain session state during temporary disconnections
 - Enforce rate limits and message validation
 - Provide consistent error responses
