@@ -6,6 +6,8 @@ export interface AppSettings {
   device: string;
   cadence_threshold: number; // Word count threshold for triggering EN→ZH translation (1-8). Lower values provide faster but potentially less accurate translations.
   show_timestamps: boolean;
+  translation_target: string; // Target language for translation (e.g., 'zho_Hans', 'spa_Latn')
+  audio_latency_target_ms: number; // Target latency in milliseconds for audio processing
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -14,6 +16,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   device: 'auto',
   cadence_threshold: 3, // Default: 3 (chosen as a balanced word count for EN→ZH translation)
   show_timestamps: true,
+  translation_target: 'zho_Hans', // Default to Chinese (Simplified)
+  audio_latency_target_ms: 200, // Default target latency of 200ms based on ASR streaming contract
 };
 
 const SETTINGS_KEY = 'loquilex-settings';
@@ -62,7 +66,7 @@ export function applySettingsToSessionConfig(
     asr_model_id: config.asr_model_id || savedSettings.asr_model_id,
     mt_enabled: config.mt_enabled ?? true,
     mt_model_id: config.mt_model_id || savedSettings.mt_model_id,
-    dest_lang: config.dest_lang || 'zho_Hans',
+    dest_lang: config.dest_lang || savedSettings.translation_target,
     device: config.device || savedSettings.device,
     vad: config.vad ?? true,
     beams: config.beams ?? 1,
