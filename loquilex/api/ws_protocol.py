@@ -61,13 +61,12 @@ class WSProtocolManager:
         resume_window: Optional[ResumeWindow] = None,
         limits: Optional[ServerLimits] = None,
     ):
-        # Ensure a current event loop exists for non-async contexts (e.g., tests)
-        try:
-            asyncio.get_running_loop()
-        except RuntimeError:
-            # No running loop; create and set one without using deprecated get_event_loop
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
+        # Note: do not create a new event loop here. Creating and setting a
+        # loop inside an initializer can attach background tasks to a loop
+        # that isn't the test runner's active loop and can lead to
+        # 'coroutine was never awaited' warnings during garbage collection.
+        # Callers are expected to construct this manager from an async
+        # context (or manage their own event loop) when scheduling tasks.
 
         self.sid = sid
         self.state = SessionState(
@@ -718,6 +717,40 @@ class WSProtocolManager:
     async def close(self) -> None:
         """Gracefully close the session."""
         await self._cleanup_session()
+
+    def __del__(self) -> None:
+        """Destructor: best-effort cleanup of background tasks.
+
+        __del__ cannot be async; schedule `_cleanup_session` on the running
+        event loop if available, otherwise attempt a best-effort cancellation
+        of known tasks. This prevents coroutine objects left pending when
+        the object is garbage-collected in tests or short-lived contexts.
+        """
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            loop = None
+
+        if loop and loop.is_running():
+            try:
+                # Schedule cleanup as a background task on the loop
+                loop.call_soon_threadsafe(asyncio.create_task, self._cleanup_session())
+            except Exception:
+                # Last-resort: cancel tasks directly if scheduling failed
+                for t in (self._hb_task, self._hb_timeout_task, self._system_hb_task):
+                    try:
+                        if t and not t.done():
+                            t.cancel()
+                    except Exception:
+                        pass
+        else:
+            # No running loop: best-effort cancel tasks
+            for t in (self._hb_task, self._hb_timeout_task, self._system_hb_task):
+                try:
+                    if t and not t.done():
+                        t.cancel()
+                except Exception:
+                    pass
 
     async def emit_queue_drop(self, path: str, count: int, reason: str, total: int) -> None:
         """Emit queue drop notification."""
