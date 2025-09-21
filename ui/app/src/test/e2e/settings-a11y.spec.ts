@@ -130,13 +130,12 @@ test.describe('Settings Accessibility', () => {
     // Test loading state
     await page.route('/models/asr', route => {
       // Delay response to test loading state
-      setTimeout(() => {
-        route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify([])
-        });
-      }, 100);
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([]),
+        delay: 100
+      });
     });
     
     await page.goto('/settings');
