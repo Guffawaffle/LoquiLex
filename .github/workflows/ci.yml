@@ -14,6 +14,12 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  # CI log retention settings
+  LX_LOG_MAX_SIZE_MB: 5
+  LX_LOG_MAX_FILES: 2
+  LX_LOG_DIR: /tmp/loquilex-ci-logs
+
 jobs:
   build-test:
     name: Build & Test
@@ -48,4 +54,11 @@ jobs:
             else
               echo "No test files found; skipping pytest."
             fi
+          fi
+
+      - name: Cleanup CI logs
+        if: always()
+        run: |
+          if make -n clean-logs >/dev/null 2>&1; then
+            make clean-logs
           fi

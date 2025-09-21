@@ -114,16 +114,30 @@ See [`.github/copilot/README.md`](.github/copilot/README.md) for complete workfl
 
 ### Quick Start
 - **[Quick Start Guide](./docs/quickstart.md)** - Get running in under 5 minutes
-- **[MVP User Guide](./docs/mvp-user-guide.md)** - Complete workflows and troubleshooting
+- **[MVP User Guide](./docs/mvp-user-guide.md)** - Complete workflows and production setup
+- **[Troubleshooting Guide](./docs/troubleshooting.md)** - Common issues, offline-first behavior, and solutions
 
 ### Architecture & Development
 
 LoquiLex follows a **JS-first architecture** where JavaScript orchestrates workflows and Python executes ML tasks:
 
 - **[JS-First Architecture Guide](./docs/architecture/js-first.md)** - Core principles, patterns, and implementation guidelines
-- **[API Contracts Reference](./docs/contracts/README.md)** - WebSocket, REST, and data type contracts
+- **[API Contracts Reference](./docs/contracts/README.md)** - Comprehensive WebSocket, REST, and data type contracts
 - **[Orchestration Module](./loquilex/ui/web/src/orchestration/README.md)** - Client-side utilities and patterns
- - **[Resource Management (Shutdown Contract)](./docs/RESOURCE_MANAGEMENT.md)** - Expectations for clean shutdown of threads, tasks, and subprocesses
+- **[Resource Management](./docs/RESOURCE_MANAGEMENT.md)** - Expectations for clean shutdown of threads, tasks, and subprocesses
+
+### API Contracts & Integration
+
+Detailed contracts for all JS ↔ Python communication:
+
+- **[WebSocket Protocol](./docs/contracts/websocket.md)** - Message envelope format, session management
+- **[ASR Streaming](./docs/contracts/asr-streaming.md)** - Audio streaming and transcription events
+- **[Translation Events](./docs/contracts/translation.md)** - Real-time translation message types
+- **[Downloads API](./docs/contracts/downloads-api.md)** - Model download orchestration
+- **[Device Testing](./docs/contracts/device-testing.md)** - Audio device validation endpoints
+- **[Export Operations](./docs/contracts/exports.md)** - Caption export and file generation
+- **[Session Management](./docs/contracts/session-management.md)** - Connection lifecycle and recovery
+- **[Models API](./docs/contracts/models-api.md)** - Model management and configuration
 
 ### Key Features
 
@@ -131,6 +145,7 @@ LoquiLex follows a **JS-first architecture** where JavaScript orchestrates workf
 - **Resilient WebSockets**: Automatic reconnection with bounded queues
 - **Web Workers**: Background processing for progress smoothing and ETA calculations
 - **Type Safety**: End-to-end TypeScript contracts for all JS ↔ Python communication
+- **Offline-First**: Works without internet once models are cached locally
 
 ## Versioning & Releases
 
