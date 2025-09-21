@@ -17,6 +17,10 @@ from pydantic import BaseModel, Field, model_validator
 
 from .model_discovery import list_asr_models, list_mt_models, mt_supported_languages
 from .supervisor import SessionConfig, SessionManager, StreamingSession
+from ..config.providers import (
+    ProvidersConfig, HuggingFaceConfig, BackendConfig,
+    get_providers_config, update_providers_config, is_offline_mode
+)
 
 logger = logging.getLogger(__name__)
 
@@ -319,7 +323,18 @@ async def healthz() -> Dict[str, Any]:
 # Minimal API health endpoint used by external checks and tests
 @app.get("/api/health")
 async def api_health() -> Dict[str, Any]:
-    return {"status": "ok"}
+    """Health endpoint with offline mode and provider status."""
+    config = get_providers_config()
+    return {
+        "status": "ok",
+        "offline_mode": is_offline_mode(),
+        "providers": {
+            "huggingface": {
+                "enabled": config.huggingface.enabled,
+                "has_token": bool(config.huggingface.token)
+            }
+        }
+    }
 
 
 @app.head("/api/health")
@@ -339,6 +354,105 @@ async def post_download(req: DownloadReq) -> Dict[str, Any]:
 async def delete_download(job_id: str) -> DownloadCancelResp:
     ok = MANAGER.cancel_download(job_id)
     return DownloadCancelResp(cancelled=ok)
+
+
+# Provider configuration endpoints
+class SetHFTokenReq(BaseModel):
+    token: str = Field(..., description="HuggingFace access token")
+
+
+class SetOfflineModeReq(BaseModel):
+    offline: bool = Field(..., description="Enable/disable offline mode")
+
+
+@app.get("/api/providers/config")
+async def get_providers_config_api() -> Dict[str, Any]:
+    """Get current provider configuration."""
+    config = get_providers_config()
+    return config.to_dict()
+
+
+@app.post("/api/providers/hf/token")
+async def set_hf_token(req: SetHFTokenReq) -> Dict[str, Any]:
+    """Set or update HuggingFace token."""
+    try:
+        config = get_providers_config()
+        
+        # Validate token format
+        token = req.token.strip()
+        if not token:
+            raise ValueError("Token cannot be empty")
+            
+        if not (token.startswith("hf_") and len(token) >= 30):
+            raise ValueError("Invalid HuggingFace token format")
+        
+        # Update configuration
+        new_hf_config = HuggingFaceConfig(token=token, enabled=True)
+        new_config = ProvidersConfig(
+            huggingface=new_hf_config,
+            backend=config.backend
+        )
+        
+        update_providers_config(new_config)
+        
+        return {"status": "ok", "message": "HuggingFace token updated successfully"}
+        
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Failed to set HF token: {e}")
+        raise HTTPException(status_code=500, detail="Failed to update token")
+
+
+@app.delete("/api/providers/hf/token")
+async def delete_hf_token() -> Dict[str, Any]:
+    """Remove HuggingFace token."""
+    try:
+        config = get_providers_config()
+        
+        # Update configuration to remove token
+        new_hf_config = HuggingFaceConfig(token=None, enabled=True)
+        new_config = ProvidersConfig(
+            huggingface=new_hf_config,
+            backend=config.backend
+        )
+        
+        update_providers_config(new_config)
+        
+        return {"status": "ok", "message": "HuggingFace token removed successfully"}
+        
+    except Exception as e:
+        logger.error(f"Failed to remove HF token: {e}")
+        raise HTTPException(status_code=500, detail="Failed to remove token")
+
+
+@app.post("/api/providers/offline")
+async def set_offline_mode(req: SetOfflineModeReq) -> Dict[str, Any]:
+    """Toggle offline mode."""
+    try:
+        config = get_providers_config()
+        
+        # Check if offline mode is enforced by environment
+        if config.backend.offline_enforced and not req.offline:
+            raise ValueError("Cannot disable offline mode: enforced by environment (LX_OFFLINE=1)")
+        
+        # Update configuration
+        new_backend_config = BackendConfig(offline=req.offline)
+        new_config = ProvidersConfig(
+            huggingface=config.huggingface,
+            backend=new_backend_config
+        )
+        
+        update_providers_config(new_config)
+        
+        mode = "enabled" if req.offline else "disabled"
+        return {"status": "ok", "message": f"Offline mode {mode} successfully"}
+        
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Failed to set offline mode: {e}")
+        raise HTTPException(status_code=500, detail="Failed to update offline mode")
 
 
 @app.post("/sessions", response_model=CreateSessionResp)

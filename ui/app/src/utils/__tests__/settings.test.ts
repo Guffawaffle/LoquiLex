@@ -44,6 +44,8 @@ describe('settings', () => {
         device: 'auto',
         cadence_threshold: 3,
         show_timestamps: true,
+        hf_token: '',
+        offline_mode: false,
       });
     });
   });
@@ -112,6 +114,8 @@ describe('settings', () => {
         device: 'cuda',
         cadence_threshold: 5,
         show_timestamps: true,
+        hf_token: '',
+        offline_mode: false,
       };
 
       const config = applySettingsToSessionConfig({}, settings);
@@ -140,6 +144,8 @@ describe('settings', () => {
         device: 'cuda',
         cadence_threshold: 5,
         show_timestamps: true,
+        hf_token: '',
+        offline_mode: false,
       };
 
       const partialConfig: Partial<SessionConfig> = {
@@ -163,6 +169,8 @@ describe('settings', () => {
         device: 'auto',
         cadence_threshold: 4,
         show_timestamps: false,
+        hf_token: '',
+        offline_mode: false,
       };
 
       localStorageMock.setItem('loquilex-settings', JSON.stringify(savedSettings));
