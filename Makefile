@@ -229,6 +229,35 @@ fmt-check: install-base
 typecheck: install-base
 	$(PY) -m mypy loquilex
 
+# Local link-check target (not run in CI)
+link-check:
+	@echo "=== Checking links in README.md and docs/ ==="
+	@if ! command -v npm >/dev/null 2>&1; then \
+		echo "❌ npm (Node.js) not found. Please install Node.js (https://nodejs.org/) and ensure 'npm' is in your PATH."; \
+		exit 1; \
+	fi; \
+	if [ ! -f package.json ]; then \
+		echo "Installing markdown-link-check (no package.json found)..."; \
+		npm install --no-save markdown-link-check; \
+	elif ! npm list markdown-link-check >/dev/null 2>&1; then \
+		echo "Installing markdown-link-check..."; \
+		npm install --no-save markdown-link-check; \
+	fi; \
+	FAILED=0; \
+	for file in README.md $$(find docs -name "*.md"); do \
+		echo "Checking $$file..."; \
+		output=$$(npx markdown-link-check "$$file" --config .markdown-link-check.json 2>&1 || true); \
+		echo "$$output"; \
+		if echo "$$output" | grep -q "ERROR:.*dead links found"; then \
+			FAILED=1; \
+		fi; \
+	done; \
+	if [ $$FAILED -eq 1 ]; then \
+		echo "❌ Link check failed: dead links found"; \
+		exit 1; \
+	else \
+		echo "✅ All links are valid"; \
+	fi
 # link-check target removed per maintainer request
 
 test:
