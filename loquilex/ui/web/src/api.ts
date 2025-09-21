@@ -1,4 +1,4 @@
-import { AsrModel, MtModel, SelfTestResp, SessionCfg } from './types'
+import { AsrModel, MtModel, SelfTestResp, SessionCfg, RemoteModel, SearchFilters, SearchResult } from './types'
 
 async function j<T>(p: Promise<Response>): Promise<T> {
   const r = await p
@@ -33,5 +33,18 @@ export const api = {
   download: {
     start: (repo_id: string, type: string): Promise<{ job_id: string; status: string }> => j(fetch('/models/download', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ repo_id, type }) })),
     cancel: (job_id: string): Promise<{ cancelled: boolean }> => j(fetch(`/models/download/${job_id}`, { method: 'DELETE' }))
+  },
+  search: {
+    models: (filters: SearchFilters, page = 1, per_page = 20): Promise<SearchResult> => {
+      const params = new URLSearchParams({
+        page: page.toString(),
+        per_page: per_page.toString(),
+        ...Object.fromEntries(
+          Object.entries(filters).filter(([, v]) => v !== undefined).map(([k, v]) => [k, String(v)])
+        )
+      })
+      return j(fetch(`/models/search?${params}`))
+    },
+    model: (modelId: string): Promise<RemoteModel> => j(fetch(`/models/remote/${encodeURIComponent(modelId)}`))
   }
 }

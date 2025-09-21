@@ -56,3 +56,42 @@ export type DownloadMsg =
   | { type: 'download_progress'; job_id: string; repo_id: string; pct: number; seq: number; ts_server: number; ts_session: number }
   | { type: 'download_done'; job_id: string; local_path: string; seq: number; ts_server: number; ts_session: number }
   | { type: 'download_error'; job_id: string; message: string; seq: number; ts_server: number; ts_session: number }
+
+// Remote model catalog types
+export type ModelProvider = 'huggingface' | 'openai' | 'local'
+
+export type ModelTask = 'asr' | 'mt' | 'tts' | 'embedding'
+
+export type RemoteModel = {
+  id: string
+  name: string
+  provider: ModelProvider
+  task: ModelTask
+  language?: string
+  languages?: string[]
+  size_bytes?: number
+  description?: string
+  downloads?: number
+  license?: string
+  updated_at?: string
+  tags?: string[]
+  repo_url?: string
+  model_class?: string
+}
+
+export type SearchFilters = {
+  task?: ModelTask
+  language?: string
+  provider?: ModelProvider
+  minSize?: number
+  maxSize?: number
+  query?: string
+}
+
+export type SearchResult = {
+  models: RemoteModel[]
+  total: number
+  page: number
+  per_page: number
+  has_next: boolean
+}

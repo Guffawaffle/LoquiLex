@@ -16,6 +16,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, model_validator
 
 from .model_discovery import list_asr_models, list_mt_models, mt_supported_languages
+from .remote_catalog import catalog_manager, SearchFilters, ModelProvider, ModelTask
 from .supervisor import SessionConfig, SessionManager, StreamingSession
 
 logger = logging.getLogger(__name__)
@@ -308,6 +309,76 @@ def get_mt_models() -> List[Dict[str, Any]]:
 @app.get("/languages/mt/{model_id}")
 def get_mt_langs(model_id: str) -> Dict[str, Any]:
     return {"model_id": model_id, "languages": mt_supported_languages(model_id)}
+
+
+@app.get("/models/search")
+async def search_models(
+    query: Optional[str] = None,
+    task: Optional[str] = None,
+    provider: Optional[str] = None,
+    language: Optional[str] = None,
+    minSize: Optional[int] = None,
+    maxSize: Optional[int] = None,
+    page: int = 1,
+    per_page: int = 20
+) -> Dict[str, Any]:
+    """Search remote model catalogs with filters."""
+    try:
+        # Validate and convert parameters
+        task_enum = None
+        if task:
+            try:
+                task_enum = ModelTask(task.lower())
+            except ValueError:
+                raise HTTPException(status_code=400, detail=f"Invalid task: {task}")
+        
+        provider_enum = None
+        if provider:
+            try:
+                provider_enum = ModelProvider(provider.lower())
+            except ValueError:
+                raise HTTPException(status_code=400, detail=f"Invalid provider: {provider}")
+        
+        # Validate pagination
+        if page < 1:
+            raise HTTPException(status_code=400, detail="Page must be >= 1")
+        if per_page < 1 or per_page > 100:
+            raise HTTPException(status_code=400, detail="per_page must be between 1 and 100")
+        
+        # Create search filters
+        filters = SearchFilters(
+            query=query,
+            task=task_enum,
+            provider=provider_enum,
+            language=language,
+            min_size=minSize,
+            max_size=maxSize
+        )
+        
+        # Perform search
+        result = await catalog_manager.search_models(filters, page, per_page)
+        return result.to_dict()
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Search failed: {e}")
+        raise HTTPException(status_code=500, detail="Search failed")
+
+
+@app.get("/models/remote/{model_id:path}")
+async def get_remote_model_details(model_id: str) -> Dict[str, Any]:
+    """Get detailed information for a remote model."""
+    try:
+        model = await catalog_manager.get_model_details(model_id)
+        if not model:
+            raise HTTPException(status_code=404, detail="Model not found")
+        return model.to_dict()
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to get model details for {model_id}: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get model details")
 
 
 @app.get("/healthz")
