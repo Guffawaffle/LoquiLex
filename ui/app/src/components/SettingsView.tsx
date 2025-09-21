@@ -1,13 +1,27 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ASRModel, MTModel } from '../types';
-import { AppSettings, loadSettings, saveSettings, clearSettings, DEFAULT_SETTINGS } from '../utils/settings';
+import { 
+  AppSettings, 
+  loadSettings, 
+  saveSettings, 
+  clearSettings, 
+  DEFAULT_SETTINGS,
+  savePendingChanges,
+  loadPendingChanges,
+  clearPendingChanges,
+  getRequiredRestartScope,
+  requiresRestart,
+  RESTART_METADATA
+} from '../utils/settings';
+import { RestartBadge } from './RestartBadge';
 
 export function SettingsView() {
   const navigate = useNavigate();
   const [asrModels, setAsrModels] = useState<ASRModel[]>([]);
   const [mtModels, setMtModels] = useState<MTModel[]>([]);
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
+  const [pendingChanges, setPendingChanges] = useState<Partial<AppSettings>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
@@ -39,6 +53,7 @@ export function SettingsView() {
 
       // Load settings from localStorage
       const loadedSettings = loadSettings();
+      const loadedPendingChanges = loadPendingChanges();
       
       // Auto-select first available models if not set
       const updatedSettings = { ...loadedSettings };
@@ -49,6 +64,7 @@ export function SettingsView() {
         updatedSettings.mt_model_id = mtData[0].id;
       }
       setSettings(updatedSettings);
+      setPendingChanges(loadedPendingChanges);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load models');
     } finally {
@@ -69,15 +85,65 @@ export function SettingsView() {
 
   const resetSettings = () => {
     setSettings(DEFAULT_SETTINGS);
+    setPendingChanges({});
     clearSettings();
+    clearPendingChanges();
     setSaved(false);
     setError(null);
   };
 
   const updateSetting = <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => {
-    setSettings(prev => ({ ...prev, [key]: value }));
+    const newSettings = { ...settings, [key]: value };
+    setSettings(newSettings);
+    
+    if (requiresRestart(key)) {
+      // Setting requires restart, so store as pending change
+      const newPendingChanges = { ...pendingChanges, [key]: value };
+      setPendingChanges(newPendingChanges);
+      savePendingChanges(newPendingChanges);
+    } else {
+      // Setting doesn't require restart, save immediately
+      saveSettings(newSettings);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    }
     setSaved(false);
   };
+
+  const applyAndRelaunch = async () => {
+    if (Object.keys(pendingChanges).length === 0) {
+      return;
+    }
+
+    const restartScope = getRequiredRestartScope(pendingChanges);
+    const confirmed = window.confirm(
+      `This will apply your changes and restart the ${restartScope === 'backend' ? 'backend service' : restartScope === 'app' ? 'application' : 'entire system'}. Continue?`
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      // Apply all pending changes to current settings
+      const finalSettings = { ...settings, ...pendingChanges };
+      saveSettings(finalSettings);
+      clearPendingChanges();
+      setPendingChanges({});
+
+      // TODO: Implement actual restart logic based on restartScope
+      // For now, just show a message
+      alert(`Settings applied. ${restartScope === 'backend' ? 'Backend restart' : restartScope === 'app' ? 'Application restart' : 'Full restart'} would occur here.`);
+      
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch (err) {
+      setError('Failed to apply settings');
+    }
+  };
+
+  const hasPendingChanges = Object.keys(pendingChanges).length > 0;
+  const requiredRestartScope = getRequiredRestartScope(pendingChanges);
 
   if (loading) {
     return (
@@ -124,7 +190,10 @@ export function SettingsView() {
 
         <div className="settings-form">
           <div className="form-group">
-            <label className="form-group__label" htmlFor="asr-model-select">ASR Model</label>
+            <label className="form-group__label" htmlFor="asr-model-select">
+              ASR Model
+              <RestartBadge scope={RESTART_METADATA.asr_model_id} />
+            </label>
             <p className="form-group__description">
               Choose the default speech recognition model for new sessions.
             </p>
@@ -144,7 +213,10 @@ export function SettingsView() {
           </div>
 
           <div className="form-group">
-            <label className="form-group__label" htmlFor="mt-model-select">MT Model</label>
+            <label className="form-group__label" htmlFor="mt-model-select">
+              MT Model
+              <RestartBadge scope={RESTART_METADATA.mt_model_id} />
+            </label>
             <p className="form-group__description">
               Choose the default translation model for new sessions.
             </p>
@@ -164,7 +236,10 @@ export function SettingsView() {
           </div>
 
           <div className="form-group">
-            <label className="form-group__label" htmlFor="device-select">Device</label>
+            <label className="form-group__label" htmlFor="device-select">
+              Device
+              <RestartBadge scope={RESTART_METADATA.device} />
+            </label>
             <p className="form-group__description">
               Choose the compute device for processing. Auto detects best available option.
             </p>
@@ -219,10 +294,22 @@ export function SettingsView() {
           </div>
 
           <div className="settings-actions">
+            {hasPendingChanges && (
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={applyAndRelaunch}
+                title={`Apply changes and restart ${requiredRestartScope}`}
+              >
+                Apply & Relaunch ({Object.keys(pendingChanges).length} change{Object.keys(pendingChanges).length !== 1 ? 's' : ''})
+              </button>
+            )}
             <button
               type="button"
               className="btn btn-primary"
               onClick={saveSettingsHandler}
+              disabled={hasPendingChanges}
+              title={hasPendingChanges ? 'Use Apply & Relaunch for settings that require restart' : 'Save settings that take effect immediately'}
             >
               Save Settings
             </button>

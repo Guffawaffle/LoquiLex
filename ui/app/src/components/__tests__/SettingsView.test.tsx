@@ -14,6 +14,18 @@ vi.mock('../../utils/settings', () => ({
   })),
   saveSettings: vi.fn(),
   clearSettings: vi.fn(),
+  savePendingChanges: vi.fn(),
+  loadPendingChanges: vi.fn(() => ({})),
+  clearPendingChanges: vi.fn(),
+  getRequiredRestartScope: vi.fn(() => 'none'),
+  requiresRestart: vi.fn(() => false),
+  RESTART_METADATA: {
+    asr_model_id: 'backend',
+    mt_model_id: 'backend',
+    device: 'backend',
+    cadence_threshold: 'none',
+    show_timestamps: 'none',
+  },
   DEFAULT_SETTINGS: {
     asr_model_id: '',
     mt_model_id: '',
@@ -21,6 +33,12 @@ vi.mock('../../utils/settings', () => ({
     cadence_threshold: 3,
     show_timestamps: true,
   }
+}));
+
+// Mock the RestartBadge component
+vi.mock('../RestartBadge', () => ({
+  RestartBadge: ({ scope }: { scope: string }) => 
+    scope !== 'none' ? <span data-testid="restart-badge">{scope} restart required</span> : null
 }));
 
 // Mock fetch for model loading
@@ -74,9 +92,9 @@ describe('SettingsView', () => {
     });
 
     // Check that all form elements are present
-    expect(screen.getByLabelText('ASR Model')).toBeInTheDocument();
-    expect(screen.getByLabelText('MT Model')).toBeInTheDocument();
-    expect(screen.getByLabelText('Device')).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: /ASR Model/ })).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: /MT Model/ })).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: /Device/ })).toBeInTheDocument();
     expect(screen.getByLabelText(/Cadence Threshold/)).toBeInTheDocument();
     expect(screen.getByLabelText(/Show Timestamps/)).toBeInTheDocument();
     
@@ -151,6 +169,20 @@ describe('SettingsView', () => {
       const slider = screen.getByRole('slider');
       expect(slider).toHaveAttribute('min', '1');
       expect(slider).toHaveAttribute('max', '8');
+    });
+  });
+
+  it('should display restart badges for backend-restart settings', async () => {
+    renderSettingsView();
+    
+    await waitFor(() => {
+      // Should show restart badges for ASR, MT, and Device settings
+      const restartBadges = screen.getAllByTestId('restart-badge');
+      expect(restartBadges).toHaveLength(3); // ASR Model, MT Model, Device
+      
+      restartBadges.forEach(badge => {
+        expect(badge).toHaveTextContent('backend restart required');
+      });
     });
   });
 });

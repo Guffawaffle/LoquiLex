@@ -1,0 +1,88 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "LoquiLex Settings Schema",
+  "type": "object",
+  "properties": {
+    "asr_model_id": {
+      "type": "string",
+      "title": "ASR Model",
+      "description": "Automatic Speech Recognition model identifier",
+      "x-restart": "backend",
+      "x-ui-type": "select",
+      "x-data-source": "/models/asr"
+    },
+    "mt_model_id": {
+      "type": "string", 
+      "title": "Translation Model",
+      "description": "Machine Translation model identifier for EN→ZH translation",
+      "x-restart": "backend",
+      "x-ui-type": "select",
+      "x-data-source": "/models/mt"
+    },
+    "device": {
+      "type": "string",
+      "title": "Compute Device", 
+      "description": "Hardware device for model execution",
+      "enum": ["auto", "cpu", "cuda"],
+      "default": "auto",
+      "x-restart": "backend",
+      "x-ui-type": "select",
+      "x-enum-labels": {
+        "auto": "Auto-detect",
+        "cpu": "CPU Only", 
+        "cuda": "CUDA GPU"
+      }
+    },
+    "cadence_threshold": {
+      "type": "integer",
+      "title": "Cadence Threshold",
+      "description": "Number of words to accumulate before triggering EN→ZH translation (1-8). Lower values provide faster translation but may be less accurate.",
+      "minimum": 1,
+      "maximum": 8,
+      "default": 3,
+      "x-restart": "none",
+      "x-ui-type": "slider",
+      "x-slider-labels": {
+        "1": "1 (Fast)",
+        "8": "8 (Accurate)"
+      }
+    },
+    "show_timestamps": {
+      "type": "boolean",
+      "title": "Show Timestamps",
+      "description": "Display timestamps in the caption view and include them in exports",
+      "default": true,
+      "x-restart": "none",
+      "x-ui-type": "checkbox"
+    }
+  },
+  "required": ["asr_model_id", "mt_model_id", "device", "cadence_threshold", "show_timestamps"],
+  "additionalProperties": false,
+  "x-ui-restart-scopes": {
+    "none": {
+      "badge": false,
+      "action": "immediate"
+    },
+    "app": {
+      "badge": {
+        "text": "App Restart Required",
+        "color": "blue"
+      },
+      "action": "app-restart"
+    },
+    "backend": {
+      "badge": {
+        "text": "Restart Required", 
+        "color": "orange"
+      },
+      "action": "backend-restart"
+    },
+    "full": {
+      "badge": {
+        "text": "Full Restart Required",
+        "color": "red"
+      },
+      "action": "full-restart"
+    }
+  }
+}
