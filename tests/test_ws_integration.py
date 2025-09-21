@@ -8,14 +8,44 @@ from fastapi.testclient import TestClient
 
 from loquilex.api.server import app
 from loquilex.api.ws_types import AckData, ClientHelloData, MessageType, WSEnvelope
-import httpx
-import requests
 from starlette.websockets import WebSocketDisconnect
 
 try:
     import websockets as _websockets
 except Exception:
     _websockets = None
+
+try:
+    import httpx  # type: ignore
+
+    _HTTPX_AVAILABLE = True
+except Exception:
+    httpx = None  # type: ignore
+    _HTTPX_AVAILABLE = False
+
+# `requests` is optional in some CI/test environments; import lazily and
+# include its exception types in the handler only when available to avoid
+# hard import errors during test collection.
+try:
+    import requests  # type: ignore
+
+    _REQUESTS_AVAILABLE = True
+except Exception:
+    requests = None  # type: ignore
+    _REQUESTS_AVAILABLE = False
+
+# Build the exception tuple used in the except-block dynamically so the
+# test module can be collected even if `requests` is not installed.
+_EXC_TYPES = [
+    WebSocketDisconnect,
+    ConnectionError,
+    RuntimeError,
+]
+if _HTTPX_AVAILABLE:
+    _EXC_TYPES.extend([httpx.ConnectError, httpx.HTTPStatusError])
+if _REQUESTS_AVAILABLE:
+    _EXC_TYPES.append(requests.exceptions.RequestException)
+_EXC_TYPES = tuple(_EXC_TYPES)
 
 
 @pytest.mark.e2e
@@ -102,14 +132,7 @@ def test_websocket_envelope_integration():
                 # test. These exceptions typically indicate that the test environment
                 # doesn't have a WebSocket endpoint available (HTTP 404) or that
                 # connections to the socket endpoint are blocked/unavailable.
-                except (
-                    WebSocketDisconnect,
-                    ConnectionError,
-                    RuntimeError,
-                    httpx.ConnectError,
-                    httpx.HTTPStatusError,
-                    requests.exceptions.RequestException,
-                ) as e:
+                except _EXC_TYPES as e:
                     # Try to determine an HTTP status code when available
                     status_code = None
                     # websockets.InvalidStatusCode exposes `status_code` on the exception
@@ -121,13 +144,15 @@ def test_websocket_envelope_integration():
                         status_code = getattr(e, "status_code", None)
                     # httpx.HTTPStatusError contains a response
                     elif (
-                        isinstance(e, httpx.HTTPStatusError)
+                        _HTTPX_AVAILABLE
+                        and isinstance(e, httpx.HTTPStatusError)
                         and getattr(e, "response", None) is not None
                     ):
                         status_code = getattr(e.response, "status_code", None)
                     # requests HTTP errors expose response as well
                     elif (
-                        isinstance(e, requests.exceptions.RequestException)
+                        _REQUESTS_AVAILABLE
+                        and isinstance(e, requests.exceptions.RequestException)
                         and getattr(e, "response", None) is not None
                     ):
                         status_code = getattr(e.response, "status_code", None)
@@ -136,10 +161,11 @@ def test_websocket_envelope_integration():
                         pytest.skip(f"WebSocket endpoint not found (HTTP 404): {e}")
 
                     # Connection-level failures are often environment-related; skip those too
-                    if isinstance(
-                        e,
-                        (ConnectionError, httpx.ConnectError, requests.exceptions.ConnectionError),
-                    ):
+                    if isinstance(e, ConnectionError):
+                        pytest.skip(f"WebSocket connection failed: {e}")
+                    if _HTTPX_AVAILABLE and isinstance(e, httpx.ConnectError):
+                        pytest.skip(f"WebSocket connection failed: {e}")
+                    if _REQUESTS_AVAILABLE and isinstance(e, requests.exceptions.ConnectionError):
                         pytest.skip(f"WebSocket connection failed: {e}")
 
                     # Otherwise, re-raise so the test fails and surfaces unexpected errors
