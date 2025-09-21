@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import { SettingsSchema } from './types';
 import { FormGroup } from './FormGroup';
 import { validateField } from './validation';
@@ -56,7 +56,7 @@ export function SchemaForm({ schema, values, onChange, level = 'basic' }: Schema
           title: groupName,
           order: 999
         };
-        
+
         return (
           <FormGroup
             key={groupName}

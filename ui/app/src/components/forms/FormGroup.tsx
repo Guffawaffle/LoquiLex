@@ -1,4 +1,3 @@
-import React from 'react';
 import { FormGroupProps } from './types';
 import { FieldRenderer } from './FieldRenderer';
 

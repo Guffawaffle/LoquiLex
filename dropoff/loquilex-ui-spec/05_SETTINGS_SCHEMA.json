@@ -1,74 +1,89 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "LoquiLex Settings Schema",
-  "description": "Schema for LoquiLex application settings with grouping and validation",
+  "description": "Schema for LoquiLex application settings with restart metadata",
   "type": "object",
   "properties": {
     "asr_model_id": {
       "type": "string",
       "title": "ASR Model",
-      "description": "Choose the default speech recognition model for new sessions.",
-      "group": "Models",
-      "x-level": "basic",
-      "default": ""
+      "description": "Automatic Speech Recognition model identifier",
+      "x-restart": "backend",
+      "x-ui-type": "select",
+      "x-data-source": "/models/asr"
     },
     "mt_model_id": {
-      "type": "string", 
-      "title": "MT Model",
-      "description": "Select the machine translation model for EN→ZH translation.",
-      "group": "Models",
-      "x-level": "basic",
-      "default": ""
+      "type": "string",
+      "title": "Translation Model",
+      "description": "Machine Translation model identifier for EN→ZH translation",
+      "x-restart": "backend",
+      "x-ui-type": "select",
+      "x-data-source": "/models/mt"
     },
     "device": {
       "type": "string",
-      "title": "Device",
-      "description": "Select the device for model inference.",
-      "group": "Performance",
-      "x-level": "basic",
+      "title": "Compute Device",
+      "description": "Hardware device for model execution",
+      "enum": ["auto", "cpu", "cuda"],
       "default": "auto",
-      "enum": ["auto", "cpu", "cuda", "mps"]
+      "x-restart": "backend",
+      "x-ui-type": "select",
+      "x-enum-labels": {
+        "auto": "Auto-detect",
+        "cpu": "CPU Only",
+        "cuda": "CUDA GPU"
+      }
     },
     "cadence_threshold": {
       "type": "integer",
       "title": "Cadence Threshold",
       "description": "Number of words to accumulate before triggering EN→ZH translation (1-8). Lower values provide faster translation but may be less accurate.",
-      "group": "Translation",
-      "x-level": "basic",
-      "default": 3,
       "minimum": 1,
-      "maximum": 8
+      "maximum": 8,
+      "default": 3,
+      "x-restart": "none",
+      "x-ui-type": "slider",
+      "x-slider-labels": {
+        "1": "1 (Fast)",
+        "8": "8 (Accurate)"
+      }
     },
     "show_timestamps": {
       "type": "boolean",
       "title": "Show Timestamps",
-      "description": "Display timestamps in the caption view and include them in exports.",
-      "group": "Display",
-      "x-level": "basic", 
-      "default": true
+      "description": "Display timestamps in the caption view and include them in exports",
+      "default": true,
+      "x-restart": "none",
+      "x-ui-type": "checkbox"
     }
   },
-  "required": [],
-  "x-groups": {
-    "Models": {
-      "title": "Model Configuration",
-      "description": "Configure speech recognition and translation models",
-      "order": 1
+  "required": ["asr_model_id", "mt_model_id", "device", "cadence_threshold", "show_timestamps"],
+  "additionalProperties": false,
+  "x-ui-restart-scopes": {
+    "none": {
+      "badge": false,
+      "action": "immediate"
     },
-    "Performance": {
-      "title": "Performance Settings", 
-      "description": "Hardware and performance configuration",
-      "order": 2
+    "app": {
+      "badge": {
+        "text": "App Restart Required",
+        "color": "blue"
+      },
+      "action": "app-restart"
     },
-    "Translation": {
-      "title": "Translation Settings",
-      "description": "Configure translation behavior and timing",
-      "order": 3
+    "backend": {
+      "badge": {
+        "text": "Restart Required",
+        "color": "orange"
+      },
+      "action": "backend-restart"
     },
-    "Display": {
-      "title": "Display Preferences",
-      "description": "Configure display and UI behavior",
-      "order": 4
+    "full": {
+      "badge": {
+        "text": "Full Restart Required",
+        "color": "red"
+      },
+      "action": "full-restart"
     }
   }
 }
