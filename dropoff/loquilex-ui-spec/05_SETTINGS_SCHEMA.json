@@ -1,6 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "LoquiLex Settings Schema",
+  "description": "Schema for LoquiLex application settings with restart metadata",
   "type": "object",
   "properties": {
     "asr_model_id": {
@@ -12,7 +13,7 @@
       "x-data-source": "/models/asr"
     },
     "mt_model_id": {
-      "type": "string", 
+      "type": "string",
       "title": "Translation Model",
       "description": "Machine Translation model identifier for EN→ZH translation",
       "x-restart": "backend",
@@ -21,7 +22,7 @@
     },
     "device": {
       "type": "string",
-      "title": "Compute Device", 
+      "title": "Compute Device",
       "description": "Hardware device for model execution",
       "enum": ["auto", "cpu", "cuda"],
       "default": "auto",
@@ -29,7 +30,7 @@
       "x-ui-type": "select",
       "x-enum-labels": {
         "auto": "Auto-detect",
-        "cpu": "CPU Only", 
+        "cpu": "CPU Only",
         "cuda": "CUDA GPU"
       }
     },
@@ -72,7 +73,7 @@
     },
     "backend": {
       "badge": {
-        "text": "Restart Required", 
+        "text": "Restart Required",
         "color": "orange"
       },
       "action": "backend-restart"

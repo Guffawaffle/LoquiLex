@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ASRModel, MTModel } from '../types';
-import { 
-  AppSettings, 
-  loadSettings, 
-  saveSettings, 
-  clearSettings, 
+import {
+  AppSettings,
+  loadSettings,
+  saveSettings,
+  clearSettings,
   DEFAULT_SETTINGS,
   savePendingChanges,
   loadPendingChanges,
@@ -54,7 +54,7 @@ export function SettingsView() {
       // Load settings from localStorage
       const loadedSettings = loadSettings();
       const loadedPendingChanges = loadPendingChanges();
-      
+
       // Auto-select first available models if not set
       const updatedSettings = { ...loadedSettings };
       if (!updatedSettings.asr_model_id && asrData.length > 0) {
@@ -95,7 +95,7 @@ export function SettingsView() {
   const updateSetting = <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => {
     const newSettings = { ...settings, [key]: value };
     setSettings(newSettings);
-    
+
     if (requiresRestart(key)) {
       // Setting requires restart, so store as pending change
       const newPendingChanges = { ...pendingChanges, [key]: value };
@@ -134,7 +134,7 @@ export function SettingsView() {
       // TODO: Implement actual restart logic based on restartScope
       // For now, just show a message
       alert(`Settings applied. ${restartScope === 'backend' ? 'Backend restart' : restartScope === 'app' ? 'Application restart' : 'Full restart'} would occur here.`);
-      
+
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     } catch (err) {
@@ -277,22 +277,20 @@ export function SettingsView() {
               <span>8 (Accurate)</span>
             </div>
           </div>
-
           <div className="form-group">
-            <label className="form-group__label">
-              <input
-                type="checkbox"
-                checked={settings.show_timestamps}
-                onChange={(e) => updateSetting('show_timestamps', e.target.checked)}
-                style={{ marginRight: '0.5rem' }}
-              />
+            <label className="form-group__label" htmlFor="timestamps-checkbox">
               Show Timestamps
             </label>
             <p className="form-group__description">
               Display timestamps in the caption view and include them in exports.
             </p>
+            <input
+              id="timestamps-checkbox"
+              type="checkbox"
+              checked={settings.show_timestamps}
+              onChange={(e) => updateSetting('show_timestamps', e.target.checked)}
+            />
           </div>
-
           <div className="settings-actions">
             {hasPendingChanges && (
               <button
