@@ -1,7 +1,15 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { BrowserRouter } from 'react-router-dom';
 import { SettingsView } from '../SettingsView';
+
+// Mock ResizeObserver for tooltips
+global.ResizeObserver = vi.fn().mockImplementation(() => ({
+  observe: vi.fn(),
+  unobserve: vi.fn(),
+  disconnect: vi.fn(),
+}));
 
 // Mock the settings module
 vi.mock('../../utils/settings', () => ({
@@ -151,6 +159,69 @@ describe('SettingsView', () => {
       const slider = screen.getByRole('slider');
       expect(slider).toHaveAttribute('min', '1');
       expect(slider).toHaveAttribute('max', '8');
+    });
+  });
+
+  it('should show tooltips on hover for accessibility', async () => {
+    const user = userEvent.setup();
+    renderSettingsView();
+    
+    await waitFor(() => {
+      expect(screen.getByLabelText('ASR Model')).toBeInTheDocument();
+    });
+
+    // Test ASR Model tooltip
+    const asrLabel = screen.getByLabelText('ASR Model');
+    await user.hover(asrLabel);
+    
+    await waitFor(() => {
+      expect(screen.getByRole('tooltip')).toBeInTheDocument();
+      expect(screen.getByText(/speech recognition model/i)).toBeInTheDocument();
+    });
+
+    await user.unhover(asrLabel);
+    
+    await waitFor(() => {
+      expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
+    });
+  });
+
+  it('should show tooltips on focus for keyboard accessibility', async () => {
+    const user = userEvent.setup();
+    renderSettingsView();
+    
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('auto')).toBeInTheDocument();
+    });
+
+    // Test Device select tooltip on focus
+    const deviceSelect = screen.getByDisplayValue('auto');
+    await user.click(deviceSelect);
+    
+    await waitFor(() => {
+      expect(screen.getByRole('tooltip')).toBeInTheDocument();
+      expect(screen.getByText(/CUDA GPU provides/i)).toBeInTheDocument();
+    });
+  });
+
+  it('should have proper ARIA attributes for tooltips', async () => {
+    const user = userEvent.setup();
+    renderSettingsView();
+    
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Save Settings' })).toBeInTheDocument();
+    });
+
+    const saveButton = screen.getByRole('button', { name: 'Save Settings' });
+    await user.hover(saveButton);
+    
+    await waitFor(() => {
+      const tooltip = screen.getByRole('tooltip');
+      expect(tooltip).toHaveAttribute('role', 'tooltip');
+      expect(tooltip).toHaveAttribute('aria-hidden', 'false');
+      
+      const tooltipId = tooltip.getAttribute('id');
+      expect(saveButton).toHaveAttribute('aria-describedby', tooltipId);
     });
   });
 });

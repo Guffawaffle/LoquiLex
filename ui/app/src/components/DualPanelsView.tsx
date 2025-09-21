@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { CaptionLine, SessionStatus } from '../types';
 import { buildWsUrl } from '../utils/ws';
 import { loadSettings } from '../utils/settings';
+import { WithTooltip } from './WithTooltip';
 
 export function DualPanelsView() {
   const { sessionId } = useParams<{ sessionId: string }>();
@@ -294,26 +295,32 @@ export function DualPanelsView() {
           </span>
         </div>
         <div className="dual-panels__controls">
-          <button
-            className="btn"
-            onClick={togglePause}
-            title={`${isPaused ? 'Resume' : 'Pause'} (Ctrl/Cmd+.)`}
-          >
-            {isPaused ? '▶️' : '⏸️'}
-          </button>
-          <button
-            className="btn"
-            onClick={() => setShowTimestamps(!showTimestamps)}
-            title="Toggle timestamps (T)"
-          >
-            🕐
-          </button>
-          <button className="btn" onClick={() => exportCaptions('txt')} title="Export as TXT (Ctrl/Cmd+E)">
-            💾
-          </button>
-          <button className="btn btn-primary" onClick={stopSession}>
-            Stop
-          </button>
+          <WithTooltip xHelp={`${isPaused ? 'Resume' : 'Pause'} the live captioning session. Keyboard shortcut: Ctrl/Cmd+.`}>
+            <button
+              className="btn"
+              onClick={togglePause}
+            >
+              {isPaused ? '▶️' : '⏸️'}
+            </button>
+          </WithTooltip>
+          <WithTooltip xHelp="Toggle timestamp display in captions. Shows the time when each caption was captured. Keyboard shortcut: T">
+            <button
+              className="btn"
+              onClick={() => setShowTimestamps(!showTimestamps)}
+            >
+              🕐
+            </button>
+          </WithTooltip>
+          <WithTooltip xHelp="Export captions as a text file with timestamps and translations included. Keyboard shortcut: Ctrl/Cmd+E">
+            <button className="btn" onClick={() => exportCaptions('txt')}>
+              💾
+            </button>
+          </WithTooltip>
+          <WithTooltip xHelp="Stop the current live captioning session and return to the main menu.">
+            <button className="btn btn-primary" onClick={stopSession}>
+              Stop
+            </button>
+          </WithTooltip>
         </div>
       </div>
 
@@ -334,13 +341,14 @@ export function DualPanelsView() {
                   {caption.text}
                 </div>
                 <div className="caption-line__actions">
-                  <button
-                    className="btn text-xs"
-                    onClick={() => copyToClipboard(caption.text)}
-                    title="Copy to clipboard"
-                  >
-                    📋
-                  </button>
+                  <WithTooltip xHelp="Copy this caption text to clipboard for pasting elsewhere.">
+                    <button
+                      className="btn text-xs"
+                      onClick={() => copyToClipboard(caption.text)}
+                    >
+                      📋
+                    </button>
+                  </WithTooltip>
                 </div>
               </div>
             ))}
@@ -364,13 +372,14 @@ export function DualPanelsView() {
                   {caption.translation}
                 </div>
                 <div className="caption-line__actions">
-                  <button
-                    className="btn text-xs"
-                    onClick={() => copyToClipboard(caption.translation || '')}
-                    title="Copy to clipboard"
-                  >
-                    📋
-                  </button>
+                  <WithTooltip xHelp="Copy this translation text to clipboard for pasting elsewhere.">
+                    <button
+                      className="btn text-xs"
+                      onClick={() => copyToClipboard(caption.translation || '')}
+                    >
+                      📋
+                    </button>
+                  </WithTooltip>
                 </div>
               </div>
             ))}
