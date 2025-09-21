@@ -1,4 +1,10 @@
 import { defineConfig, devices } from '@playwright/test';
+// Note: This config is for LOCAL a11y checks only. It is NOT part of CI gating.
+// It spins up a Vite preview server and runs a focused accessibility suite.
+// Avoid adding this to Make/CI paths unless explicitly intended.
+// Allow using Node's process without pulling in @types/node for this TS file only.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+declare const process: any;
 
 /**
  * Minimal Playwright configuration for accessibility testing
@@ -14,9 +20,16 @@ export default defineConfig({
   workers: 1,
   reporter: [['list'], ['html', { outputFolder: 'playwright-report-a11y' }]],
   use: {
-    baseURL: `http://127.0.0.1:${process.env.LX_API_PORT || '8000'}`,
+    baseURL: 'http://127.0.0.1:4173',
     trace: 'on-first-retry',
     headless: true,
+  },
+  webServer: {
+    // Build the UI and start a local preview server Playwright connects to
+    command: 'npm run build && npm run preview',
+    url: 'http://127.0.0.1:4173',
+    reuseExistingServer: true,
+    timeout: 120000,
   },
   projects: [
     {

@@ -386,17 +386,17 @@
 }
 
 .restart-badge--backend {
-  background: #f59e0b; /* orange-500 */
+  background: #9a3412; /* darker amber-800 for contrast */
   color: #ffffff;
 }
 
 .restart-badge--app {
-  background: #3b82f6; /* blue-500 */
+  background: #1e40af; /* blue-800 */
   color: #ffffff;
 }
 
 .restart-badge--full {
-  background: #ef4444; /* red-500 */
+  background: #991b1b; /* red-800 */
   color: #ffffff;
 }
 

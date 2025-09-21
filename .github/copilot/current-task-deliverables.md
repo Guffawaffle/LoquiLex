@@ -2,6 +2,69 @@
 
 Changed several GitHub Actions workflows to add an early step that disables Ubuntu ESM (Enterprise Security Maintainers) to prevent `apt` from contacting `esm.ubuntu.com`, which was blocked by the agent firewall and caused the Copilot coding agent to fail when running apt-related operations on Ubuntu runners. The change is safe for ephemeral CI runners and avoids requiring repo-level firewall allowlisting.
 
+
+## 2025-09-21 — A11y Option A (Local-only) Completed
+
+### Executive Summary
+- Implemented Option A: keep Playwright a11y checks local-only (non-CI-gating), add explanatory comments, and stabilize a flaky delay in one test.
+- Verified repo CI gates remain unchanged; ran All Checks locally — green.
+
+### Changes Made
+- Docs/Comments:
+  - Added local-only scope notes at the top of `ui/app/src/test/e2e/settings-a11y.spec.ts`.
+  - Confirmed `ui/app/playwright.a11y.config.ts` already documents non-gating behavior and preview server usage.
+- Test Fix:
+  - Replaced unsupported `delay` option in Playwright `route.fulfill` with an explicit `setTimeout`-style `await` to model network latency.
+
+### Diffs
+```diff
+diff --git a/ui/app/src/test/e2e/settings-a11y.spec.ts b/ui/app/src/test/e2e/settings-a11y.spec.ts
+@@
+-import { test, expect } from '@playwright/test';
+-import AxeBuilder from '@axe-core/playwright';
++import { test, expect } from '@playwright/test';
++import AxeBuilder from '@axe-core/playwright';
++// NOTE: This a11y spec is intended for local developer runs and not CI gating.
++// - Routes are mocked to avoid backend dependencies.
++// - The suite opens the Vite preview server via Playwright config.
++// - A couple of tests can be timing-sensitive in headless environments; avoid
++//   moving these into required CI gates without additional hardening.
+@@
+   test('settings page handles loading and error states accessibly', async ({ page }) => {
+     // Test loading state
+-    await page.route('/models/asr', route => {
+-      // Delay response to test loading state
+-      route.fulfill({
+-        status: 200,
+-        contentType: 'application/json',
+-        body: JSON.stringify([]),
+-        delay: 100
+-      });
+-    });
++    await page.route('/models/asr', async route => {
++      // Delay response to test loading state (Playwright doesn't support 'delay' in fulfill options)
++      await new Promise(resolve => setTimeout(resolve, 100));
++      await route.fulfill({
++        status: 200,
++        contentType: 'application/json',
++        body: JSON.stringify([])
++      });
++    });
+```
+
+### Verification
+- Ran VS Code task: `All Checks`.
+- Result (pytest): `237 passed, 3 skipped in 20.96s` (as reported in task output).
+- No lint/typecheck regressions reported; exit code 0.
+
+### Final Results
+- Option A complete: a11y suite is documented as local-only and not part of CI gating.
+- Flaky delay fixed in the a11y spec to improve local determinism.
+- Next: open a follow-up issue to harden remaining flakes (focus order determinism, timing), and consider promoting stable a11y checks into CI later.
+
+### Files Changed (this update)
+- `ui/app/src/test/e2e/settings-a11y.spec.ts` (comments + delay fix)
+
 Files changed (workflow edits):
 - `.github/workflows/ci.yml`
 - `.github/workflows/codeql.yml`

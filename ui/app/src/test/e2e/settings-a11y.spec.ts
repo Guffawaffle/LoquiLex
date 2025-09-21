@@ -1,5 +1,10 @@
 import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
+// NOTE: This a11y spec is intended for local developer runs and not CI gating.
+// - Routes are mocked to avoid backend dependencies.
+// - The suite opens the Vite preview server via Playwright config.
+// - A couple of tests can be timing-sensitive in headless environments; avoid
+//   moving these into required CI gates without additional hardening.
 
 test.describe('Settings Accessibility', () => {
   test.beforeEach(async ({ page }) => {
@@ -128,13 +133,13 @@ test.describe('Settings Accessibility', () => {
 
   test('settings page handles loading and error states accessibly', async ({ page }) => {
     // Test loading state
-    await page.route('/models/asr', route => {
-      // Delay response to test loading state
-      route.fulfill({
+    await page.route('/models/asr', async route => {
+      // Delay response to test loading state (Playwright doesn't support 'delay' in fulfill options)
+      await new Promise(resolve => setTimeout(resolve, 100));
+      await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify([]),
-        delay: 100
+        body: JSON.stringify([])
       });
     });
 
