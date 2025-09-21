@@ -5,7 +5,7 @@ import { AppSettings, loadSettings, saveSettings, clearSettings, DEFAULT_SETTING
 import { SchemaForm } from './forms';
 import { useSettingsSchema } from '../hooks/useSettingsSchema';
 
-export function SettingsView() {
+export function SchemaSettingsView() {
   const navigate = useNavigate();
   const { schema, loading: schemaLoading, error: schemaError } = useSettingsSchema();
   const [asrModels, setAsrModels] = useState<ASRModel[]>([]);
@@ -63,7 +63,7 @@ export function SettingsView() {
     try {
       saveSettings(settings);
       setSaved(true);
-      setTimeout(() => setSaved(false), 2000); // Hide saved message after 2 seconds
+      setTimeout(() => setSaved(false), 2000);
       setError(null);
     } catch (err) {
       setError('Failed to save settings');
