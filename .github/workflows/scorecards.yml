@@ -14,18 +14,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Disable Ubuntu ESM to avoid esm.ubuntu.com
-        if: runner.os == 'Linux'
-        run: |
-          set -euxo pipefail
-          (command -v pro >/dev/null && sudo pro disable esm-infra || true)
-          (command -v pro >/dev/null && sudo pro disable esm-apps || true)
-          (command -v ua >/dev/null && sudo ua disable esm-infra || true)
-          (command -v ua >/dev/null && sudo ua disable esm-apps || true)
-          sudo rm -f /etc/apt/apt.conf.d/20apt-esm-hook.conf || true
-          sudo rm -f /etc/apt/sources.list.d/ubuntu-esm*.list /etc/apt/sources.list.d/ubuntu-*pro*.list || true
-          sudo sed -i.bak -E 's|^deb .*esm\.ubuntu\.com.*$|# &|g' /etc/apt/sources.list || true
-          sudo apt-get update -y || true
       - uses: ossf/scorecard-action@v2.3.3
         with:
           results_file: results.sarif
