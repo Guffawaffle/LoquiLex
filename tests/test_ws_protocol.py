@@ -41,8 +41,8 @@ class MockWebSocket:
         return json.loads(self.sent_messages[-1])
 
 
-@pytest.mark.asyncio
 class TestWSProtocolManager:
+    @pytest.mark.asyncio
     async def test_context_manager_cleanup(self):
         """Test that async context manager calls close and cleans up tasks."""
         async with WSProtocolManager("test_session") as manager:
@@ -60,15 +60,33 @@ class TestWSProtocolManager:
         """Test that __del__ cancels heartbeat tasks if not awaited."""
         # Create manager and start tasks
         manager = WSProtocolManager("test_session")
-        loop = asyncio.get_event_loop()
-        # Manually start heartbeat tasks
-        manager._hb_task = loop.create_task(asyncio.sleep(0.1))
-        manager._hb_timeout_task = loop.create_task(asyncio.sleep(0.1))
-        # Delete manager and check tasks are cancelled
+        # Create a fresh loop for this synchronous test instead of relying on
+        # asyncio.get_event_loop(), which may raise when no loop is set.
+        loop = asyncio.new_event_loop()
+        # Manually start heartbeat tasks on the temporary loop
+        t1 = loop.create_task(asyncio.sleep(0.1))
+        t2 = loop.create_task(asyncio.sleep(0.1))
+        manager._hb_task = t1
+        manager._hb_timeout_task = t2
+
+        # Delete manager and allow its destructor to attempt cleanup
         del manager
+
+        # Run the temporary loop until the tasks complete/cancel to ensure
+        # their coroutines are awaited and do not trigger ResourceWarnings.
+        try:
+            loop.run_until_complete(asyncio.gather(t1, t2, return_exceptions=True))
+        except Exception:
+            pass
+        finally:
+            try:
+                loop.close()
+            except Exception:
+                pass
 
     """Test WebSocket protocol manager functionality."""
 
+    @pytest.mark.asyncio
     async def test_initialization(self):
         """Test protocol manager initialization."""
         async with WSProtocolManager("test_session") as manager:
@@ -79,6 +97,7 @@ class TestWSProtocolManager:
             assert manager.hb_config.interval_ms == 5000  # New default from environment
             assert manager.limits.max_in_flight == 64  # Default
 
+    @pytest.mark.asyncio
     async def test_custom_configuration(self):
         """Test protocol manager with custom configuration."""
         hb_config = HeartbeatConfig(interval_ms=5000, timeout_ms=15000)
@@ -89,6 +108,7 @@ class TestWSProtocolManager:
             assert manager.limits.max_in_flight == 32
             assert manager.limits.max_msg_bytes == 65536
 
+    @pytest.mark.asyncio
     async def test_add_connection_sends_welcome(self):
         """Test that adding connection sends welcome message."""
         async with WSProtocolManager("test_session") as manager:
@@ -103,6 +123,7 @@ class TestWSProtocolManager:
             assert "resume_window" in welcome_msg["data"]
             assert "limits" in welcome_msg["data"]
 
+    @pytest.mark.asyncio
     async def test_remove_connection(self):
         """Test removing connections."""
         async with WSProtocolManager("test_session") as manager:
@@ -112,6 +133,7 @@ class TestWSProtocolManager:
             await manager.remove_connection(mock_ws)
             assert len(manager.connections) == 0
 
+    @pytest.mark.asyncio
     async def test_client_hello_handling(self):
         """Test client hello message handling."""
         async with WSProtocolManager("test_session") as manager:
@@ -128,6 +150,7 @@ class TestWSProtocolManager:
             # Check that session state was updated
             assert manager.state.max_in_flight == 16  # Should be min(16, 64)
 
+    @pytest.mark.asyncio
     async def test_client_ack_handling(self):
         """Test client acknowledgement handling."""
         async with WSProtocolManager("test_session") as manager:
@@ -150,6 +173,7 @@ class TestWSProtocolManager:
             assert 1 not in manager.state.replay_buffer
             assert 2 in manager.state.replay_buffer
 
+    @pytest.mark.asyncio
     async def test_domain_event_sending(self):
         """Test sending domain events."""
         async with WSProtocolManager("test_session") as manager:
@@ -169,6 +193,7 @@ class TestWSProtocolManager:
             assert event_msg["seq"] == 1  # First domain event should be seq 1
             assert event_msg["sid"] == "test_session"
 
+    @pytest.mark.asyncio
     async def test_flow_control_prevents_sending(self):
         """Test that flow control prevents sending when limit is reached."""
         async with WSProtocolManager("test_session") as manager:
@@ -187,6 +212,7 @@ class TestWSProtocolManager:
             assert success3 is False
             assert len(mock_ws.sent_messages) == 2  # Still only 2 messages
 
+    @pytest.mark.asyncio
     async def test_resume_request_handling(self):
         """Test resume request processing."""
         async with WSProtocolManager("test_session") as manager:
@@ -239,6 +265,7 @@ class TestWSProtocolManager:
             ack_msg = json.loads(mock_ws.sent_messages[3])
             assert ack_msg["t"] == "session.ack"
 
+    @pytest.mark.asyncio
     async def test_resume_expired_error(self):
         """Test resume request with expired window."""
         async with WSProtocolManager("test_session") as manager:
@@ -265,6 +292,7 @@ class TestWSProtocolManager:
             assert response_msg["data"]["reason"] == "resume_expired"
 
     @patch("asyncio.sleep")
+    @pytest.mark.asyncio
     async def test_heartbeat_sending(self, mock_sleep):
         """Test heartbeat loop functionality."""
         async with WSProtocolManager("test_session") as manager:
@@ -286,6 +314,7 @@ class TestWSProtocolManager:
             assert "ts" in hb_msg["data"]
             assert "q_out" in hb_msg["data"]
 
+    @pytest.mark.asyncio
     async def test_invalid_message_handling(self):
         """Test handling of invalid messages."""
         async with WSProtocolManager("test_session") as manager:
@@ -300,6 +329,7 @@ class TestWSProtocolManager:
             assert error_msg["t"] == MessageType.SERVER_ERROR
             assert error_msg["data"]["code"] == "invalid_message"
 
+    @pytest.mark.asyncio
     async def test_unknown_message_type_handling(self):
         """Test handling of unknown message types."""
         async with WSProtocolManager("test_session") as manager:
@@ -314,6 +344,7 @@ class TestWSProtocolManager:
             error_msg = mock_ws.get_last_message()
             assert error_msg["t"] == MessageType.SERVER_ERROR
 
+    @pytest.mark.asyncio
     async def test_connection_failure_handling(self):
         """Test handling of connection failures during broadcast."""
         async with WSProtocolManager("test_session") as manager:
@@ -332,6 +363,7 @@ class TestWSProtocolManager:
             # Working connection should have received message
             assert len(working_ws.sent_messages) == 1
 
+    @pytest.mark.asyncio
     async def test_session_cleanup_on_all_connections_failed(self):
         """Test session cleanup when all connections fail."""
         async with WSProtocolManager("test_session") as manager:
@@ -348,6 +380,7 @@ class TestWSProtocolManager:
             assert cleanup_called == ["test_session"]
             assert len(manager.connections) == 0
 
+    @pytest.mark.asyncio
     async def test_graceful_close(self):
         """Test graceful session closure."""
         async with WSProtocolManager("test_session") as manager:
@@ -359,6 +392,7 @@ class TestWSProtocolManager:
             assert mock_ws.closed is True
             assert len(manager.connections) == 0
 
+    @pytest.mark.asyncio
     async def test_ack_spoof_protection(self):
         """Client cannot ack beyond latest delivered seq."""
         async with WSProtocolManager("test_session") as manager:

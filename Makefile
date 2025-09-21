@@ -73,7 +73,7 @@ endef
 ## Phony targets
 .PHONY: help install-venv install-base install-ml-minimal install-ml-cpu \
         prefetch-asr models-tiny dev dev-minimal dev-ml-cpu \
-        lint fmt fmt-check typecheck test unit test-e2e e2e ci clean \
+        lint fmt fmt-check typecheck test unit test-e2e e2e ci clean clean-logs \
         docker-ci docker-ci-build docker-ci-run docker-ci-test docker-ci-shell \
         docker-build docker-run docker-gpu docker-stop docker-clean docker-test \
         sec-scan dead-code-analysis dead-code-report clean-artifacts \
@@ -145,6 +145,7 @@ help:
 	@echo "=== Environment Variables ==="
 	@echo "  LX_OFFLINE=1           - enable offline mode (skip network calls, e2e tests)"
 	@echo "  LX_API_PORT=8000       - FastAPI server port"
+	@echo "  clean-logs         - cleanup old log files (uses LX_LOG_DIR)"
 	@echo "  LX_UI_PORT=5173        - Vite dev server port (4173 for preview)"
 	@echo "  USE_VENV=0             - use system Python instead of creating .venv"
 	@echo "  LX_ASR_MODEL=tiny.en   - ASR model to prefetch (preferred; falls back to ASR_MODEL if unset)"
@@ -342,6 +343,19 @@ pids-clean-stale:
 		fi; \
 	done
 	@echo "[pids-clean-stale] ✓ Cleanup complete"
+
+clean-logs:
+	@echo "=== Cleaning old log files ==="
+	@if [ -n "$$LX_LOG_DIR" ] && [ -d "$$LX_LOG_DIR" ]; then \
+		if [ -n "$$LX_LOG_MAX_AGE_HOURS" ]; then \
+			$(PY) -c "from loquilex.logging import cleanup_old_logs; print(f'Deleted {cleanup_old_logs(\"$$LX_LOG_DIR\", max_age_hours=int(\"$$LX_LOG_MAX_AGE_HOURS\"))} log files')"; \
+		else \
+			$(PY) -c "from loquilex.logging import cleanup_old_logs; print(f'Deleted {cleanup_old_logs(\"$$LX_LOG_DIR\")} log files')"; \
+		fi; \
+	else \
+		echo "No LX_LOG_DIR set or directory not found"; \
+	fi
+	@rm -rf .artifacts/logs || true
 
 ## ------------------------------
 ## UI targets
@@ -548,3 +562,4 @@ dead-code-report:
 .PHONY: clean-artifacts
 clean-artifacts:
 	@rm -rf .artifacts || true
+	@echo "=== Cleaned build and test artifacts ==="

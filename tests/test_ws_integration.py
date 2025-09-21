@@ -1,6 +1,5 @@
 """Integration tests for WebSocket envelope protocol with existing API."""
 
-import asyncio
 import json
 from unittest.mock import patch
 
@@ -9,12 +8,53 @@ from fastapi.testclient import TestClient
 
 from loquilex.api.server import app
 from loquilex.api.ws_types import AckData, ClientHelloData, MessageType, WSEnvelope
+from starlette.websockets import WebSocketDisconnect
+
+try:
+    import websockets as _websockets
+except Exception:
+    _websockets = None
+
+try:
+    import httpx  # type: ignore
+
+    _HTTPX_AVAILABLE = True
+except Exception:
+    httpx = None  # type: ignore
+    _HTTPX_AVAILABLE = False
+
+# `requests` is optional in some CI/test environments; import lazily and
+# include its exception types in the handler only when available to avoid
+# hard import errors during test collection.
+try:
+    import requests  # type: ignore
+
+    _REQUESTS_AVAILABLE = True
+except Exception:
+    requests = None  # type: ignore
+    _REQUESTS_AVAILABLE = False
+
+# Build the exception tuple used in the except-block dynamically so the
+# test module can be collected even if `requests` is not installed.
+_EXC_TYPES = [
+    WebSocketDisconnect,
+    ConnectionError,
+    RuntimeError,
+]
+if _HTTPX_AVAILABLE:
+    _EXC_TYPES.extend([httpx.ConnectError, httpx.HTTPStatusError])
+if _REQUESTS_AVAILABLE:
+    _EXC_TYPES.append(requests.exceptions.RequestException)
+_EXC_TYPES = tuple(_EXC_TYPES)
 
 
 @pytest.mark.e2e
-@pytest.mark.asyncio
-async def test_websocket_envelope_integration():
-    """Test that the new envelope protocol works with the existing API."""
+def test_websocket_envelope_integration():
+    """Test that the new envelope protocol works with the existing API.
+
+    Uses FastAPI TestClient WebSocket support for reliable testing without
+    requiring external server startup.
+    """
 
     # Mock session creation to avoid subprocess spawning
     with patch("loquilex.api.supervisor.Session.start"):
@@ -42,18 +82,16 @@ async def test_websocket_envelope_integration():
                     pytest.skip("No session ID returned")
 
                 # Test WebSocket connection with envelope protocol
-                import websockets
+                from loquilex.api import server as api_server
 
+                ws_url = f"{api_server.WS_PATH}/{sid}"
+
+                # Use FastAPI TestClient WebSocket support
                 try:
-                    from loquilex.api import server as api_server
-
-                    ws_url = f"ws://127.0.0.1:8000{api_server.WS_PATH}/{sid}"
-
-                    # Simplified connection without additional headers for compatibility
-                    async with websockets.connect(ws_url) as websocket:
+                    with client.websocket_connect(ws_url) as websocket:
 
                         # Should receive welcome message
-                        welcome_raw = await asyncio.wait_for(websocket.recv(), timeout=2.0)
+                        welcome_raw = websocket.receive_text()
                         welcome = json.loads(welcome_raw)
 
                         # Validate welcome message structure
@@ -78,30 +116,60 @@ async def test_websocket_envelope_integration():
                             ).model_dump(),
                         )
 
-                        await websocket.send(hello_envelope.model_dump_json())
+                        websocket.send_text(hello_envelope.model_dump_json())
 
                         # Client hello is processed but doesn't generate a response
-                        # Wait briefly to ensure processing
-                        await asyncio.sleep(0.1)
+                        # No need to wait in synchronous TestClient context
 
                         # Send acknowledgement for welcome message
                         ack_envelope = WSEnvelope(
                             t=MessageType.CLIENT_ACK, data=AckData(ack_seq=0).model_dump()
                         )
 
-                        await websocket.send(ack_envelope.model_dump_json())
+                        websocket.send_text(ack_envelope.model_dump_json())
 
-                        # Wait briefly to ensure ack is processed
-                        await asyncio.sleep(0.1)
+                # Skip known environment/configuration errors instead of failing the
+                # test. These exceptions typically indicate that the test environment
+                # doesn't have a WebSocket endpoint available (HTTP 404) or that
+                # connections to the socket endpoint are blocked/unavailable.
+                except _EXC_TYPES as e:
+                    # Try to determine an HTTP status code when available
+                    status_code = None
+                    # websockets.InvalidStatusCode exposes `status_code` on the exception
+                    if (
+                        _websockets is not None
+                        and hasattr(_websockets, "InvalidStatusCode")
+                        and isinstance(e, _websockets.InvalidStatusCode)
+                    ):
+                        status_code = getattr(e, "status_code", None)
+                    # httpx.HTTPStatusError contains a response
+                    elif (
+                        _HTTPX_AVAILABLE
+                        and isinstance(e, httpx.HTTPStatusError)
+                        and getattr(e, "response", None) is not None
+                    ):
+                        status_code = getattr(e.response, "status_code", None)
+                    # requests HTTP errors expose response as well
+                    elif (
+                        _REQUESTS_AVAILABLE
+                        and isinstance(e, requests.exceptions.RequestException)
+                        and getattr(e, "response", None) is not None
+                    ):
+                        status_code = getattr(e.response, "status_code", None)
 
-                except (
-                    websockets.exceptions.InvalidURI,
-                    OSError,
-                    asyncio.TimeoutError,
-                    ConnectionError,
-                ) as e:
-                    # Skip if WebSocket connection fails (expected in some test environments)
-                    pytest.skip(f"WebSocket connection failed: {e}")
+                    if status_code == 404:
+                        pytest.skip(f"WebSocket endpoint not found (HTTP 404): {e}")
+
+                    # Connection-level failures are often environment-related; skip those too
+                    if isinstance(e, ConnectionError):
+                        pytest.skip(f"WebSocket connection failed: {e}")
+                    if _HTTPX_AVAILABLE and isinstance(e, httpx.ConnectError):
+                        pytest.skip(f"WebSocket connection failed: {e}")
+                    if _REQUESTS_AVAILABLE and isinstance(e, requests.exceptions.ConnectionError):
+                        pytest.skip(f"WebSocket connection failed: {e}")
+
+                    # Otherwise, re-raise so the test fails and surfaces unexpected errors
+                    raise
 
                 # Clean up session
                 try:
