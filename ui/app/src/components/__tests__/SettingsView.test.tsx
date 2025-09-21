@@ -23,6 +23,84 @@ vi.mock('../../utils/settings', () => ({
   }
 }));
 
+// Mock the schema hook
+vi.mock('../../hooks/useSettingsSchema', () => ({
+  useSettingsSchema: vi.fn(() => ({
+    schema: {
+      type: 'object',
+      properties: {
+        asr_model_id: {
+          type: 'string',
+          title: 'ASR Model',
+          description: 'Choose the default speech recognition model for new sessions.',
+          group: 'Models',
+          'x-level': 'basic',
+          default: ''
+        },
+        mt_model_id: {
+          type: 'string',
+          title: 'MT Model',
+          description: 'Select the machine translation model for EN→ZH translation.',
+          group: 'Models',
+          'x-level': 'basic',
+          default: ''
+        },
+        device: {
+          type: 'string',
+          title: 'Device',
+          description: 'Select the device for model inference.',
+          group: 'Performance',
+          'x-level': 'basic',
+          default: 'auto',
+          enum: ['auto', 'cpu', 'cuda', 'mps']
+        },
+        cadence_threshold: {
+          type: 'integer',
+          title: 'Cadence Threshold',
+          description: 'Number of words to accumulate before triggering EN→ZH translation (1-8). Lower values provide faster translation but may be less accurate.',
+          group: 'Translation',
+          'x-level': 'basic',
+          default: 3,
+          minimum: 1,
+          maximum: 8
+        },
+        show_timestamps: {
+          type: 'boolean',
+          title: 'Show Timestamps',
+          description: 'Display timestamps in the caption view and include them in exports.',
+          group: 'Display',
+          'x-level': 'basic',
+          default: true
+        }
+      },
+      'x-groups': {
+        Models: {
+          title: 'Model Configuration',
+          description: 'Configure speech recognition and translation models',
+          order: 1
+        },
+        Performance: {
+          title: 'Performance Settings',
+          description: 'Hardware and performance configuration',
+          order: 2
+        },
+        Translation: {
+          title: 'Translation Settings',
+          description: 'Configure translation behavior and timing',
+          order: 3
+        },
+        Display: {
+          title: 'Display Preferences',
+          description: 'Configure display and UI behavior',
+          order: 4
+        }
+      }
+    },
+    loading: false,
+    error: null
+  }))
+}));
+
 // Mock fetch for model loading
 const mockFetch = vi.fn();
 (globalThis as any).fetch = mockFetch;
