@@ -16,8 +16,9 @@ VENV_PY     := $(VENV)/bin/python
 VENV_PIP    := $(VENV)/bin/pip
 SYS_PY      := $(shell command -v python3 || command -v python || echo python)
 SYS_PIP     := $(shell command -v pip3 || command -v pip || echo pip)
-PY          := $(if $(wildcard $(VENV_PY)),$(VENV_PY),$(SYS_PY))
-PIP         := $(if $(wildcard $(VENV_PIP)),$(VENV_PIP),$(SYS_PIP))
+# Prefer venv when present unless USE_VENV=0 (explicitly request system Python)
+PY          := $(if $(filter 0,$(USE_VENV)),$(SYS_PY),$(if $(wildcard $(VENV_PY)),$(VENV_PY),$(SYS_PY)))
+PIP         := $(if $(filter 0,$(USE_VENV)),$(SYS_PIP),$(if $(wildcard $(VENV_PIP)),$(VENV_PIP),$(SYS_PIP)))
 
 ## ------------------------------
 ## PID Management Helpers
@@ -409,7 +410,7 @@ ui-verify: ui-test
 
 # Install bucket
 install:
-	@if [ -f ".venv/bin/python" ] && .venv/bin/python -c "import pytest" 2>/dev/null; then \
+	@if $(PY) -c "import pytest" 2>/dev/null; then \
 		echo "✓ Dependencies already installed"; \
 	else \
 		$(MAKE) install-base; \
