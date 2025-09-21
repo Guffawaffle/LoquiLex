@@ -3,22 +3,19 @@ import AxeBuilder from '@axe-core/playwright';
 
 test.describe('Settings Accessibility', () => {
   test.beforeEach(async ({ page }) => {
-    // Mock the API responses for models (match any path that ends with /models/asr or /models/mt)
-    await page.route(/.*\/models\/asr$/, route => {
-      // emulate a short delay for loading state by replying asynchronously
-      setTimeout(() => {
-        route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify([
-            { id: 'whisper-small', name: 'Whisper Small', size: '244MB', available: true },
-            { id: 'whisper-large', name: 'Whisper Large', size: '1.5GB', available: false },
-          ])
-        });
-      }, 100);
+    // Mock the API responses for models
+    await page.route('/models/asr', route => {
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([
+          { id: 'whisper-small', name: 'Whisper Small', size: '244MB', available: true },
+          { id: 'whisper-large', name: 'Whisper Large', size: '1.5GB', available: false },
+        ])
+      });
     });
 
-    await page.route(/.*\/models\/mt$/, route => {
+    await page.route('/models/mt', route => {
       route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -133,13 +130,12 @@ test.describe('Settings Accessibility', () => {
     // Test loading state
     await page.route('/models/asr', route => {
       // Delay response to test loading state
-      setTimeout(() => {
-        route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify([]),
-        });
-      }, 100);
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([]),
+        delay: 100
+      });
     });
 
     await page.goto('/settings');
@@ -216,19 +212,10 @@ test.describe('Settings Accessibility', () => {
     await expect(page.locator('h1:has-text("Settings")')).toBeVisible();
     await expect(page.locator('#asr-model-select')).toBeVisible();
 
-    // Wait for network idle and visible controls, then run axe
-    await page.waitForLoadState('networkidle');
-    await expect(page.locator('#asr-model-select')).toBeVisible();
-
+    // Run axe accessibility scan
     const accessibilityScanResults = await new AxeBuilder({ page }).analyze();
-    // Fail only on serious/critical impacts to reduce flakiness
-    const serious = (accessibilityScanResults.violations as any[]).filter((v: any) => v.impact === 'serious' || v.impact === 'critical');
-    if (serious.length > 0) {
-      // Log violations to aid debugging
-      // eslint-disable-next-line no-console
-      console.error('Axe violations (serious/critical):', JSON.stringify(serious, null, 2));
-    }
-    expect(serious).toHaveLength(0);
+
+    expect(accessibilityScanResults.violations).toEqual([]);
   });
 
   test('settings form in error state passes accessibility checks', async ({ page }) => {
@@ -241,14 +228,10 @@ test.describe('Settings Accessibility', () => {
     // Wait for error state
     await expect(page.locator('text=Failed to load models')).toBeVisible();
 
-    await page.waitForLoadState('networkidle');
+    // Run axe accessibility scan on error state
     const accessibilityScanResults = await new AxeBuilder({ page }).analyze();
-    const seriousErr = (accessibilityScanResults.violations as any[]).filter((v: any) => v.impact === 'serious' || v.impact === 'critical');
-    if (seriousErr.length > 0) {
-      // eslint-disable-next-line no-console
-      console.error('Axe violations on error state:', JSON.stringify(seriousErr, null, 2));
-    }
-    expect(seriousErr).toHaveLength(0);
+
+    expect(accessibilityScanResults.violations).toEqual([]);
   });
 
   test('settings form in success state passes accessibility checks', async ({ page }) => {
@@ -259,13 +242,9 @@ test.describe('Settings Accessibility', () => {
     await page.click('button:has-text("Save Settings")');
     await expect(page.locator('text=Settings saved successfully!')).toBeVisible();
 
-    await page.waitForLoadState('networkidle');
+    // Run axe accessibility scan on success state
     const accessibilityScanResults = await new AxeBuilder({ page }).analyze();
-    const seriousSucc = (accessibilityScanResults.violations as any[]).filter((v: any) => v.impact === 'serious' || v.impact === 'critical');
-    if (seriousSucc.length > 0) {
-      // eslint-disable-next-line no-console
-      console.error('Axe violations on success state:', JSON.stringify(seriousSucc, null, 2));
-    }
-    expect(seriousSucc).toHaveLength(0);
+
+    expect(accessibilityScanResults.violations).toEqual([]);
   });
 });

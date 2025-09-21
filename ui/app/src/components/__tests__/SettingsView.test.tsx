@@ -182,10 +182,10 @@ describe('SettingsView', () => {
     // The exact text will depend on the model IDs from the mocked ASR/MT models
     const asrSelect = screen.getByLabelText('ASR Model');
     const mtSelect = screen.getByLabelText('MT Model');
-    
+
     expect(asrSelect).toBeInTheDocument();
     expect(mtSelect).toBeInTheDocument();
-    
+
     // Check that device options are available from the schema enum
     const deviceSelect = screen.getByLabelText('Device');
     expect(deviceSelect).toBeInTheDocument();
@@ -258,28 +258,14 @@ describe('SettingsView', () => {
       expect(screen.getByText('Settings')).toBeInTheDocument();
       expect(screen.getByText('Configure models, device, cadence, and display preferences')).toBeInTheDocument();
 
-      // Check all form groups are present. Prefer test ids but fall back to class selectors.
-      let formGroups: HTMLElement[] = [] as unknown as HTMLElement[];
-      try {
-        formGroups = screen.getAllByTestId('form-group');
-      } catch (e) {
-        // fallback to class selector
-        formGroups = Array.from(document.querySelectorAll('.form-group')) as HTMLElement[];
-      }
-
+      // Check all form groups are present
+      const formGroups = document.querySelectorAll('.form-group');
       expect(formGroups).toHaveLength(5); // ASR, MT, Device, Cadence, Timestamps
 
-      // Check each form group has proper structure using test ids or class selectors
+      // Check each form group has proper structure
       formGroups.forEach((group) => {
-        try {
-          const label = within(group).getByTestId('form-group__label');
-          const desc = within(group).getByTestId('form-group__description');
-          expect(label).toBeInTheDocument();
-          expect(desc).toBeInTheDocument();
-        } catch (err) {
-          expect(group.querySelector('.form-group__label')).toBeInTheDocument();
-          expect(group.querySelector('.form-group__description')).toBeInTheDocument();
-        }
+        expect(group.querySelector('.form-group__label')).toBeInTheDocument();
+        expect(group.querySelector('.form-group__description')).toBeInTheDocument();
       });
     });
   });
@@ -421,28 +407,15 @@ describe('SettingsView', () => {
       expect(screen.getByLabelText(/Cadence Threshold/)).toBeInTheDocument();
       expect(screen.getByLabelText(/Show Timestamps/)).toBeInTheDocument();
 
-      // Check form controls have associated descriptions (component should render these with specific test ids)
-      // Prefer explicit test ids for descriptions; fall back to visible text
-      try {
-        const asrDescription = screen.getByTestId('asr-model-description');
-        expect(asrDescription).toBeInTheDocument();
-      } catch (e) {
-        expect(screen.getByText('Choose the default speech recognition model for new sessions.')).toBeInTheDocument();
-      }
+      // Check form controls have associated descriptions
+      const asrDescription = document.querySelector('label[for="asr-model-select"] + .form-group__description');
+      expect(asrDescription).toBeInTheDocument();
 
-      try {
-        const mtDescription = screen.getByTestId('mt-model-description');
-        expect(mtDescription).toBeInTheDocument();
-      } catch (e) {
-        expect(screen.getByText('Choose the default translation model for new sessions.')).toBeInTheDocument();
-      }
+      const mtDescription = document.querySelector('label[for="mt-model-select"] + .form-group__description');
+      expect(mtDescription).toBeInTheDocument();
 
-      try {
-        const deviceDescription = screen.getByTestId('device-description');
-        expect(deviceDescription).toBeInTheDocument();
-      } catch (e) {
-        expect(screen.getByText('Choose the compute device for processing. Auto detects best available option.')).toBeInTheDocument();
-      }
+      const deviceDescription = document.querySelector('label[for="device-select"] + .form-group__description');
+      expect(deviceDescription).toBeInTheDocument();
     });
 
     it('should have proper heading hierarchy', async () => {
