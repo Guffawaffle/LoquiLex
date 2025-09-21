@@ -152,11 +152,13 @@ typecheck: install-base
 link-check:
 	@echo "=== Checking links in README.md and docs/ ==="
 	@if ! command -v npm >/dev/null 2>&1; then \
-		echo "npm not found. Installing markdown-link-check globally..."; \
-		curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash -; \
-		sudo apt-get install -y nodejs; \
+		echo "❌ npm (Node.js) not found. Please install Node.js (https://nodejs.org/) and ensure 'npm' is in your PATH."; \
+		exit 1; \
 	fi; \
-	if [ ! -f package.json ] || ! npm list markdown-link-check >/dev/null 2>&1; then \
+	if [ ! -f package.json ]; then \
+		echo "Installing markdown-link-check (no package.json found)..."; \
+		npm install --no-save markdown-link-check; \
+	elif ! npm list markdown-link-check >/dev/null 2>&1; then \
 		echo "Installing markdown-link-check..."; \
 		npm install --no-save markdown-link-check; \
 	fi; \
