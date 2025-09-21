@@ -86,7 +86,7 @@ class RateLimiter:
     def __init__(self, max_requests: int = 10, window_seconds: int = 60):
         self.max_requests = max_requests
         self.window_seconds = window_seconds
-        self.requests = []
+        self.requests: list[float] = []
         
     async def acquire(self) -> bool:
         """Check if request is allowed within rate limit."""
@@ -127,7 +127,7 @@ class HuggingFaceProvider:
             raise Exception("Rate limit exceeded for Hugging Face API")
         
         # Build HF API parameters
-        params = {
+        params: Dict[str, Union[str, int]] = {
             "limit": per_page,
             "full": "true",
             "config": "true"
@@ -144,7 +144,9 @@ class HuggingFaceProvider:
                 ModelTask.TTS: "text-to-speech",
                 ModelTask.EMBEDDING: "feature-extraction"
             }
-            params["pipeline_tag"] = task_mapping.get(filters.task)
+            mapped_task = task_mapping.get(filters.task)
+            if mapped_task:
+                params["pipeline_tag"] = mapped_task
             
         if filters.language:
             params["language"] = filters.language
@@ -196,7 +198,7 @@ class HuggingFaceProvider:
             return None
 
         # Get pipeline tag and map to our task types
-        pipeline_tag = item.get("pipeline_tag")
+        pipeline_tag = item.get("pipeline_tag", "")
         task_mapping = {
             "automatic-speech-recognition": ModelTask.ASR,
             "translation": ModelTask.MT,
