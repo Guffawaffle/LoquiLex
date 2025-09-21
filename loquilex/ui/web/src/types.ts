@@ -57,47 +57,41 @@ export type DownloadMsg =
   | { type: 'download_done'; job_id: string; local_path: string; seq: number; ts_server: number; ts_session: number }
   | { type: 'download_error'; job_id: string; message: string; seq: number; ts_server: number; ts_session: number }
 
-// Hardware detection types
-export type CPUInfo = {
+// Remote model catalog types
+export type ModelProvider = 'huggingface' | 'openai' | 'local'
+
+export type ModelTask = 'asr' | 'mt' | 'tts' | 'embedding'
+
+export type RemoteModel = {
+  id: string
   name: string
-  cores_physical: number
-  cores_logical: number
-  frequency_mhz: number
-  usage_percent: number
-  meets_threshold: boolean
-  warnings: string[]
+  provider: ModelProvider
+  task: ModelTask
+  language?: string
+  languages?: string[]
+  size_bytes?: number
+  description?: string
+  downloads?: number
+  license?: string
+  updated_at?: string
+  tags?: string[]
+  repo_url?: string
+  model_class?: string
 }
 
-export type GPUInfo = {
-  name: string
-  memory_total_mb: number
-  memory_free_mb: number
-  memory_used_mb: number
-  temperature_c?: number | null
-  utilization_percent?: number | null
-  cuda_available: boolean
-  meets_threshold: boolean
-  warnings: string[]
+export type SearchFilters = {
+  task?: ModelTask
+  language?: string
+  provider?: ModelProvider
+  minSize?: number
+  maxSize?: number
+  query?: string
 }
 
-export type AudioDeviceInfo = {
-  name: string
-  device_id: number
-  channels: number
-  sample_rate: number
-  is_default: boolean
-  is_available: boolean
-  warnings: string[]
-}
-
-export type HardwareSnapshot = {
-  cpu: CPUInfo
-  gpus: GPUInfo[]
-  audio_devices: AudioDeviceInfo[]
-  memory_total_gb: number
-  memory_available_gb: number
-  platform_info: Record<string, string>
-  overall_status: 'excellent' | 'good' | 'fair' | 'poor' | 'unusable'
-  overall_score: number
-  warnings: string[]
+export type SearchResult = {
+  models: RemoteModel[]
+  total: number
+  page: number
+  per_page: number
+  has_next: boolean
 }

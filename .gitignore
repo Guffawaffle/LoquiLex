@@ -57,6 +57,7 @@ ui/app/test-results/
 .gitignore.local
 
 .ruff_cache/
+.mypy_cache/
 
 # Ephemeral agent log
 docs/deliverables/.live.md

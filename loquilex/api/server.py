@@ -1,34 +1,23 @@
 from __future__ import annotations
 
 import asyncio
-import json
 import logging
 import os
-import os.path
 import re
-import shutil
 import time
 import uuid
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, TYPE_CHECKING, TextIO, cast
-import logging
-import asyncio
+from typing import Any, Callable, Dict, List, Optional
 
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, model_validator
 
 from .model_discovery import list_asr_models, list_mt_models, mt_supported_languages
-from loquilex.hardware.detection import get_hardware_snapshot
-from loquilex.config.model_defaults import get_model_defaults_manager
-from loquilex.security import PathGuard, PathSecurityError
+from .remote_catalog import catalog_manager, SearchFilters, ModelProvider, ModelTask
 from .supervisor import SessionConfig, SessionManager, StreamingSession
-from loquilex.storage.retention import RetentionPolicy, enforce_retention
-
-if TYPE_CHECKING:  # pragma: no cover - type-only import
-    from loquilex.security import CanonicalPath
 
 logger = logging.getLogger(__name__)
 
@@ -64,21 +53,6 @@ DEV_MODE = os.getenv("LX_DEV", "0") == "1"
 _events_alias_warned = False
 
 app = FastAPI(title="LoquiLex API", version="0.1.0")
-
-
-# Global safety net: log exceptions, return generic 500 without internals
-@app.exception_handler(Exception)
-async def unhandled_exception_handler(request: Request, exc: Exception):
-    logger.error(
-        "Unhandled exception on %s: %s", getattr(request.url, "path", "?"), exc, exc_info=True
-    )
-    return JSONResponse(status_code=500, content={"detail": "Internal Server Error"})
-
-
-# Admin token and simple in-process caches (overridable in tests)
-_ADMIN_TOKEN: Optional[str] = os.getenv("LX_ADMIN_TOKEN")
-_hw_snapshot_cache: Optional[Dict[str, Any]] = None
-_hw_snapshot_cache_ts: Optional[float] = None
 
 
 # CSP and security headers
@@ -132,100 +106,23 @@ if DEV_MODE:
 OUT_ROOT = Path(os.getenv("LLX_OUT_DIR", "loquilex/out")).resolve()
 OUT_ROOT.mkdir(parents=True, exist_ok=True)
 
-# Retention env knobs
-_EXPORT_TTL_HOURS = int(os.getenv("LX_EXPORT_TTL_HOURS", "72"))
-_EXPORT_MAX_MB = int(os.getenv("LX_EXPORT_MAX_MB", "0"))
-_EXPORT_SWEEP_INTERVAL_S = int(os.getenv("LX_EXPORT_SWEEP_INTERVAL_S", "300"))
-
-
-@app.on_event("startup")
-async def _start_retention_loop():
-    """Start background retention sweeper for OUT_ROOT."""
-    policy = RetentionPolicy(
-        ttl_seconds=_EXPORT_TTL_HOURS * 3600,
-        max_bytes=None if _EXPORT_MAX_MB == 0 else _EXPORT_MAX_MB * 1024 * 1024,
-    )
-
-    async def _retention_loop():
-        while True:
-            try:
-                deleted, remaining = enforce_retention(OUT_ROOT, policy)
-                if deleted:
-                    logger.info(
-                        "retention: deleted %d files, remaining bytes=%d", deleted, remaining
-                    )
-            except Exception:
-                logger.exception("Retention sweep failed")
-            await asyncio.sleep(_EXPORT_SWEEP_INTERVAL_S)
-
-    # schedule background task but don't await it
-    try:
-        asyncio.create_task(_retention_loop())
-    except Exception:
-        logger.exception("Failed to start retention background task")
-
-
 # UI static files path (mounted later to avoid shadowing API routes)
 UI_DIST_PATH = Path("ui/app/dist").resolve()
-
-# String-only absolute-path detector (do not resolve user inputs)
-import os as _os  # alias to avoid shadowing
-
-_ABS_RE = re.compile(r"^(?:/|[A-Za-z]:[\\/]|\\\\)")
-
-
-def _is_abs_like(s: str | _os.PathLike[str]) -> bool:
-    return bool(_ABS_RE.match(str(s)))
-
-
-def _session_cp(sid: str) -> "CanonicalPath":
-    """canonicalize_leaf → safe_join("sessions", sid)"""
-    leaf = PATH_GUARD.canonicalize_leaf(sid)
-    return PATH_GUARD.safe_join("sessions", leaf)
 
 
 def _safe_session_dir(sid: str) -> Path:
     if not re.fullmatch(r"[A-Za-z0-9_-]{6,64}", sid):
         raise HTTPException(status_code=400, detail="bad sid")
-    try:
-        cp = _session_cp(sid)
-        p = cp.as_path()
-        # Ensure the directory itself exists (not just its parent)
-        PATH_GUARD.ensure_dir(p)
-        return p
-    except PathSecurityError as exc:
-        raise HTTPException(status_code=400, detail="invalid path") from exc
+    p = (OUT_ROOT / sid).resolve()
+    if not str(p).startswith(str(OUT_ROOT)):
+        raise HTTPException(status_code=400, detail="invalid path")
+    return p
 
 
 app.mount("/out", StaticFiles(directory=str(OUT_ROOT), html=False), name="out")
 
 # Global manager instance
 MANAGER = SessionManager()
-
-
-# Allowed storage roots for path-based operations (named roots)
-_env_allowed_roots = os.getenv("LX_ALLOWED_STORAGE_ROOTS")
-if not _env_allowed_roots:  # Treat missing or empty as default '/tmp'
-    _EXTRA_ALLOWED_ROOTS = ["/tmp"]
-else:
-    _EXTRA_ALLOWED_ROOTS = [p for p in _env_allowed_roots.split(":") if p]
-
-_root_map: Dict[str, Path] = {
-    # Canonical storage root for user-facing directories (CP-safe joins)
-    "storage": OUT_ROOT,
-    "sessions": OUT_ROOT,
-    "exports": OUT_ROOT / "exports",
-    "profiles": Path("loquilex/ui/profiles").resolve(),
-}
-# Register all extra roots with unique keys instead of overwriting
-for i, p in enumerate(_EXTRA_ALLOWED_ROOTS):
-    try:
-        root_key = f"extra_{i}" if i > 0 else "extra"
-        _root_map[root_key] = Path(p).resolve()
-    except Exception:
-        pass
-
-PATH_GUARD = PathGuard(_root_map, follow_symlinks=False)
 
 
 class CreateSessionReq(BaseModel):
@@ -302,94 +199,8 @@ class SelfTestResp(BaseModel):
     sample_rate: Optional[int] = None
 
 
-class StorageInfoResp(BaseModel):
-    """Storage information response model."""
-
-    path: str
-    total_bytes: int
-    free_bytes: int
-    used_bytes: int
-    percent_used: float
-    writable: bool
-
-
-class BaseDirectoryReq(BaseModel):
-    """Base directory selection request."""
-
-    path: str
-
-
-class BaseDirectoryResp(BaseModel):
-    """Base directory selection response."""
-
-    path: str
-    valid: bool
-    message: str
-
-
-def _resolve_storage_dir(candidate: Optional[str]) -> tuple[Path, bool]:
-    """Resolve a candidate path for storage/info and validation.
-
-    Returns a tuple of (resolved_path, is_bootstrap_candidate).
-    is_bootstrap_candidate is True if the path was validated via validate_storage_candidate
-    rather than being found in existing roots.
-
-    Compatibility behavior retained for API stability:
-    - None -> default OUT_ROOT
-    - Absolute -> allowed only if inside any configured root
-    - Relative single-segment leaf -> handled via CanonicalPath join on 'storage'
-    - Other relative forms -> rejected
-    """
-    if candidate is None:
-        return OUT_ROOT, False
-    if _is_abs_like(candidate):
-        # Absolute: first try existing roots, then validate as bootstrap candidate
-        try:
-            cp = PATH_GUARD.wrap_absolute(candidate)
-            return cp.as_path(), False
-        except PathSecurityError:
-            # Not in existing roots - validate as storage bootstrap candidate
-            try:
-                validated_path = PATH_GUARD.validate_storage_candidate(candidate)
-                return validated_path, True
-            except PathSecurityError as second_exc:
-                # If bootstrap validation also fails, use that error message
-                raise PathSecurityError(f"path not permitted: {second_exc}") from second_exc
-    # For relative inputs, only accept a single-segment leaf and map under 'storage'
-    try:
-        leaf = PATH_GUARD.canonicalize_leaf(candidate)
-        cp = PATH_GUARD.safe_join("storage", leaf)
-        # Return the underlying Path for existing call sites that expect Path
-        return cp.as_path(), False
-    except Exception as exc:
-        raise PathSecurityError("invalid relative path") from exc
-
-
 # Simple profiles CRUD on disk under loquilex/ui/profiles
-PROFILES_DIR = Path("loquilex/ui/profiles")
-PROFILES_ROOT = PROFILES_DIR.resolve()
-
-
-def _profile_path(name: str, *, must_exist: bool = False, for_write: bool = False) -> Path:
-    try:
-        # Enforce profile filename policy via resolve on the 'profiles' root
-        candidate = PATH_GUARD.resolve("profiles", f"{name}.json")
-        if for_write:
-            PATH_GUARD.ensure_dir(candidate.parent)
-        if must_exist and not candidate.exists():
-            raise HTTPException(status_code=404, detail="not found")
-        return candidate
-    except PathSecurityError as exc:
-        raise HTTPException(status_code=400, detail="invalid profile name") from exc
-
-
-def _profile_cp(name: str) -> "CanonicalPath":
-    """
-    Build a CanonicalPath for profile JSON under the 'profiles' root.
-    Enforces single-segment leaf name and '.json' extension.
-    """
-    leaf = PATH_GUARD.canonicalize_leaf(name)
-    return PATH_GUARD.safe_join("profiles", f"{leaf}.json")
+PROFILES_DIR = os.path.join("loquilex", "ui", "profiles")
 
 
 @app.get("/sessions/{sid}/storage/stats")
@@ -443,247 +254,45 @@ async def get_session_commits(
         raise HTTPException(status_code=400, detail="session does not support storage")
 
 
-@app.get("/storage/info")
-async def get_storage_info(path: Optional[str] = None) -> StorageInfoResp:
-    """Get storage information for a given path or current output directory.
-
-    Uses CanonicalPath flow for relative single-segment inputs; keeps absolute/None behavior.
-    """
-    # Branch: relative single-segment -> CanonicalPath guarded flow
-    if path is not None and not _is_abs_like(path):
-        try:
-            leaf = PATH_GUARD.canonicalize_leaf(path)
-            cp = PATH_GUARD.safe_join("storage", leaf)
-            # Ensure the directory itself
-            PATH_GUARD.ensure_dir(cp.as_path())
-            stat = PATH_GUARD.disk_usage_cp(cp)
-            total_bytes = stat.total
-            free_bytes = stat.free
-            used_bytes = total_bytes - free_bytes
-            percent_used = (used_bytes / total_bytes * 100) if total_bytes > 0 else 0
-            writable = os.access(os.fspath(cp), os.W_OK)
-            return StorageInfoResp(
-                path=str(cp),
-                total_bytes=total_bytes,
-                free_bytes=free_bytes,
-                used_bytes=used_bytes,
-                percent_used=percent_used,
-                writable=writable,
-            )
-        except PathSecurityError as exc:
-            raise HTTPException(status_code=400, detail="Cannot access path") from exc
-        except Exception as exc:
-            raise HTTPException(status_code=400, detail="Cannot access path") from exc
-
-    # Fallback: None or absolute path -> guarded absolute handling (CanonicalPath only)
-    try:
-        target_path, is_bootstrap = _resolve_storage_dir(path)
-        # At this point, target_path is OUT_ROOT (None) or an absolute candidate.
-        if is_bootstrap:
-            # This is a validated bootstrap candidate - access directly
-            if not target_path.exists():
-                target_path.mkdir(parents=True, exist_ok=True, mode=0o750)
-            stat = shutil.disk_usage(target_path)
-            total_bytes = stat.total
-            free_bytes = stat.free
-            used_bytes = total_bytes - free_bytes
-            percent_used = (used_bytes / total_bytes * 100) if total_bytes > 0 else 0
-            writable = os.access(target_path, os.W_OK)
-            return StorageInfoResp(
-                path=str(target_path),
-                total_bytes=total_bytes,
-                free_bytes=free_bytes,
-                used_bytes=used_bytes,
-                percent_used=percent_used,
-                writable=writable,
-            )
-        else:
-            # This is under an existing root - use guard
-            cp = PATH_GUARD.wrap_absolute(target_path)
-            PATH_GUARD.ensure_dir(cp.as_path())
-            stat = PATH_GUARD.disk_usage_cp(cp)
-            total_bytes = stat.total
-            free_bytes = stat.free
-            used_bytes = total_bytes - free_bytes
-            percent_used = (used_bytes / total_bytes * 100) if total_bytes > 0 else 0
-            writable = os.access(os.fspath(cp), os.W_OK)
-            return StorageInfoResp(
-                path=str(cp),
-                total_bytes=total_bytes,
-                free_bytes=free_bytes,
-                used_bytes=used_bytes,
-                percent_used=percent_used,
-                writable=writable,
-            )
-    except PathSecurityError as exc:
-        raise HTTPException(status_code=400, detail="Cannot access path") from exc
-    except Exception as exc:
-        raise HTTPException(status_code=400, detail="Cannot access path") from exc
-
-
-@app.get("/hardware/snapshot")
-def hardware_snapshot() -> Dict[str, Any]:
-    """Return a cached hardware snapshot or compute a new one."""
-    global _hw_snapshot_cache, _hw_snapshot_cache_ts
-    now = time.time()
-    try:
-        if (
-            _hw_snapshot_cache is not None
-            and _hw_snapshot_cache_ts
-            and (now - _hw_snapshot_cache_ts) < 10
-        ):
-            return _hw_snapshot_cache
-        snap = get_hardware_snapshot()
-        data = snap.to_dict()
-        _hw_snapshot_cache = data
-        _hw_snapshot_cache_ts = now
-        return data
-    except Exception as e:
-        logger.exception("hardware snapshot failed: %s", e)
-        return {
-            "cpu": {
-                "name": "error",
-                "cores_physical": 0,
-                "cores_logical": 0,
-                "frequency_mhz": 0.0,
-                "usage_percent": 0.0,
-                "meets_threshold": False,
-                "warnings": ["snapshot failed"],
-            },
-            "gpus": [
-                {
-                    "name": "unknown",
-                    "memory_total_mb": 0,
-                    "memory_free_mb": 0,
-                    "memory_used_mb": 0,
-                    "temperature_c": None,
-                    "utilization_percent": None,
-                    "cuda_available": False,
-                    "meets_threshold": False,
-                    "warnings": ["snapshot failed"],
-                }
-            ],
-            "audio_devices": [],
-            "memory_total_gb": 0.0,
-            "memory_available_gb": 0.0,
-            "platform_info": {},
-            "overall_status": "unusable",
-            "overall_score": 0,
-            "warnings": ["snapshot failed"],
-        }
-
-
-@app.post("/admin/cache/clear")
-async def admin_cache_clear(request: Request) -> Dict[str, Any]:
-    """Clear in-process caches (hardware snapshot for now).
-
-    Requires Authorization: Bearer <token> matching LX_ADMIN_TOKEN or _ADMIN_TOKEN.
-    """
-    global _hw_snapshot_cache, _hw_snapshot_cache_ts
-    token = _ADMIN_TOKEN
-    auth = request.headers.get("authorization", "")
-    provided = None
-    if auth.startswith("Bearer "):
-        provided = auth[len("Bearer ") :].strip()
-    if not token or provided != token:
-        raise HTTPException(status_code=403, detail="forbidden")
-
-    prior_present = _hw_snapshot_cache is not None
-    _hw_snapshot_cache = None
-    _hw_snapshot_cache_ts = None
-    return {"ok": True, "cleared": True, "prior_cache_present": prior_present}
-
-
-@app.post("/storage/base-directory")
-async def set_base_directory(req: BaseDirectoryReq) -> BaseDirectoryResp:
-    """Set and validate a new base directory for storage."""
-    # Require absolute path input (UI contract)
-    target_path = None
-    is_bootstrap = False
-
-    try:
-        if not req.path or not _is_abs_like(req.path):
-            return BaseDirectoryResp(path=req.path, valid=False, message="Path must be absolute")
-        target_path, is_bootstrap = _resolve_storage_dir(req.path)
-        # target_path may be absolute (allowed) or a CanonicalPath.as_path return.
-        # For paths under existing roots, use guard. For validated bootstrap candidates, create manually.
-        if is_bootstrap:
-            # This is a validated bootstrap candidate - create directory manually
-            target_path.mkdir(parents=True, exist_ok=True, mode=0o750)
-        else:
-            # This is under an existing root - use guard to ensure directory
-            PATH_GUARD.ensure_dir(target_path)
-    except PathSecurityError as exc:
-        detail = str(exc)
-        message = f"Invalid path: {detail}"
-        return BaseDirectoryResp(path=req.path, valid=False, message=message)
-    except Exception as exc:
-        return BaseDirectoryResp(path=req.path, valid=False, message=f"Invalid path: {exc}")
-
-    try:
-        # Check if writable
-        if not os.access(target_path, os.W_OK):
-            return BaseDirectoryResp(
-                path=str(target_path), valid=False, message="Directory is not writable"
-            )
-
-        # Check disk space (warn if less than 1GB free)
-        if is_bootstrap:
-            # For bootstrap candidates, use direct disk usage
-            stat = shutil.disk_usage(target_path)
-        else:
-            # For paths under existing roots, use guarded path
-            cp = PATH_GUARD.wrap_absolute(target_path)
-            stat = PATH_GUARD.disk_usage_cp(cp)
-        if stat.free < 1024 * 1024 * 1024:  # 1GB
-            return BaseDirectoryResp(
-                path=str(target_path),
-                valid=True,
-                message=f"Warning: Only {stat.free // (1024*1024)} MB free space available",
-            )
-
-        return BaseDirectoryResp(
-            path=str(target_path), valid=True, message="Directory is valid and writable"
-        )
-    except Exception as exc:
-        return BaseDirectoryResp(path=str(target_path), valid=False, message=f"Invalid path: {exc}")
-
-
 @app.get("/profiles")
 def get_profiles() -> List[str]:
-    if not PROFILES_ROOT.is_dir():
+    if not os.path.isdir(PROFILES_DIR):
         return []
-    return sorted([p.stem for p in PROFILES_ROOT.glob("*.json") if p.is_file()])
+    return sorted([p[:-5] for p in os.listdir(PROFILES_DIR) if p.endswith(".json")])
 
 
 @app.get("/profiles/{name}")
-def get_profile(name: str):
-    cp = _profile_cp(name)  # CanonicalPath
-    with PATH_GUARD.open_read_cp(cp) as fh:  # guarded read
-        data = json.load(fh)
-    return JSONResponse(data)
+def get_profile(name: str) -> Dict[str, Any]:
+    safe = "".join(c for c in name if c.isalnum() or c in ("-", "_"))
+    path = os.path.join(PROFILES_DIR, f"{safe}.json")
+    if not os.path.isfile(path):
+        raise HTTPException(status_code=404, detail="not found")
+    import json as _json
+
+    with open(path, "r", encoding="utf-8") as f:
+        return _json.load(f)
 
 
 @app.post("/profiles/{name}")
-def save_profile(name: str, data: dict):
-    cp = _profile_cp(name)
-    PATH_GUARD.ensure_dir_cp(cp)
-    # Guarded write; symlinks and traversal are blocked by PathGuard policies
-    with cast(TextIO, PATH_GUARD.open_write_cp(cp, overwrite=True, binary=False)) as fh:
-        json.dump(data, fh, ensure_ascii=False, separators=(",", ":"))
-    return JSONResponse({"ok": True, "path": str(cp)})
+def save_profile(name: str, body: Dict[str, Any]) -> Dict[str, Any]:
+    os.makedirs(PROFILES_DIR, exist_ok=True)
+    safe = "".join(c for c in name if c.isalnum() or c in ("-", "_"))
+    path = os.path.join(PROFILES_DIR, f"{safe}.json")
+    import json as _json
+
+    tmp = path + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        _json.dump(body, f, ensure_ascii=False, indent=2)
+    os.replace(tmp, path)
+    return {"ok": True}
 
 
 @app.delete("/profiles/{name}")
 def delete_profile(name: str) -> Dict[str, Any]:
-    # Derive CanonicalPath to enforce leaf policy and root containment
-    cp = _profile_cp(name)
-    p = cp.as_path()
-    if p.exists():
-        try:
-            p.unlink()
-        except Exception:
-            raise HTTPException(status_code=500, detail="delete failed")
+    safe = "".join(c for c in name if c.isalnum() or c in ("-", "_"))
+    path = os.path.join(PROFILES_DIR, f"{safe}.json")
+    if os.path.isfile(path):
+        os.remove(path)
     return {"ok": True}
 
 
@@ -702,6 +311,76 @@ def get_mt_langs(model_id: str) -> Dict[str, Any]:
     return {"model_id": model_id, "languages": mt_supported_languages(model_id)}
 
 
+@app.get("/models/search")
+async def search_models(
+    query: Optional[str] = None,
+    task: Optional[str] = None,
+    provider: Optional[str] = None,
+    language: Optional[str] = None,
+    minSize: Optional[int] = None,
+    maxSize: Optional[int] = None,
+    page: int = 1,
+    per_page: int = 20
+) -> Dict[str, Any]:
+    """Search remote model catalogs with filters."""
+    try:
+        # Validate and convert parameters
+        task_enum = None
+        if task:
+            try:
+                task_enum = ModelTask(task.lower())
+            except ValueError:
+                raise HTTPException(status_code=400, detail=f"Invalid task: {task}")
+        
+        provider_enum = None
+        if provider:
+            try:
+                provider_enum = ModelProvider(provider.lower())
+            except ValueError:
+                raise HTTPException(status_code=400, detail=f"Invalid provider: {provider}")
+        
+        # Validate pagination
+        if page < 1:
+            raise HTTPException(status_code=400, detail="Page must be >= 1")
+        if per_page < 1 or per_page > 100:
+            raise HTTPException(status_code=400, detail="per_page must be between 1 and 100")
+        
+        # Create search filters
+        filters = SearchFilters(
+            query=query,
+            task=task_enum,
+            provider=provider_enum,
+            language=language,
+            min_size=minSize,
+            max_size=maxSize
+        )
+        
+        # Perform search
+        result = await catalog_manager.search_models(filters, page, per_page)
+        return result.to_dict()
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Search failed: {e}")
+        raise HTTPException(status_code=500, detail="Search failed")
+
+
+@app.get("/models/remote/{model_id:path}")
+async def get_remote_model_details(model_id: str) -> Dict[str, Any]:
+    """Get detailed information for a remote model."""
+    try:
+        model = await catalog_manager.get_model_details(model_id)
+        if not model:
+            raise HTTPException(status_code=404, detail="Model not found")
+        return model.to_dict()
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to get model details for {model_id}: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get model details")
+
+
 @app.get("/healthz")
 async def healthz() -> Dict[str, Any]:
     """Health endpoint for Electron readiness check."""
@@ -717,31 +396,6 @@ async def api_health() -> Dict[str, Any]:
 @app.head("/api/health")
 async def api_health_head() -> Response:
     return Response(status_code=200)
-
-
-# Model defaults management
-@app.get("/settings/defaults")
-def get_model_defaults() -> Dict[str, Any]:
-    mgr = get_model_defaults_manager()
-    return mgr.get_defaults().to_dict()
-
-
-class _ModelDefaultsUpdate(BaseModel):
-    asr_model_id: Optional[str] = None
-    asr_device: Optional[str] = None
-    asr_compute_type: Optional[str] = None
-    mt_model_id: Optional[str] = None
-    mt_device: Optional[str] = None
-    mt_compute_type: Optional[str] = None
-    tts_model_id: Optional[str] = None
-    tts_device: Optional[str] = None
-
-
-@app.post("/settings/defaults")
-def post_model_defaults(update: _ModelDefaultsUpdate) -> Dict[str, Any]:
-    mgr = get_model_defaults_manager()
-    updated = mgr.update_defaults(**{k: v for k, v in update.model_dump().items()})
-    return updated.to_dict()
 
 
 @app.post("/models/download")
