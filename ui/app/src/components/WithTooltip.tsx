@@ -1,4 +1,4 @@
-import React, { ReactElement, cloneElement } from 'react';
+import { ReactElement, cloneElement } from 'react';
 import { Tooltip } from './Tooltip';
 
 export interface WithTooltipProps {

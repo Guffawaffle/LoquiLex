@@ -5,7 +5,7 @@ import { BrowserRouter } from 'react-router-dom';
 import { SettingsView } from '../SettingsView';
 
 // Mock ResizeObserver for tooltips
-global.ResizeObserver = vi.fn().mockImplementation(() => ({
+(globalThis as any).ResizeObserver = vi.fn().mockImplementation(() => ({
   observe: vi.fn(),
   unobserve: vi.fn(),
   disconnect: vi.fn(),
