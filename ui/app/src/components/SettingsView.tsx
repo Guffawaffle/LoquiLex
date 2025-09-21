@@ -192,11 +192,11 @@ export function SettingsView() {
           <div className="form-group">
             <label className="form-group__label" htmlFor="asr-model-select">
               ASR Model
-              <RestartBadge scope={RESTART_METADATA.asr_model_id} />
             </label>
             <p className="form-group__description">
               Choose the default speech recognition model for new sessions.
             </p>
+            <RestartBadge scope={RESTART_METADATA.asr_model_id} />
             <select
               id="asr-model-select"
               className="select"
@@ -215,11 +215,11 @@ export function SettingsView() {
           <div className="form-group">
             <label className="form-group__label" htmlFor="mt-model-select">
               MT Model
-              <RestartBadge scope={RESTART_METADATA.mt_model_id} />
             </label>
             <p className="form-group__description">
               Choose the default translation model for new sessions.
             </p>
+            <RestartBadge scope={RESTART_METADATA.mt_model_id} />
             <select
               id="mt-model-select"
               className="select"
@@ -238,11 +238,11 @@ export function SettingsView() {
           <div className="form-group">
             <label className="form-group__label" htmlFor="device-select">
               Device
-              <RestartBadge scope={RESTART_METADATA.device} />
             </label>
             <p className="form-group__description">
               Choose the compute device for processing. Auto detects best available option.
             </p>
+            <RestartBadge scope={RESTART_METADATA.device} />
             <select
               id="device-select"
               className="select"

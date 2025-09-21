@@ -1,4 +1,3 @@
-import React from 'react';
 import { FormFieldProps } from './types';
 
 export function FieldRenderer({ name, property, value, onChange, error }: FormFieldProps) {

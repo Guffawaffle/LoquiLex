@@ -28,6 +28,9 @@ export function validateField(value: any, property: SchemaProperty): string | nu
       if (property.minimum !== undefined && value < property.minimum) {
         return `Value must be at least ${property.minimum}`;
       }
+      if (property.maximum !== undefined && value > property.maximum) {
+        return `Value must be at most ${property.maximum}`;
+      }
       break;
 
     case 'number':
