@@ -1,4 +1,4 @@
-import { AsrModel, MtModel, SelfTestResp, SessionCfg } from './types'
+import { AsrModel, MtModel, SelfTestResp, SessionCfg, HardwareSnapshot } from './types'
 
 async function j<T>(p: Promise<Response>): Promise<T> {
   const r = await p
@@ -17,6 +17,7 @@ export const api = {
   listAsr: (): Promise<AsrModel[]> => j(fetch('/models/asr')),
   listMt: (): Promise<MtModel[]> => j(fetch('/models/mt')),
   mtLangs: (modelId: string): Promise<{ model_id: string; languages: string[] }> => j(fetch(`/languages/mt/${encodeURIComponent(modelId)}`)),
+  hardwareSnapshot: (): Promise<HardwareSnapshot> => j(fetch('/hardware/snapshot')),
   selfTest: (body: { asr_model_id?: string | null; device: 'auto'|'cuda'|'cpu'; seconds?: number }): Promise<SelfTestResp> => j(fetch('/sessions/selftest', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })),
   startSession: (cfg: SessionCfg): Promise<{ session_id: string }> => j(fetch('/sessions', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(cfg) })),
   stopSession: (sid: string): Promise<{ stopped: boolean }> => j(fetch(`/sessions/${sid}`, { method: 'DELETE' })),

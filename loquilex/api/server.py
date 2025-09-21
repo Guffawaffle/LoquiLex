@@ -17,6 +17,7 @@ from pydantic import BaseModel, Field, model_validator
 
 from .model_discovery import list_asr_models, list_mt_models, mt_supported_languages
 from .supervisor import SessionConfig, SessionManager, StreamingSession
+from ..hardware import get_hardware_snapshot
 
 logger = logging.getLogger(__name__)
 
@@ -308,6 +309,17 @@ def get_mt_models() -> List[Dict[str, Any]]:
 @app.get("/languages/mt/{model_id}")
 def get_mt_langs(model_id: str) -> Dict[str, Any]:
     return {"model_id": model_id, "languages": mt_supported_languages(model_id)}
+
+
+@app.get("/hardware/snapshot")
+async def get_hardware_snapshot_endpoint() -> Dict[str, Any]:
+    """Get hardware system snapshot including GPU/CPU/Audio devices."""
+    try:
+        snapshot = get_hardware_snapshot()
+        return snapshot.to_dict()
+    except Exception as e:
+        logger.error(f"Hardware snapshot failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Hardware detection failed: {e}")
 
 
 @app.get("/healthz")
