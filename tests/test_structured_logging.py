@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import tempfile
 import time
+import os
 from pathlib import Path
 from unittest.mock import patch
 
@@ -15,7 +16,11 @@ from loquilex.logging import (
     create_logger,
     PerformanceMetrics,
     DataRedactor,
+    cleanup_old_logs,
 )
+
+# Test constants
+HOURS_48_IN_SECONDS = 48 * 3600
 
 
 class TestDataRedactor:
@@ -347,9 +352,6 @@ class TestLogRetention:
 
     def test_cleanup_old_logs(self):
         """Test log cleanup functionality."""
-        from loquilex.logging import cleanup_old_logs
-        import os
-
         with tempfile.TemporaryDirectory() as temp_dir:
             # Create some log files with different ages
             old_log = Path(temp_dir) / "old.jsonl"
@@ -359,7 +361,7 @@ class TestLogRetention:
             recent_log.write_text('{"message": "recent"}\n')
 
             # Make old log appear old using os.utime
-            old_time = time.time() - (48 * 3600)  # 48 hours ago
+            old_time = time.time() - HOURS_48_IN_SECONDS  # 48 hours ago
             os.utime(old_log, (old_time, old_time))
 
             # Clean up files older than 24 hours

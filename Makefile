@@ -189,7 +189,11 @@ clean:
 clean-logs:
 	@echo "=== Cleaning old log files ==="
 	@if [ -n "$$LX_LOG_DIR" ] && [ -d "$$LX_LOG_DIR" ]; then \
-		$(PY) -c "from loquilex.logging import cleanup_old_logs; print(f'Deleted {cleanup_old_logs(\"$$LX_LOG_DIR\", max_age_hours=1)} log files')"; \
+		if [ -n "$$LX_LOG_MAX_AGE_HOURS" ]; then \
+			$(PY) -c "from loquilex.logging import cleanup_old_logs; print(f'Deleted {cleanup_old_logs(\"$$LX_LOG_DIR\", max_age_hours=int(\"$$LX_LOG_MAX_AGE_HOURS\"))} log files')"; \
+		else \
+			$(PY) -c "from loquilex.logging import cleanup_old_logs; print(f'Deleted {cleanup_old_logs(\"$$LX_LOG_DIR\")} log files')"; \
+		fi; \
 	else \
 		echo "No LX_LOG_DIR set or directory not found"; \
 	fi
