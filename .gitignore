@@ -54,3 +54,5 @@ ui/app/test-results/
 
 # Local gitignores
 .gitignore.local
+
+.ruff_cache/

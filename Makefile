@@ -291,18 +291,18 @@ api-start-bg: install-base
 ui-dev-bg: ui-setup
 	$(call pid_start,UI dev server,.pids/ui-dev.pid,cd ui/app && LX_API_PORT=$${LX_API_PORT:-8000} LX_UI_PORT=$${LX_UI_PORT:-5173} npm run dev)
 
-# Start UI preview server in background with PID tracking  
+# Start UI preview server in background with PID tracking
 ui-start-bg: ui-build
 	$(call pid_start,UI preview server,.pids/ui-preview.pid,cd ui/app && LX_UI_PORT=$${LX_UI_PORT:-4173} npm run preview)
 
 # Stop UI services
 stop-ui:
-	$(call pid_stop,UI dev server,.pids/ui-dev.pid,lsof -ti:$${LX_UI_PORT:-5173} | xargs -r kill 2>/dev/null || true)
-	$(call pid_stop,UI preview server,.pids/ui-preview.pid,lsof -ti:$${LX_UI_PORT:-4173} | xargs -r kill 2>/dev/null || true)
+	$(call pid_stop,UI dev server,.pids/ui-dev.pid,pids="$$(lsof -ti:$${LX_UI_PORT:-5173})"; [ -n "$$pids" ] && kill $$pids 2>/dev/null || true)
+	$(call pid_stop,UI preview server,.pids/ui-preview.pid,pids="$$(lsof -ti:$${LX_UI_PORT:-4173})"; [ -n "$$pids" ] && kill $$pids 2>/dev/null || true)
 
 # Stop API server
 stop-api:
-	$(call pid_stop,FastAPI server,.pids/api.pid,lsof -ti:$${LX_API_PORT:-8000} | xargs -r kill 2>/dev/null || true)
+	$(call pid_stop,FastAPI server,.pids/api.pid,pids="$$(lsof -ti:$${LX_API_PORT:-8000})"; [ -n "$$pids" ] && kill $$pids 2>/dev/null || true)
 
 # Stop WebSocket server (placeholder for future)
 stop-ws:
@@ -325,7 +325,7 @@ stop-all-force:
 pids-status:
 	@echo "=== PID Status ==="
 	$(call pid_status,FastAPI server,.pids/api.pid)
-	$(call pid_status,UI dev server,.pids/ui-dev.pid)  
+	$(call pid_status,UI dev server,.pids/ui-dev.pid)
 	$(call pid_status,UI preview server,.pids/ui-preview.pid)
 	$(call pid_status,E2E backend,.backend.pid)
 
@@ -408,14 +408,14 @@ ui-verify: ui-test
 ## Bucketed Commands
 
 # Install bucket
-install: 
+install:
 	@if [ -f ".venv/bin/python" ] && .venv/bin/python -c "import pytest" 2>/dev/null; then \
 		echo "✓ Dependencies already installed"; \
 	else \
 		$(MAKE) install-base; \
 	fi
 
-# Test bucket  
+# Test bucket
 test-all: test
 	@if [ "$${LX_OFFLINE:-1}" != "1" ]; then \
 		echo "[test-all] Running e2e tests (online mode)"; \
@@ -430,7 +430,7 @@ qual-all: lint fmt-check typecheck
 	@echo "✓ Quality checks complete"
 
 ## Pattern rules for command discovery
-test-%: 
+test-%:
 	@if [ "$*" = "all" ]; then $(MAKE) test-all; \
 	elif [ "$*" = "online" ]; then $(MAKE) test-online; \
 	elif [ "$*" = "e2e" ]; then $(MAKE) test-e2e; \
