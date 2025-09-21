@@ -15,8 +15,10 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, model_validator
 
-from .model_discovery import list_asr_models, list_mt_models, mt_supported_languages
+from .model_discovery import mt_supported_languages
 from .supervisor import SessionConfig, SessionManager, StreamingSession
+from ..config.model_defaults import get_model_defaults_manager
+from ..indexing import get_model_indexer
 
 logger = logging.getLogger(__name__)
 
@@ -123,6 +125,10 @@ app.mount("/out", StaticFiles(directory=str(OUT_ROOT), html=False), name="out")
 # Global manager instance
 MANAGER = SessionManager()
 
+# Initialize model indexer and start background worker
+MODEL_INDEXER = get_model_indexer()
+MODEL_INDEXER.start_background_worker()
+
 
 class CreateSessionReq(BaseModel):
     """Create session request model.
@@ -196,6 +202,32 @@ class SelfTestResp(BaseModel):
     effective_device: Optional[str] = None
     effective_compute: Optional[str] = None
     sample_rate: Optional[int] = None
+
+
+class UpdateDefaultsReq(BaseModel):
+    """Request to update model defaults."""
+
+    asr_model_id: Optional[str] = None
+    asr_device: Optional[str] = None
+    asr_compute_type: Optional[str] = None
+    mt_model_id: Optional[str] = None
+    mt_device: Optional[str] = None
+    mt_compute_type: Optional[str] = None
+    tts_model_id: Optional[str] = None
+    tts_device: Optional[str] = None
+
+
+class ModelDefaultsResp(BaseModel):
+    """Model defaults response."""
+
+    asr_model_id: str
+    asr_device: str
+    asr_compute_type: str
+    mt_model_id: str
+    mt_device: str
+    mt_compute_type: str
+    tts_model_id: str
+    tts_device: str
 
 
 # Simple profiles CRUD on disk under loquilex/ui/profiles
@@ -297,17 +329,42 @@ def delete_profile(name: str) -> Dict[str, Any]:
 
 @app.get("/models/asr")
 def get_asr_models() -> List[Dict[str, Any]]:
-    return list_asr_models()
+    """Get available ASR models (cached via indexer)."""
+    indexer = get_model_indexer()
+    return indexer.get_asr_models()
 
 
 @app.get("/models/mt")
 def get_mt_models() -> List[Dict[str, Any]]:
-    return list_mt_models()
+    """Get available MT models (cached via indexer)."""
+    indexer = get_model_indexer()
+    return indexer.get_mt_models()
 
 
 @app.get("/languages/mt/{model_id}")
 def get_mt_langs(model_id: str) -> Dict[str, Any]:
     return {"model_id": model_id, "languages": mt_supported_languages(model_id)}
+
+
+@app.get("/settings/defaults", response_model=ModelDefaultsResp)
+def get_model_defaults() -> ModelDefaultsResp:
+    """Get current model defaults."""
+    manager = get_model_defaults_manager()
+    defaults = manager.get_defaults()
+    return ModelDefaultsResp(**defaults.to_dict())
+
+
+@app.post("/settings/defaults", response_model=ModelDefaultsResp)
+def update_model_defaults(req: UpdateDefaultsReq) -> ModelDefaultsResp:
+    """Update model defaults."""
+    manager = get_model_defaults_manager()
+
+    # Extract non-None values from request
+    updates = {k: v for k, v in req.model_dump().items() if v is not None}
+
+    # Update defaults
+    defaults = manager.update_defaults(**updates)
+    return ModelDefaultsResp(**defaults.to_dict())
 
 
 @app.get("/healthz")
