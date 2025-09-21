@@ -373,3 +373,134 @@
 :root {
   --success: #22c55e;
 }
+
+/* Storage Step Styles */
+.storage-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  padding: 2rem;
+  background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
+}
+
+.storage-step__container {
+  max-width: 800px;
+  width: 100%;
+  background: var(--bg-secondary);
+  border-radius: 8px;
+  padding: 2rem;
+  box-shadow: var(--shadow);
+}
+
+.storage-step__header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.storage-step__title {
+  font-size: 2rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+  color: var(--accent-primary);
+}
+
+.storage-step__subtitle {
+  font-size: 1.125rem;
+  color: var(--text-secondary);
+  margin-bottom: 0;
+}
+
+.storage-step__content {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.storage-step__actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  margin-top: 1rem;
+}
+
+.storage-info-card {
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 1.5rem;
+}
+
+.storage-info-card__path {
+  margin-bottom: 1rem;
+  font-family: monospace;
+  background: var(--bg-tertiary);
+  padding: 0.5rem;
+  border-radius: 4px;
+  word-break: break-all;
+}
+
+.storage-info-card__stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.storage-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.storage-stat__label {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  margin-bottom: 0.25rem;
+}
+
+.storage-stat__value {
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+.storage-progress {
+  margin-bottom: 1rem;
+}
+
+.storage-progress__bar {
+  width: 100%;
+  height: 8px;
+  background: var(--bg-tertiary);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.storage-progress__fill {
+  height: 100%;
+  transition: width 0.3s ease;
+}
+
+.storage-info-card__status {
+  text-align: center;
+}
+
+.status-indicator {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.status-indicator--success {
+  background: rgba(34, 197, 94, 0.1);
+  color: #16a34a;
+}
+
+.status-indicator--error {
+  background: rgba(239, 68, 68, 0.1);
+  color: #dc2626;
+}

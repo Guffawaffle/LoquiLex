@@ -4,6 +4,7 @@ import asyncio
 import logging
 import os
 import re
+import shutil
 import time
 import uuid
 from pathlib import Path
@@ -198,6 +199,28 @@ class SelfTestResp(BaseModel):
     sample_rate: Optional[int] = None
 
 
+class StorageInfoResp(BaseModel):
+    """Storage information response model."""
+    path: str
+    total_bytes: int
+    free_bytes: int
+    used_bytes: int
+    percent_used: float
+    writable: bool
+
+
+class BaseDirectoryReq(BaseModel):
+    """Base directory selection request."""
+    path: str
+
+
+class BaseDirectoryResp(BaseModel):
+    """Base directory selection response."""
+    path: str
+    valid: bool
+    message: str
+
+
 # Simple profiles CRUD on disk under loquilex/ui/profiles
 PROFILES_DIR = os.path.join("loquilex", "ui", "profiles")
 
@@ -251,6 +274,97 @@ async def get_session_commits(
         }
     else:
         raise HTTPException(status_code=400, detail="session does not support storage")
+
+
+@app.get("/storage/info")
+async def get_storage_info(path: str = None) -> StorageInfoResp:
+    """Get storage information for a given path or current output directory."""
+    target_path = Path(path) if path else OUT_ROOT
+    
+    try:
+        # Ensure path exists and is accessible
+        target_path = target_path.resolve()
+        if not target_path.exists():
+            target_path.mkdir(parents=True, exist_ok=True)
+        
+        # Get disk usage statistics
+        stat = shutil.disk_usage(target_path)
+        total_bytes = stat.total
+        free_bytes = stat.free
+        used_bytes = total_bytes - free_bytes
+        percent_used = (used_bytes / total_bytes * 100) if total_bytes > 0 else 0
+        
+        # Check if writable
+        writable = os.access(target_path, os.W_OK)
+        
+        return StorageInfoResp(
+            path=str(target_path),
+            total_bytes=total_bytes,
+            free_bytes=free_bytes,
+            used_bytes=used_bytes,
+            percent_used=percent_used,
+            writable=writable
+        )
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Cannot access path: {str(e)}")
+
+
+@app.post("/storage/base-directory")
+async def set_base_directory(req: BaseDirectoryReq) -> BaseDirectoryResp:
+    """Set and validate a new base directory for storage."""
+    try:
+        original_path = Path(req.path)
+        
+        # Validate path is absolute before resolving
+        if not original_path.is_absolute():
+            return BaseDirectoryResp(
+                path=req.path,
+                valid=False,
+                message="Path must be absolute"
+            )
+        
+        target_path = original_path.resolve()
+        
+        # Try to create directory if it doesn't exist
+        if not target_path.exists():
+            try:
+                target_path.mkdir(parents=True, exist_ok=True)
+            except Exception as e:
+                return BaseDirectoryResp(
+                    path=str(target_path),
+                    valid=False,
+                    message=f"Cannot create directory: {str(e)}"
+                )
+        
+        # Check if writable
+        if not os.access(target_path, os.W_OK):
+            return BaseDirectoryResp(
+                path=str(target_path),
+                valid=False,
+                message="Directory is not writable"
+            )
+        
+        # Check disk space (warn if less than 1GB free)
+        stat = shutil.disk_usage(target_path)
+        if stat.free < 1024 * 1024 * 1024:  # 1GB
+            return BaseDirectoryResp(
+                path=str(target_path),
+                valid=True,
+                message=f"Warning: Only {stat.free // (1024*1024)} MB free space available"
+            )
+        
+        return BaseDirectoryResp(
+            path=str(target_path),
+            valid=True,
+            message="Directory is valid and writable"
+        )
+    
+    except Exception as e:
+        return BaseDirectoryResp(
+            path=req.path,
+            valid=False,
+            message=f"Invalid path: {str(e)}"
+        )
 
 
 @app.get("/profiles")

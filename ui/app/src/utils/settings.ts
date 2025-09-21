@@ -6,6 +6,7 @@ export interface AppSettings {
   device: string;
   cadence_threshold: number; // Word count threshold for triggering EN→ZH translation (1-8). Lower values provide faster but potentially less accurate translations.
   show_timestamps: boolean;
+  base_directory: string; // Base directory for storing outputs
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -14,6 +15,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   device: 'auto',
   cadence_threshold: 3, // Default: 3 (chosen as a balanced word count for EN→ZH translation)
   show_timestamps: true,
+  base_directory: 'loquilex/out', // Default output directory
 };
 
 const SETTINGS_KEY = 'loquilex-settings';

@@ -44,6 +44,7 @@ describe('settings', () => {
         device: 'auto',
         cadence_threshold: 3,
         show_timestamps: true,
+        base_directory: 'loquilex/out',
       });
     });
   });
@@ -112,6 +113,7 @@ describe('settings', () => {
         device: 'cuda',
         cadence_threshold: 5,
         show_timestamps: true,
+        base_directory: 'test/output',
       };
 
       const config = applySettingsToSessionConfig({}, settings);
@@ -140,6 +142,7 @@ describe('settings', () => {
         device: 'cuda',
         cadence_threshold: 5,
         show_timestamps: true,
+        base_directory: 'test/output',
       };
 
       const partialConfig: Partial<SessionConfig> = {
@@ -163,6 +166,7 @@ describe('settings', () => {
         device: 'auto',
         cadence_threshold: 4,
         show_timestamps: false,
+        base_directory: 'saved/output',
       };
 
       localStorageMock.setItem('loquilex-settings', JSON.stringify(savedSettings));
