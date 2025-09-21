@@ -272,8 +272,10 @@ export function ModelSelect() {
               step={50}
               onChange={(e) => {
                 const newLatency = parseInt(e.target.value, 10);
-                setLatencyTarget(newLatency);
-                updatePersistentSetting('audio_latency_target_ms', newLatency);
+                if (!isNaN(newLatency) && newLatency >= 50 && newLatency <= 1000) {
+                  setLatencyTarget(newLatency);
+                  updatePersistentSetting('audio_latency_target_ms', newLatency);
+                }
               }}
             />
           </div>
