@@ -1,7 +1,7 @@
 """Tests for remote model catalog search functionality."""
 
 import pytest
-from unittest.mock import AsyncMock, patch
+from unittest.mock import patch
 
 from loquilex.api.remote_catalog import (
     CatalogManager, 
