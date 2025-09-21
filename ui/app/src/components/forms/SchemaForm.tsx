@@ -16,9 +16,13 @@ export function SchemaForm({ schema, values, onChange, level = 'basic' }: Schema
     const fieldErrors: Record<string, string> = {};
 
     // Group fields by their group property and filter by level
+    const levelOrder = { basic: 0, advanced: 1, expert: 2 };
     Object.entries(schema.properties).forEach(([name, property]) => {
-      // Skip fields that don't match the current level
-      if (property['x-level'] && property['x-level'] !== level) {
+      // Skip fields that are above the current level in the hierarchy
+      if (
+        property['x-level'] &&
+        levelOrder[property['x-level']] > levelOrder[level]
+      ) {
         return;
       }
 

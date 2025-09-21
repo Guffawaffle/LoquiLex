@@ -46,7 +46,10 @@ export function FieldRenderer({ name, property, value, onChange, error }: FormFi
                 min={property.minimum}
                 max={property.maximum}
                 value={value ?? property.default ?? property.minimum}
-                onChange={(e) => onChange(parseInt(e.target.value))}
+                onChange={(e) => {
+                  const parsed = parseInt(e.target.value);
+                  onChange(isNaN(parsed) ? property.minimum ?? 0 : parsed);
+                }}
               />
               <div className="slider-labels">
                 <span>{property.minimum} (Fast)</span>
@@ -102,7 +105,7 @@ export function FieldRenderer({ name, property, value, onChange, error }: FormFi
       {property.description && (
         <p className="form-group__description">{property.description}</p>
       )}
-      {property.type !== 'boolean' && property.type !== 'integer' && renderField()}
+      {property.type !== 'boolean' && !(property.type === 'integer' && property.minimum !== undefined && property.maximum !== undefined) && renderField()}
       {property.type === 'integer' && property.minimum !== undefined && property.maximum !== undefined && renderField()}
       {error && (
         <div className="form-error" style={{ color: 'var(--error)', fontSize: '0.875rem', marginTop: '0.25rem' }}>

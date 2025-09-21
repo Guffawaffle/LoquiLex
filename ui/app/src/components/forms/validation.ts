@@ -19,14 +19,14 @@ export function validateField(value: any, property: SchemaProperty): string | nu
       break;
 
     case 'integer':
+      if (typeof value !== 'number' || isNaN(value)) {
+        return 'Value must be a number';
+      }
       if (!Number.isInteger(value)) {
         return 'Value must be an integer';
       }
       if (property.minimum !== undefined && value < property.minimum) {
         return `Value must be at least ${property.minimum}`;
-      }
-      if (property.maximum !== undefined && value > property.maximum) {
-        return `Value must be at most ${property.maximum}`;
       }
       break;
 
