@@ -313,15 +313,12 @@ describe('SettingsView', () => {
       expect(screen.getByLabelText(/Show Timestamps/)).toBeInTheDocument();
 
       // Check form controls have associated descriptions
-      const asrSelect = screen.getByLabelText('ASR Model');
       const asrDescription = document.querySelector('label[for="asr-model-select"] + .form-group__description');
       expect(asrDescription).toBeInTheDocument();
 
-      const mtSelect = screen.getByLabelText('MT Model'); 
       const mtDescription = document.querySelector('label[for="mt-model-select"] + .form-group__description');
       expect(mtDescription).toBeInTheDocument();
 
-      const deviceSelect = screen.getByLabelText('Device');
       const deviceDescription = document.querySelector('label[for="device-select"] + .form-group__description');
       expect(deviceDescription).toBeInTheDocument();
     });

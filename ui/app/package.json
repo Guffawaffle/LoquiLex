@@ -12,7 +12,8 @@
     "preview": "vite preview --strictPort --host 127.0.0.1",
     "test": "vitest run",
     "test:ui:watch": "vitest",
-    "e2e": "playwright test"
+    "e2e": "playwright test",
+    "e2e:a11y": "playwright test --config=playwright.a11y.config.ts"
   },
   "dependencies": {
     "react": "^18.2.0",
