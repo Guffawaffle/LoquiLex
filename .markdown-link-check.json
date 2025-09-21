@@ -3,6 +3,7 @@
     "lastEdited": "2025-09-21",
     "author": "copilot",
     "reason": "Two known test/placeholder domains are ignored to avoid CI failures when network/DNS is blocked.",
+    "aliveStatusCodesNote": "The `aliveStatusCodes` array includes 999 to treat certain non-standard responses as 'alive' (for example, LinkedIn and a few other services sometimes return a non-standard 999 status for throttled or bot-detection responses). Including 999 reduces false negatives in CI; remove or restrict this code only if you want strict HTTP status validation.",
     "howToRemove": "Edit .markdown-link-check.json and remove the corresponding entries from ignorePatterns; run make link-check locally to verify."
   },
   "ignorePatterns": [
