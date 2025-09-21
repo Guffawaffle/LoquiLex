@@ -1,0 +1,93 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "LoquiLex Settings Schema",
+  "description": "Configuration schema for LoquiLex application settings including provider tokens and offline mode",
+  "type": "object",
+  "properties": {
+    "providers": {
+      "type": "object",
+      "description": "Provider-specific configuration and tokens",
+      "properties": {
+        "huggingface": {
+          "type": "object",
+          "description": "HuggingFace provider configuration",
+          "properties": {
+            "token": {
+              "type": ["string", "null"],
+              "description": "HuggingFace access token for enhanced model access",
+              "pattern": "^hf_[a-zA-Z0-9]{32}$|^$",
+              "minLength": 0,
+              "maxLength": 100
+            },
+            "enabled": {
+              "type": "boolean",
+              "description": "Whether HuggingFace provider is enabled",
+              "default": true
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "backend": {
+      "type": "object",
+      "description": "Backend operation configuration",
+      "properties": {
+        "offline": {
+          "type": "boolean",
+          "description": "Enable offline-only mode (no network requests)",
+          "default": false
+        },
+        "offline_enforced": {
+          "type": "boolean",
+          "description": "Whether offline mode is enforced by environment",
+          "default": false,
+          "readOnly": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "models": {
+      "type": "object",
+      "description": "Model-specific settings",
+      "properties": {
+        "asr_model_id": {
+          "type": "string",
+          "description": "Default ASR model identifier"
+        },
+        "mt_model_id": {
+          "type": "string", 
+          "description": "Default MT model identifier"
+        },
+        "device": {
+          "type": "string",
+          "enum": ["auto", "cpu", "cuda"],
+          "default": "auto",
+          "description": "Compute device preference"
+        }
+      },
+      "additionalProperties": false
+    },
+    "ui": {
+      "type": "object",
+      "description": "User interface preferences",
+      "properties": {
+        "cadence_threshold": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 8,
+          "default": 3,
+          "description": "Word count threshold for triggering translation"
+        },
+        "show_timestamps": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show timestamps in caption view"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

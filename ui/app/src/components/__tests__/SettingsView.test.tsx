@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import { SettingsView } from '../SettingsView';
+import { getProviderConfig } from '../../utils/settings';
 
 // Mock the settings module
 vi.mock('../../utils/settings', () => ({
@@ -11,6 +12,8 @@ vi.mock('../../utils/settings', () => ({
     device: 'auto',
     cadence_threshold: 3,
     show_timestamps: true,
+    hf_token: '',
+    offline_mode: false,
   })),
   saveSettings: vi.fn(),
   clearSettings: vi.fn(),
@@ -20,7 +23,26 @@ vi.mock('../../utils/settings', () => ({
     device: 'auto',
     cadence_threshold: 3,
     show_timestamps: true,
-  }
+    hf_token: '',
+    offline_mode: false,
+  },
+  // Mock the new provider API functions
+  getProviderConfig: vi.fn(() => Promise.resolve({
+    providers: {
+      huggingface: {
+        token: null,
+        enabled: true,
+        has_token: false,
+      }
+    },
+    backend: {
+      offline: false,
+      offline_enforced: false,
+    }
+  })),
+  setHuggingFaceToken: vi.fn(() => Promise.resolve()),
+  removeHuggingFaceToken: vi.fn(() => Promise.resolve()),
+  setOfflineMode: vi.fn(() => Promise.resolve()),
 }));
 
 // Mock fetch for model loading
@@ -136,11 +158,12 @@ describe('SettingsView', () => {
 
   it('should handle API errors gracefully', async () => {
     mockFetch.mockRejectedValue(new Error('API Error'));
+    (getProviderConfig as any).mockRejectedValue(new Error('Provider API Error'));
     
     renderSettingsView();
     
     await waitFor(() => {
-      expect(screen.getByText('API Error')).toBeInTheDocument();
+      expect(screen.getByText('Failed to load models and settings')).toBeInTheDocument();
     });
   });
 

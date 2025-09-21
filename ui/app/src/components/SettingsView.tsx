@@ -1,16 +1,32 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ASRModel, MTModel } from '../types';
-import { AppSettings, loadSettings, saveSettings, clearSettings, DEFAULT_SETTINGS } from '../utils/settings';
+import { 
+  AppSettings, 
+  loadSettings, 
+  saveSettings, 
+  clearSettings, 
+  DEFAULT_SETTINGS,
+  getProviderConfig,
+  setHuggingFaceToken,
+  removeHuggingFaceToken,
+  setOfflineMode,
+  ProviderConfig,
+  BackendConfig
+} from '../utils/settings';
 
 export function SettingsView() {
   const navigate = useNavigate();
   const [asrModels, setAsrModels] = useState<ASRModel[]>([]);
   const [mtModels, setMtModels] = useState<MTModel[]>([]);
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
+  const [providerConfig, setProviderConfig] = useState<ProviderConfig | null>(null);
+  const [backendConfig, setBackendConfig] = useState<BackendConfig | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  const [hfTokenInput, setHfTokenInput] = useState('');
+  const [showTokenInput, setShowTokenInput] = useState(false);
 
   useEffect(() => {
     loadModelsAndSettings();
@@ -21,10 +37,11 @@ export function SettingsView() {
       setLoading(true);
       setError(null);
 
-      // Load models
-      const [asrResponse, mtResponse] = await Promise.all([
+      // Load models and provider configuration
+      const [asrResponse, mtResponse, providerData] = await Promise.all([
         fetch('/models/asr'),
         fetch('/models/mt'),
+        getProviderConfig(),
       ]);
 
       if (!asrResponse.ok || !mtResponse.ok) {
@@ -36,6 +53,8 @@ export function SettingsView() {
 
       setAsrModels(asrData);
       setMtModels(mtData);
+      setProviderConfig(providerData.providers);
+      setBackendConfig(providerData.backend);
 
       // Load settings from localStorage
       const loadedSettings = loadSettings();
@@ -48,9 +67,13 @@ export function SettingsView() {
       if (!updatedSettings.mt_model_id && mtData.length > 0) {
         updatedSettings.mt_model_id = mtData[0].id;
       }
+      
+      // Update offline mode from backend
+      updatedSettings.offline_mode = providerData.backend.offline;
+      
       setSettings(updatedSettings);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load models');
+      setError(err instanceof Error ? err.message : 'Failed to load models and settings');
     } finally {
       setLoading(false);
     }
@@ -77,6 +100,61 @@ export function SettingsView() {
   const updateSetting = <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => {
     setSettings(prev => ({ ...prev, [key]: value }));
     setSaved(false);
+  };
+
+  const handleSetHfToken = async () => {
+    if (!hfTokenInput.trim()) {
+      setError('Please enter a valid HuggingFace token');
+      return;
+    }
+
+    try {
+      await setHuggingFaceToken(hfTokenInput.trim());
+      setHfTokenInput('');
+      setShowTokenInput(false);
+      
+      // Reload provider config
+      const providerData = await getProviderConfig();
+      setProviderConfig(providerData.providers);
+      
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to set HuggingFace token');
+    }
+  };
+
+  const handleRemoveHfToken = async () => {
+    try {
+      await removeHuggingFaceToken();
+      
+      // Reload provider config
+      const providerData = await getProviderConfig();
+      setProviderConfig(providerData.providers);
+      
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to remove HuggingFace token');
+    }
+  };
+
+  const handleToggleOfflineMode = async (offline: boolean) => {
+    try {
+      await setOfflineMode(offline);
+      
+      // Reload backend config
+      const providerData = await getProviderConfig();
+      setBackendConfig(providerData.backend);
+      
+      // Update local settings
+      updateSetting('offline_mode', offline);
+      
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to toggle offline mode');
+    }
   };
 
   if (loading) {
@@ -216,6 +294,100 @@ export function SettingsView() {
             <p className="form-group__description">
               Display timestamps in the caption view and include them in exports.
             </p>
+          </div>
+
+          {/* Provider Configuration Section */}
+          <div style={{ borderTop: '1px solid #ddd', paddingTop: '2rem', marginTop: '2rem' }}>
+            <h3 className="form-group__label" style={{ fontSize: '1.2rem', marginBottom: '1rem' }}>Provider Configuration</h3>
+            
+            {/* HuggingFace Token */}
+            <div className="form-group">
+              <label className="form-group__label">HuggingFace Token</label>
+              <p className="form-group__description">
+                Optional access token for enhanced model access and higher rate limits.
+                {providerConfig?.huggingface.has_token && ' ✓ Token configured'}
+              </p>
+              
+              {!showTokenInput && (
+                <div className="flex gap-2 items-center">
+                  {providerConfig?.huggingface.has_token ? (
+                    <>
+                      <span className="text-sm text-green-600">Token is configured</span>
+                      <button
+                        type="button"
+                        className="btn btn-secondary"
+                        onClick={() => setShowTokenInput(true)}
+                      >
+                        Update Token
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-secondary"
+                        onClick={handleRemoveHfToken}
+                      >
+                        Remove Token
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      onClick={() => setShowTokenInput(true)}
+                    >
+                      Add Token
+                    </button>
+                  )}
+                </div>
+              )}
+              
+              {showTokenInput && (
+                <div className="flex gap-2 items-center" style={{ marginTop: '0.5rem' }}>
+                  <input
+                    type="password"
+                    className="input"
+                    placeholder="hf_..."
+                    value={hfTokenInput}
+                    onChange={(e) => setHfTokenInput(e.target.value)}
+                    style={{ flex: 1 }}
+                  />
+                  <button
+                    type="button"
+                    className="btn btn-primary"
+                    onClick={handleSetHfToken}
+                  >
+                    Save
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    onClick={() => {
+                      setShowTokenInput(false);
+                      setHfTokenInput('');
+                    }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Offline Mode */}
+            <div className="form-group">
+              <label className="form-group__label">
+                <input
+                  type="checkbox"
+                  checked={backendConfig?.offline ?? false}
+                  onChange={(e) => handleToggleOfflineMode(e.target.checked)}
+                  disabled={backendConfig?.offline_enforced ?? false}
+                  style={{ marginRight: '0.5rem' }}
+                />
+                Enable Offline Mode
+              </label>
+              <p className="form-group__description">
+                Disable all network requests and use only cached models.
+                {backendConfig?.offline_enforced && ' (Enforced by environment variable LX_OFFLINE=1)'}
+              </p>
+            </div>
           </div>
 
           <div className="settings-actions">
