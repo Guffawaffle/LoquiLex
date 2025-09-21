@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import pytest
 
-pytestmark = [pytest.mark.e2e, pytest.mark.asyncio]
+pytestmark = [pytest.mark.e2e]
 pytest.importorskip("fastapi", reason="fastapi not installed; e2e disabled by default")
 
 import asyncio  # noqa: E402
