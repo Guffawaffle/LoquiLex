@@ -146,7 +146,8 @@ help:
 	@echo "  LX_API_PORT=8000       - FastAPI server port"
 	@echo "  LX_UI_PORT=5173        - Vite dev server port (4173 for preview)"
 	@echo "  USE_VENV=0             - use system Python instead of creating .venv"
-	@echo "  ASR_MODEL=tiny.en      - ASR model to prefetch"
+	@echo "  LX_ASR_MODEL=tiny.en   - ASR model to prefetch (preferred; falls back to ASR_MODEL if unset)"
+	@echo "  ASR_MODEL=tiny.en      - (legacy) ASR model to prefetch"
 	@echo "  LX_SKIP_MODEL_PREFETCH=1  - skip model prefetch (for faster CI)"
 	@echo "  PYTEST_FLAGS=...       - extra flags for e2e tests"
 
@@ -247,7 +248,7 @@ test:
 	LX_OFFLINE=${LX_OFFLINE:-1} HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 HF_HUB_DISABLE_TELEMETRY=1 $(PY) -m pytest -q
 
 test-online:
-	HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 HF_HUB_DISABLE_TELEMETRY=1 LX_OFFLINE=0 $(PY) -m pytest -q
+	HF_HUB_OFFLINE=0 TRANSFORMERS_OFFLINE=0 HF_HUB_DISABLE_TELEMETRY=1 LX_OFFLINE=0 $(PY) -m pytest -q
 
 unit: test
 
@@ -314,9 +315,9 @@ stop-all: stop-ui stop-api stop-ws
 # Force stop all services (fallback to port-based killing)
 stop-all-force:
 	@echo "[stop-all-force] Force stopping all services..."
-	@lsof -ti:$${LX_API_PORT:-8000} | xargs -r kill -9 2>/dev/null || true
-	@lsof -ti:$${LX_UI_PORT:-5173} | xargs -r kill -9 2>/dev/null || true
-	@lsof -ti:4173 | xargs -r kill -9 2>/dev/null || true
+	@pids="$$(lsof -ti:$${LX_API_PORT:-8000})"; [ -n "$$pids" ] && kill -9 $$pids 2>/dev/null || true
+	@pids="$$(lsof -ti:$${LX_UI_PORT:-5173})"; [ -n "$$pids" ] && kill -9 $$pids 2>/dev/null || true
+	@pids="$$(lsof -ti:4173)"; [ -n "$$pids" ] && kill -9 $$pids 2>/dev/null || true
 	@rm -f .pids/*.pid
 	@echo "[stop-all-force] ✓ Force stop complete"
 
@@ -386,8 +387,7 @@ ui-e2e: ui-build
 	fi
 	@echo "Starting FastAPI server for e2e tests..."
 	@LX_API_PORT=$${LX_API_PORT:-8000} $(PY) -m loquilex.api.server & echo $$! > .backend.pid
-	@sleep 5
-	@cd ui/app && npm run e2e; \
+	@echo "Waiting for FastAPI to become available on port $${LX_API_PORT:-8000}..."
 	E2E_EXIT=$$?; \
 	if [ -f ".backend.pid" ]; then \
 		kill $$(cat .backend.pid) 2>/dev/null || true; \
@@ -438,10 +438,10 @@ test-%:
 
 qual-%:
 	@if [ "$*" = "all" ]; then $(MAKE) qual-all; \
-	elif [ "$*" = "lint" ]; then .venv/bin/python -m ruff check loquilex tests; \
-	elif [ "$*" = "fmt" ]; then .venv/bin/python -m black loquilex tests; \
-	elif [ "$*" = "fmt-check" ]; then .venv/bin/python -m black --check --diff loquilex tests; \
-	elif [ "$*" = "typecheck" ]; then .venv/bin/python -m mypy loquilex; \
+	elif [ "$*" = "lint" ]; then $(PY) -m ruff check loquilex tests; \
+	elif [ "$*" = "fmt" ]; then $(PY) -m black loquilex tests; \
+	elif [ "$*" = "fmt-check" ]; then $(PY) -m black --check --diff loquilex tests; \
+	elif [ "$*" = "typecheck" ]; then $(PY) -m mypy loquilex; \
 	else echo "Unknown quality target: qual-$*"; exit 1; fi
 
 ui-%:
