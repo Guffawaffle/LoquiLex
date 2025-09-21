@@ -50,5 +50,10 @@ ui/app/.vite/
 ui/app/playwright-report/
 ui/app/test-results/
 
+# PID files from background services
+.pids/
+
 # Local gitignores
 .gitignore.local
+
+.ruff_cache/

@@ -16,45 +16,125 @@ VENV_PY     := $(VENV)/bin/python
 VENV_PIP    := $(VENV)/bin/pip
 SYS_PY      := $(shell command -v python3 || command -v python || echo python)
 SYS_PIP     := $(shell command -v pip3 || command -v pip || echo pip)
-PY          := $(if $(wildcard $(VENV_PY)),$(VENV_PY),$(SYS_PY))
-PIP         := $(if $(wildcard $(VENV_PIP)),$(VENV_PIP),$(SYS_PIP))
+# Prefer venv when present unless USE_VENV=0 (explicitly request system Python)
+PY          := $(if $(filter 0,$(USE_VENV)),$(SYS_PY),$(if $(wildcard $(VENV_PY)),$(VENV_PY),$(SYS_PY)))
+PIP         := $(if $(filter 0,$(USE_VENV)),$(SYS_PIP),$(if $(wildcard $(VENV_PIP)),$(VENV_PIP),$(SYS_PIP)))
+
+## ------------------------------
+## PID Management Helpers
+define pid_start
+	@mkdir -p .pids
+	@echo "[pid_start] Starting $(1) with PID file $(2)"
+	@$(3) & echo $$! > $(2)
+	@sleep 2
+	@if [ -f "$(2)" ] && kill -0 $$(cat "$(2)") 2>/dev/null; then \
+		echo "[pid_start] ✓ $(1) started (PID: $$(cat $(2)))"; \
+	else \
+		echo "[pid_start] ✗ Failed to start $(1)"; \
+		rm -f "$(2)"; \
+		exit 1; \
+	fi
+endef
+
+define pid_stop
+	@if [ -f "$(2)" ]; then \
+		PID=$$(cat "$(2)"); \
+		echo "[pid_stop] Stopping $(1) (PID: $$PID)"; \
+		if kill -0 "$$PID" 2>/dev/null; then \
+			kill "$$PID" 2>/dev/null || true; \
+			sleep 1; \
+			if kill -0 "$$PID" 2>/dev/null; then \
+				echo "[pid_stop] Force killing $(1)"; \
+				kill -9 "$$PID" 2>/dev/null || true; \
+			fi; \
+		fi; \
+		rm -f "$(2)"; \
+		echo "[pid_stop] ✓ $(1) stopped"; \
+	else \
+		echo "[pid_stop] No PID file for $(1), trying fallback..."; \
+		$(3); \
+	fi
+endef
+
+define pid_status
+	@if [ -f "$(2)" ]; then \
+		PID=$$(cat "$(2)"); \
+		if kill -0 "$$PID" 2>/dev/null; then \
+			echo "$(1): ✓ running (PID: $$PID)"; \
+		else \
+			echo "$(1): ✗ stale PID file (PID: $$PID not found)"; \
+		fi; \
+	else \
+		echo "$(1): - no PID file"; \
+	fi
+endef
 
 ## ------------------------------
 ## Phony targets
 .PHONY: help install-venv install-base install-ml-minimal install-ml-cpu \
         prefetch-asr models-tiny dev dev-minimal dev-ml-cpu \
-        lint fmt fmt-check typecheck link-check test unit test-e2e e2e ci clean \
+        lint fmt fmt-check typecheck link-check test unit test-e2e e2e ci clean clean-logs \
         docker-ci docker-ci-build docker-ci-run docker-ci-test docker-ci-shell \
         docker-build docker-run docker-gpu docker-stop docker-clean docker-test \
         sec-scan dead-code-analysis dead-code-report clean-artifacts \
-        ui-setup ui-dev ui-build ui-start ui-test ui-e2e
+        ui-setup ui-dev ui-build ui-start ui-test ui-e2e ui-verify \
+        api-start-bg ui-dev-bg ui-start-bg \
+        stop-ui stop-api stop-ws stop-all stop-all-force \
+        pids-status pids-clean-stale \
+        install test-all qual-all
 
 help:
-	@echo "Targets:"
+	@echo "=== LoquiLex Make Targets ==="
+	@echo ""
+	@echo "Install:"
 	@echo "  dev-minimal      - base+dev deps only; no model prefetch (offline-first)"
 	@echo "  dev              - alias of dev-minimal"
 	@echo "  dev-ml-cpu       - add CPU-only ML stack and prefetch tiny model"
 	@echo "  lint / fmt / typecheck / link-check / test / e2e / ci"
 	@echo "  ui-setup         - install UI dependencies"
 	@echo "  ui-dev           - start dev server with proxy to FastAPI"
+	@echo "  ui-dev-bg        - start UI dev server in background"
 	@echo "  ui-build         - build UI for production"
 	@echo "  ui-start         - start FastAPI serving built UI"
+	@echo "  ui-start-bg      - start UI preview server in background"
 	@echo "  ui-test          - run UI unit tests"
 	@echo "  ui-e2e           - run UI end-to-end tests"
+	@echo "  ui-verify        - run UI tests (unit + e2e when online)"
+	@echo ""
+	@echo "Services:"
+	@echo "  api-start-bg     - start FastAPI server in background"
+	@echo "  stop-ui          - stop UI servers"
+	@echo "  stop-api         - stop API server"
+	@echo "  stop-all         - stop all tracked services"
+	@echo "  stop-all-force   - force stop all services"
+	@echo "  pids-status      - show status of tracked processes"
+	@echo "  pids-clean-stale - clean up stale PID files"
+	@echo ""
+	@echo "Clean:"
+	@echo "  clean            - remove build artifacts and venv"
+	@echo "  clean-artifacts  - remove generated artifacts"
+	@echo ""
+	@echo "Docker:"
 	@echo "  docker-build     - build production Docker image (CPU-only)"
 	@echo "  docker-run       - run LoquiLex in Docker (CPU-only)"
 	@echo "  docker-gpu       - run LoquiLex in Docker with GPU support"
 	@echo "  docker-stop      - stop running Docker containers"
 	@echo "  docker-clean     - remove Docker containers and images"
-	@echo "  docker-test      - test Docker setup and configuration"
+	@echo ""
+	@echo "Analysis:"
 	@echo "  dead-code-analysis - run comprehensive dead code detection tools"
 	@echo "  dead-code-report   - generate reports locally (no CI gating)"
-	@echo "  clean-artifacts    - remove all generated artifacts"
-	@echo "Vars:"
-	@echo "  USE_VENV=0       - use system Python instead of creating .venv (good for CI)"
-	@echo "  ASR_MODEL=...    - model to prefetch (default: tiny.en)"
-	@echo "  LX_SKIP_MODEL_PREFETCH=1 - skip model prefetch (for faster CI runs)"
-	@echo "  LX_SKIP_DEAD_CODE_REPORT=1 - skip dead code report generation (for faster CI runs)"
+	@echo ""
+	@echo "=== Environment Variables ==="
+	@echo "  LX_OFFLINE=1           - enable offline mode (skip network calls, e2e tests)"
+	@echo "  LX_API_PORT=8000       - FastAPI server port"
+	@echo "  clean-logs         - cleanup old log files (uses LX_LOG_DIR)"
+	@echo "  LX_UI_PORT=5173        - Vite dev server port (4173 for preview)"
+	@echo "  USE_VENV=0             - use system Python instead of creating .venv"
+	@echo "  LX_ASR_MODEL=tiny.en   - ASR model to prefetch (preferred; falls back to ASR_MODEL if unset)"
+	@echo "  ASR_MODEL=tiny.en      - (legacy) ASR model to prefetch"
+	@echo "  LX_SKIP_MODEL_PREFETCH=1  - skip model prefetch (for faster CI)"
+	@echo "  PYTEST_FLAGS=...       - extra flags for e2e tests"
 
 
 ## ------------------------------
@@ -179,10 +259,10 @@ link-check:
 	fi
 
 test:
-	LX_OFFLINE=${LX_OFFLINE:-1} HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 HF_HUB_DISABLE_TELEMETRY=1 pytest -q
+	LX_OFFLINE=${LX_OFFLINE:-1} HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 HF_HUB_DISABLE_TELEMETRY=1 $(PY) -m pytest -q
 
 test-online:
-	HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 HF_HUB_DISABLE_TELEMETRY=1 LX_OFFLINE=0 pytest -q
+	HF_HUB_OFFLINE=0 TRANSFORMERS_OFFLINE=0 HF_HUB_DISABLE_TELEMETRY=1 LX_OFFLINE=0 $(PY) -m pytest -q
 
 unit: test
 
@@ -213,6 +293,81 @@ run-ci-mode: ci
 clean:
 	rm -rf .pytest_cache .coverage $(VENV) dist build
 	cd ui/app && rm -rf node_modules dist .vite || true
+
+## ------------------------------
+## Background Service Management
+
+# Start FastAPI server in background with PID tracking
+api-start-bg: install-base
+	$(call pid_start,FastAPI server,.pids/api.pid,LX_API_PORT=$${LX_API_PORT:-8000} $(PY) -m loquilex.api.server)
+
+# Start UI dev server in background with PID tracking
+ui-dev-bg: ui-setup
+	$(call pid_start,UI dev server,.pids/ui-dev.pid,cd ui/app && LX_API_PORT=$${LX_API_PORT:-8000} LX_UI_PORT=$${LX_UI_PORT:-5173} npm run dev)
+
+# Start UI preview server in background with PID tracking
+ui-start-bg: ui-build
+	$(call pid_start,UI preview server,.pids/ui-preview.pid,cd ui/app && LX_UI_PORT=$${LX_UI_PORT:-4173} npm run preview)
+
+# Stop UI services
+stop-ui:
+	$(call pid_stop,UI dev server,.pids/ui-dev.pid,pids="$$(lsof -ti:$${LX_UI_PORT:-5173})"; [ -n "$$pids" ] && kill $$pids 2>/dev/null || true)
+	$(call pid_stop,UI preview server,.pids/ui-preview.pid,pids="$$(lsof -ti:$${LX_UI_PORT:-4173})"; [ -n "$$pids" ] && kill $$pids 2>/dev/null || true)
+
+# Stop API server
+stop-api:
+	$(call pid_stop,FastAPI server,.pids/api.pid,pids="$$(lsof -ti:$${LX_API_PORT:-8000})"; [ -n "$$pids" ] && kill $$pids 2>/dev/null || true)
+
+# Stop WebSocket server (placeholder for future)
+stop-ws:
+	@echo "[stop-ws] No WebSocket server configured yet"
+
+# Stop all tracked services
+stop-all: stop-ui stop-api stop-ws
+	@echo "[stop-all] All services stopped"
+
+# Force stop all services (fallback to port-based killing)
+stop-all-force:
+	@echo "[stop-all-force] Force stopping all services..."
+	@pids="$$(lsof -ti:$${LX_API_PORT:-8000})"; [ -n "$$pids" ] && kill -9 $$pids 2>/dev/null || true
+	@pids="$$(lsof -ti:$${LX_UI_PORT:-5173})"; [ -n "$$pids" ] && kill -9 $$pids 2>/dev/null || true
+	@pids="$$(lsof -ti:4173)"; [ -n "$$pids" ] && kill -9 $$pids 2>/dev/null || true
+	@rm -f .pids/*.pid
+	@echo "[stop-all-force] ✓ Force stop complete"
+
+# Show status of all tracked PIDs
+pids-status:
+	@echo "=== PID Status ==="
+	$(call pid_status,FastAPI server,.pids/api.pid)
+	$(call pid_status,UI dev server,.pids/ui-dev.pid)
+	$(call pid_status,UI preview server,.pids/ui-preview.pid)
+	$(call pid_status,E2E backend,.backend.pid)
+
+# Clean up stale PID files
+pids-clean-stale:
+	@echo "[pids-clean-stale] Cleaning stale PID files..."
+	@for pidfile in .pids/*.pid .backend.pid; do \
+		if [ -f "$$pidfile" ]; then \
+			if ! kill -0 $$(cat "$$pidfile") 2>/dev/null; then \
+				echo "Removing stale PID file: $$pidfile"; \
+				rm -f "$$pidfile"; \
+			fi; \
+		fi; \
+	done
+	@echo "[pids-clean-stale] ✓ Cleanup complete"
+
+clean-logs:
+	@echo "=== Cleaning old log files ==="
+	@if [ -n "$$LX_LOG_DIR" ] && [ -d "$$LX_LOG_DIR" ]; then \
+		if [ -n "$$LX_LOG_MAX_AGE_HOURS" ]; then \
+			$(PY) -c "from loquilex.logging import cleanup_old_logs; print(f'Deleted {cleanup_old_logs(\"$$LX_LOG_DIR\", max_age_hours=int(\"$$LX_LOG_MAX_AGE_HOURS\"))} log files')"; \
+		else \
+			$(PY) -c "from loquilex.logging import cleanup_old_logs; print(f'Deleted {cleanup_old_logs(\"$$LX_LOG_DIR\")} log files')"; \
+		fi; \
+	else \
+		echo "No LX_LOG_DIR set or directory not found"; \
+	fi
+	@rm -rf .artifacts/logs || true
 
 ## ------------------------------
 ## UI targets
@@ -251,14 +406,76 @@ ui-test: ui-setup
 # Run UI end-to-end tests
 ui-e2e: ui-build
 	@echo "[ui-e2e] Running UI end-to-end tests"
+	@if [ "$${LX_OFFLINE:-1}" != "1" ]; then \
+		echo "[ui-e2e] Installing Chromium for Playwright (online mode)"; \
+		cd ui/app && PLAYWRIGHT_BROWSERS_PATH=$${PLAYWRIGHT_BROWSERS_PATH:-0} npx playwright install chromium --with-deps >/dev/null 2>&1 || true; \
+	else \
+		echo "[ui-e2e] Skipping Chromium install (offline mode)"; \
+	fi
 	@echo "Starting FastAPI server for e2e tests..."
-	@LX_API_PORT=$${LX_API_PORT:-8000} $(PY) -m loquilex.api.server &
-	@SERVER_PID=$$!; \
-	sleep 5; \
-	cd ui/app && npm run e2e; \
+	@LX_API_PORT=$${LX_API_PORT:-8000} $(PY) -m loquilex.api.server & echo $$! > .backend.pid
+	@echo "Waiting for FastAPI to become available on port $${LX_API_PORT:-8000}..."
 	E2E_EXIT=$$?; \
-	kill $$SERVER_PID 2>/dev/null || true; \
+	if [ -f ".backend.pid" ]; then \
+		kill $$(cat .backend.pid) 2>/dev/null || true; \
+		rm -f .backend.pid; \
+	fi; \
 	exit $$E2E_EXIT
+
+# UI verification (combines unit tests + e2e, skips e2e when offline)
+ui-verify: ui-test
+	@if [ "$${LX_OFFLINE:-1}" != "1" ]; then \
+		echo "[ui-verify] Running e2e tests (online mode)"; \
+		$(MAKE) ui-e2e; \
+	else \
+		echo "[ui-verify] Skipping e2e tests (offline mode)"; \
+	fi
+
+## ------------------------------
+## Bucketed Commands
+
+# Install bucket
+install:
+	@if $(PY) -c "import pytest" 2>/dev/null; then \
+		echo "✓ Dependencies already installed"; \
+	else \
+		$(MAKE) install-base; \
+	fi
+
+# Test bucket
+test-all: test
+	@if [ "$${LX_OFFLINE:-1}" != "1" ]; then \
+		echo "[test-all] Running e2e tests (online mode)"; \
+		$(MAKE) test-e2e; \
+	else \
+		echo "[test-all] Skipping e2e tests (offline mode)"; \
+	fi
+	@echo "✓ All tests complete"
+
+# Quality bucket
+qual-all: lint fmt-check typecheck
+	@echo "✓ Quality checks complete"
+
+## Pattern rules for command discovery
+test-%:
+	@if [ "$*" = "all" ]; then $(MAKE) test-all; \
+	elif [ "$*" = "online" ]; then $(MAKE) test-online; \
+	elif [ "$*" = "e2e" ]; then $(MAKE) test-e2e; \
+	else echo "Unknown test target: test-$*"; exit 1; fi
+
+qual-%:
+	@if [ "$*" = "all" ]; then $(MAKE) qual-all; \
+	elif [ "$*" = "lint" ]; then $(PY) -m ruff check loquilex tests; \
+	elif [ "$*" = "fmt" ]; then $(PY) -m black loquilex tests; \
+	elif [ "$*" = "fmt-check" ]; then $(PY) -m black --check --diff loquilex tests; \
+	elif [ "$*" = "typecheck" ]; then $(PY) -m mypy loquilex; \
+	else echo "Unknown quality target: qual-$*"; exit 1; fi
+
+ui-%:
+	@if [ "$*" = "verify" ]; then $(MAKE) ui-verify; \
+	elif [ "$*" = "dev-bg" ]; then $(MAKE) ui-dev-bg; \
+	elif [ "$*" = "start-bg" ]; then $(MAKE) ui-start-bg; \
+	else echo "Unknown UI target: ui-$*"; exit 1; fi
 
 ## ------------------------------
 ## Docker CI parity (optional)
@@ -357,3 +574,4 @@ dead-code-report:
 .PHONY: clean-artifacts
 clean-artifacts:
 	@rm -rf .artifacts || true
+	@echo "=== Cleaned build and test artifacts ==="

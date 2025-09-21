@@ -125,6 +125,11 @@ MANAGER = SessionManager()
 
 
 class CreateSessionReq(BaseModel):
+    """Create session request model.
+
+    📖 Contract: /docs/contracts/session-management.md
+    """
+
     name: Optional[str] = Field(default=None)
     asr_model_id: str
     mt_enabled: bool = Field(default=False)
@@ -158,6 +163,11 @@ class CreateSessionResp(BaseModel):
 
 
 class DownloadReq(BaseModel):
+    """Model download request.
+
+    📖 Contract: /docs/contracts/downloads-api.md
+    """
+
     repo_id: str
     type: str = Field(description="asr|mt|other")
 
@@ -167,6 +177,11 @@ class DownloadCancelResp(BaseModel):
 
 
 class SelfTestReq(BaseModel):
+    """Device self-test request.
+
+    📖 Contract: /docs/contracts/device-testing.md
+    """
+
     asr_model_id: str | None = None
     device: str = Field(default="auto")
     seconds: float = Field(default=1.5)
