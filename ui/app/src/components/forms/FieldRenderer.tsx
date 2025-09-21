@@ -3,7 +3,7 @@ import { FormFieldProps } from './types';
 
 export function FieldRenderer({ name, property, value, onChange, error }: FormFieldProps) {
   const fieldId = `field-${name}`;
-  
+
   const renderField = () => {
     switch (property.type) {
       case 'string':
@@ -33,7 +33,7 @@ export function FieldRenderer({ name, property, value, onChange, error }: FormFi
             placeholder={property.default?.toString() || ''}
           />
         );
-      
+
       case 'integer':
       case 'number':
         if (property.minimum !== undefined && property.maximum !== undefined) {
@@ -47,8 +47,9 @@ export function FieldRenderer({ name, property, value, onChange, error }: FormFi
                 max={property.maximum}
                 value={value ?? property.default ?? property.minimum}
                 onChange={(e) => {
-                  const parsed = parseInt(e.target.value);
-                  onChange(isNaN(parsed) ? property.minimum ?? 0 : parsed);
+                  const parsed = parseInt(e.target.value, 10);
+                  const safe = Number.isNaN(parsed) ? (property.minimum ?? 0) : parsed;
+                  onChange(safe);
                 }}
               />
               <div className="slider-labels">
@@ -66,10 +67,32 @@ export function FieldRenderer({ name, property, value, onChange, error }: FormFi
             value={value ?? property.default ?? ''}
             min={property.minimum}
             max={property.maximum}
-            onChange={(e) => onChange(property.type === 'integer' ? parseInt(e.target.value) : parseFloat(e.target.value))}
+            onChange={(e) => {
+              const raw = e.target.value;
+              // If the field is emptied, treat as empty string (caller may interpret as undefined/null)
+              if (raw === '') {
+                onChange(raw as unknown as number);
+                return;
+              }
+
+              let parsed: number;
+              if (property.type === 'integer') {
+                parsed = parseInt(raw, 10);
+              } else {
+                parsed = parseFloat(raw);
+              }
+
+              if (Number.isNaN(parsed)) {
+                // Fallback order: default -> minimum -> 0
+                const fallback = property.default ?? property.minimum ?? 0;
+                onChange(fallback as number);
+              } else {
+                onChange(parsed);
+              }
+            }}
           />
         );
-      
+
       case 'boolean':
         return (
           <input
@@ -80,7 +103,7 @@ export function FieldRenderer({ name, property, value, onChange, error }: FormFi
             style={{ marginRight: '0.5rem' }}
           />
         );
-      
+
       default:
         return (
           <input
@@ -99,7 +122,7 @@ export function FieldRenderer({ name, property, value, onChange, error }: FormFi
       <label className="form-group__label" htmlFor={fieldId}>
         {property.type === 'boolean' && renderField()}
         {property.title || name}
-        {property.type === 'integer' && property.minimum !== undefined && property.maximum !== undefined && 
+        {property.type === 'integer' && property.minimum !== undefined && property.maximum !== undefined &&
           `: ${value ?? property.default ?? property.minimum} words`}
       </label>
       {property.description && (
