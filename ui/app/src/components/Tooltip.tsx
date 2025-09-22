@@ -184,19 +184,3 @@ export function Tooltip({
     </div>
   );
 }
-
-// Hook for x-help attribute support
-export function useTooltipFromXHelp(element: HTMLElement | null) {
-  const [tooltipContent, setTooltipContent] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (element) {
-      const xHelp = element.getAttribute('x-help');
-      if (xHelp) {
-        setTooltipContent(xHelp);
-      }
-    }
-  }, [element]);
-
-  return tooltipContent;
-}

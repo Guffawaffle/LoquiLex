@@ -363,7 +363,7 @@ export function SettingsView() {
                   type="checkbox"
                   checked={settings.show_timestamps}
                   onChange={(e) => updateSetting('show_timestamps', e.target.checked)}
-                  style={{ marginRight: '0.5rem' }}
+                  className="checkbox-input"
                 />
                 Show Timestamps
               </label>
