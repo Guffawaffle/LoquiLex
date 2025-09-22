@@ -19,7 +19,7 @@ export function Tooltip({
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const triggerRef = useRef<HTMLDivElement>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
-  const tooltipId = id || `tooltip-${Math.random().toString(36).substr(2, 9)}`;
+  const tooltipId = id || `tooltip-${Math.random().toString(36).substring(2, 11)}`;
 
   const updatePosition = () => {
     if (!triggerRef.current || !tooltipRef.current) return;
