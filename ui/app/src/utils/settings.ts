@@ -1,5 +1,7 @@
 import { SessionConfig } from '../types';
 
+export type RestartScope = 'none' | 'app' | 'backend' | 'full';
+
 export interface AppSettings {
   asr_model_id: string;
   mt_model_id: string;
@@ -9,6 +11,15 @@ export interface AppSettings {
   translation_target: string; // Target language for translation (e.g., 'zho_Hans', 'spa_Latn')
   audio_latency_target_ms: number; // Target latency in milliseconds for audio processing
 }
+
+// Restart requirements for each setting
+export const RESTART_METADATA: Record<keyof AppSettings, RestartScope> = {
+  asr_model_id: 'backend',
+  mt_model_id: 'backend', 
+  device: 'backend',
+  cadence_threshold: 'none',
+  show_timestamps: 'none',
+};
 
 export const DEFAULT_SETTINGS: AppSettings = {
   asr_model_id: '',
@@ -21,6 +32,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
 };
 
 const SETTINGS_KEY = 'loquilex-settings';
+const PENDING_CHANGES_KEY = 'loquilex-pending-changes';
 
 export function loadSettings(): AppSettings {
   try {
@@ -49,6 +61,59 @@ export function clearSettings(): void {
   } catch (err) {
     console.warn('Failed to clear settings from localStorage:', err);
   }
+}
+
+// Pending changes management
+export function savePendingChanges(changes: Partial<AppSettings>): void {
+  try {
+    localStorage.setItem(PENDING_CHANGES_KEY, JSON.stringify(changes));
+  } catch (err) {
+    console.warn('Failed to save pending changes to localStorage:', err);
+  }
+}
+
+export function loadPendingChanges(): Partial<AppSettings> {
+  try {
+    const saved = localStorage.getItem(PENDING_CHANGES_KEY);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      return parsed;
+    }
+  } catch (err) {
+    console.warn('Failed to load pending changes from localStorage:', err);
+  }
+  return {};
+}
+
+export function clearPendingChanges(): void {
+  try {
+    localStorage.removeItem(PENDING_CHANGES_KEY);
+  } catch (err) {
+    console.warn('Failed to clear pending changes from localStorage:', err);
+  }
+}
+
+// Check if any pending changes require restart
+export function getRequiredRestartScope(changes: Partial<AppSettings>): RestartScope {
+  let maxScope: RestartScope = 'none';
+  
+  for (const key in changes) {
+    const setting = key as keyof AppSettings;
+    const scope = RESTART_METADATA[setting];
+    
+    // Priority order: full > backend > app > none
+    if (scope === 'full' || (scope === 'backend' && maxScope !== 'full') || 
+        (scope === 'app' && maxScope === 'none')) {
+      maxScope = scope;
+    }
+  }
+  
+  return maxScope;
+}
+
+// Check if a setting requires restart
+export function requiresRestart(setting: keyof AppSettings): boolean {
+  return RESTART_METADATA[setting] !== 'none';
 }
 
 /**
