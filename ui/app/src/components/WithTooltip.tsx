@@ -1,8 +1,12 @@
 import { ReactElement, cloneElement } from 'react';
 import { Tooltip } from './Tooltip';
 
-export interface WithTooltipProps {
-  children: ReactElement;
+type XHelpProps = {
+  'x-help'?: string | null;
+};
+
+export interface WithTooltipProps<T extends XHelpProps = XHelpProps> {
+  children: ReactElement<T>;
   xHelp?: string;
   placement?: 'top' | 'bottom' | 'left' | 'right';
   trigger?: 'hover' | 'focus' | 'both';
@@ -22,31 +26,27 @@ export interface WithTooltipProps {
  *   <button x-help="This is helpful information">Click me</button>
  * </WithTooltip>
  */
-export function WithTooltip({
+export function WithTooltip<T extends XHelpProps = XHelpProps>({
   children,
   xHelp,
   placement = 'top',
   trigger = 'both',
-}: WithTooltipProps) {
+}: WithTooltipProps<T>) {
   // Extract x-help from child element props if not provided explicitly
-  const childProps = children.props as any;
-  const helpContent = xHelp || childProps['x-help'];
+  const childProps = children.props as T;
+  const { ['x-help']: childXHelp, ...propsWithoutXHelp } = childProps as T & XHelpProps;
+  const helpFromChild = typeof childXHelp === 'string' ? childXHelp : undefined;
+  const helpContent = xHelp ?? helpFromChild;
 
   // If no help content or it's empty/whitespace, return children as-is
   if (!helpContent || (typeof helpContent === 'string' && !helpContent.trim())) {
-    // Still need to remove x-help attribute if it exists
-    if (childProps['x-help']) {
-      const cleanedProps = { ...childProps };
-      delete cleanedProps['x-help'];
-      return cloneElement(children, cleanedProps);
-    }
-    return children;
+    return childXHelp !== undefined
+      ? cloneElement(children, propsWithoutXHelp as Partial<T>)
+      : children;
   }
 
   // Remove x-help from child props to avoid it appearing in DOM
-  const cleanedProps = { ...childProps };
-  delete cleanedProps['x-help'];
-  const cleanedChild = cloneElement(children, cleanedProps);
+  const cleanedChild = cloneElement(children, propsWithoutXHelp as Partial<T>);
 
   return (
     <Tooltip content={helpContent} placement={placement} trigger={trigger}>
