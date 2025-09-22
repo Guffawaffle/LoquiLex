@@ -360,6 +360,7 @@ def get_mt_models() -> List[Dict[str, Any]]:
 def get_mt_langs(model_id: str) -> Dict[str, Any]:
     return {"model_id": model_id, "languages": mt_supported_languages(model_id)}
 
+
 @app.get("/settings/defaults", response_model=ModelDefaultsResp)
 def get_model_defaults() -> ModelDefaultsResp:
     """Get current model defaults."""
@@ -379,6 +380,7 @@ def update_model_defaults(req: UpdateDefaultsReq) -> ModelDefaultsResp:
     # Update defaults
     defaults = manager.update_defaults(**updates)
     return ModelDefaultsResp(**defaults.to_dict())
+
 
 @app.get("/hardware/snapshot")
 async def get_hardware_snapshot_endpoint() -> Dict[str, Any]:
