@@ -7,7 +7,7 @@ SHA256: <sha256sum <file> | n/a>
 **Network:** Offline (no model downloads)
 **Secrets/CI:** Unchanged
 
-<!-- Local log only; do not commit. Optional snapshots can live in the gitignored docs/deliverables/PR-<number>-<YYYYMMDD>.md and be shared manually. -->
+<!-- Local log only; do not commit. When rotating or handing off, copy the snapshot to docs/deliverables/ARCHIVE/PR-<number>-<YYYYMMDD>-<shortsha>.md (tracked). -->
 
 ## Executive Summary
 - <One-line outcome>

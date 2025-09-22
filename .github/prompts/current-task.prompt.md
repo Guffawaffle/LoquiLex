@@ -9,7 +9,7 @@ description: 'Execute the repo’s current task and record full deliverables wit
 Execute the maintainer-provided task for this run (as described in the active prompt, issue, or conversation) while following all project rules in `AGENTS.md`.
 
 #requirements
-- Work only on the branch specified in `current-task.md` (create/switch as instructed). **Never** use `main`.
+- Work only on the branch specified by the task spec (prompt/issue/maintainer directive). **Never** use `main`.
 - Honor the **offline-first** policy. Do not make network calls or download models unless the task explicitly permits it.
 - Use existing Makefile/CI targets. Do not modify CI workflows, secrets, or repository settings unless the task requires it.
 - If GitHub UI-only steps are needed, mark them **Manual Step Required** with an exact click path.
