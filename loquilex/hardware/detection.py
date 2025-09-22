@@ -10,9 +10,14 @@ import platform
 from dataclasses import dataclass, asdict
 from typing import Any, Dict, List, Optional, Tuple
 
+# Optional runtime import: psutil may not be installed in minimal profiles.
+# Annotate as Any so assigning None in the fallback is type-safe for mypy.
+psutil: Any
 try:
-    import psutil
-except ImportError:
+    import psutil as _psutil
+
+    psutil = _psutil
+except Exception:
     psutil = None
 
 
