@@ -302,7 +302,12 @@ class PathGuard:
             raise PathSecurityError(f"unknown root: {name}") from exc
 
     def _find_base_for(self, p: Path) -> Path | None:
-        pr = p.resolve(strict=False)
+        # Normalize path to remove potential traversal
+        normed = Path(os.path.normpath(str(p)))
+        # Reject any path with suspicious segments
+        if any(part in ('..', '.') for part in normed.parts):
+            return None
+        pr = normed.resolve(strict=False)
         for base in self._roots.values():
             if self._is_within_root(base, pr):
                 return base
