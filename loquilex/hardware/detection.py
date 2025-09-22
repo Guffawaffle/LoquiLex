@@ -44,9 +44,7 @@ except Exception:
 # Implementation note: keep these as module-level constants to make them easy
 # to patch in unit tests (monkeypatch / import-time overrides).
 FALLBACK_MEMORY_TOTAL_GB: float = float(os.getenv("LX_FALLBACK_MEMORY_TOTAL_GB", "8.0"))
-FALLBACK_MEMORY_AVAILABLE_GB: float = float(
-    os.getenv("LX_FALLBACK_MEMORY_AVAILABLE_GB", "4.0")
-)
+FALLBACK_MEMORY_AVAILABLE_GB: float = float(os.getenv("LX_FALLBACK_MEMORY_AVAILABLE_GB", "4.0"))
 
 
 @dataclass

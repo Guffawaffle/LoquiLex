@@ -19,7 +19,8 @@ def _install_fakes() -> None:
 
     # Fake faster_whisper
     fake_faster_whisper = types.ModuleType("faster_whisper")
-    fake_faster_whisper.WhisperModel = fake_whisper.WhisperModel
+    # Use setattr to avoid static type checkers complaining about unknown attrs
+    setattr(fake_faster_whisper, "WhisperModel", fake_whisper.WhisperModel)
     # Do not overwrite if a real/other stub already exists
     sys.modules.setdefault("faster_whisper", fake_faster_whisper)
 
@@ -46,10 +47,14 @@ def _install_fakes() -> None:
             return {"input_ids": [[1, 2, 3]], "attention_mask": [[1, 1, 1]]}
 
     # Minimal surface used by our code/tests
-    fake_transformers.AutoModelForSeq2SeqLM = DummyModel
-    fake_transformers.AutoTokenizer = DummyTokenizer
-    fake_transformers.M2M100ForConditionalGeneration = DummyModel
-    fake_transformers.M2M100Tokenizer = DummyTokenizer
+    # Use setattr to make attributes visible to type checkers and avoid
+    # "module has no attribute" errors in tests running with strict mypy.
+    setattr(fake_transformers, "AutoModelForSeq2SeqLM", DummyModel)
+    setattr(fake_transformers, "AutoTokenizer", DummyTokenizer)
+    setattr(
+        fake_transformers, "M2M100ForConditionalGeneration", DummyModel
+    )
+    setattr(fake_transformers, "M2M100Tokenizer", DummyTokenizer)
 
     sys.modules.setdefault("transformers", fake_transformers)
 
