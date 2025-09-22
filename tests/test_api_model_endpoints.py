@@ -4,7 +4,6 @@ from __future__ import annotations
 
 
 from fastapi.testclient import TestClient
-
 from loquilex.api.server import app
 
 
