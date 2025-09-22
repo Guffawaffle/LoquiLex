@@ -1,42 +1,32 @@
-# LoquiLex Task Deliverables Template
+Task: <authoritative source path/URL or “Conversation — YYYY-MM-DD”>
+SHA256: <sha256sum <file> | n/a>
+
+**Git:** branch=<feature-branch>, head=<commit>, base=origin/main@<commit>
+**Env:** Python <version>; Ruff <version>; mypy <version>; OS=<distro>
+**Mode:** Workspace-Only
+**Network:** Offline (no model downloads)
+**Secrets/CI:** Unchanged
 
 ## Executive Summary
-[One paragraph describing what was attempted, what was changed, and the outcome]
+- <One-line outcome>
+- <Key verification result>
 
-## Steps Taken
-- [Bullet point of first major step]
-- [Bullet point of second major step]
-- [Continue with detailed execution log]
-- [Include any code changes, test runs, CI updates, manual steps]
+## Log
 
-## Evidence & Verification
-### Command Outputs
-- **[Tool Name]**: `command output here`
-- **[Another Tool]**: `command output here`
+### 2025-09-21T22:20-05:00 — <Scope>
+**Mode:** Workspace-Only  
+**Network:** Offline (no model downloads)  
+**Secrets/CI:** Unchanged
 
-### Environment Details
-- **Python version**: [version]
-- **Dependencies**: [key versions]
-- **CI job names**: [relevant jobs]
+- <Action taken>
+- Search receipt: `rg "<pattern>" <paths>` → `<path1>`, `<path2>`
 
-### Code Changes
-```diff
-# Before/after diffs or key code snippets
+<details><summary>Command output (N lines)</summary>
+
+```text
+<full command output>
 ```
 
-## Final Results
-[Explicit confirmation of whether goals were met]
+</details>
 
-### Success Criteria Met
-- ✅ [Criteria 1]
-- ✅ [Criteria 2]
-- ❌ [Criteria 3] - [Reason if not met]
-
-### Remaining Items
-- [Any follow-up tasks or recommendations]
-- [Linked issues if created]
-
-## Files Changed
-- `path/to/file1.ext` - [type of change: test, config, feature, etc.]
-- `path/to/file2.ext` - [type of change]
-- [Continue listing all modified files]
+<!-- Append new ISO8601 timestamped sections as work continues. Do not remove prior entries. -->

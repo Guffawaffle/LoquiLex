@@ -13,7 +13,7 @@ Agents MUST follow the workflow and guardrails below.
 
 ## Operating Modes (must declare which one)
 - **Workspace-Only (default):** Edit files in this repo only. No network calls beyond fetching existing deps already pinned in lockfiles. No secret edits.
-- **Cloud Sandbox (optional):** Allowed only if explicitly stated in `.github/copilot/current-task.md`. Clone, run, and test in an isolated sandbox; redact secrets; include full logs/diffs in deliverables.
+- **Cloud Sandbox (optional):** Allowed only if the active task spec (prompt, issue, or maintainer directive) explicitly authorizes it. Clone, run, and test in an isolated sandbox; redact secrets; include full logs/diffs in deliverables.
 - **Full Access:** **Prohibited** unless explicitly granted in the current task.
 
 ---
@@ -74,24 +74,30 @@ echo "No build step"
 
 ## Source of Truth
 
-* If `.github/copilot/current-task.md` exists, it is authoritative.
-* Otherwise, follow the assigned issue’s acceptance criteria.
+* The maintainer-provided task spec (prompt file, issue/PR description, or direct instruction) is authoritative.
+* Record the exact source (path or URL) and digest at the top of the deliverables log so reviewers can trace what was executed.
+* If the spec changes mid-task, add a new timestamped log entry noting the update and the new digest.
 
 ---
 
 ## Deliverables Policy
 
-Always produce `.github/copilot/current-task-deliverables.md` as a running log.
-
-**Deliverables format (required):**
-
-1. **Executive Summary** — what was attempted, what changed, outcome.
-2. **Steps Taken** — commands, diffs, edits.
-3. **Evidence & Verification** — full outputs (lint/type/tests), logs, stack traces, before/after snippets.
-4. **Final Results** — whether goals were met; remaining issues.
-5. **Files Changed** — list with change types.
-
-Use `.github/copilot/deliverables-template.md` as a starting point. Never truncate evidence; redact secrets if present.
+* Keep exactly one `.github/copilot/current-task-deliverables.md` on the active feature branch. When a PR merges or the task rotates, archive it (e.g., move to `docs/deliverables/PR-<number>-<YYYYMMDD>.md`) or capture the executive summary/evidence links in the PR description before starting a new log.
+* Top of file requirements:
+  - `Task:` include the authoritative source (e.g., `.github/prompts/next-pr-runner.md`, issue/PR URL, or “Conversation — YYYY-MM-DD”).
+  - `SHA256:` hash of the source file if stored in the repo (`sha256sum <file>`). Use `n/a` when the spec is conversational or remote-only.
+  - Quick fingerprints: `**Git:** branch=…, head=…, base=origin/main@…` and `**Env:** Python …; Ruff …; mypy …; OS=…`.
+  - Current scope declaration: `**Mode:** …`, `**Network:** …`, `**Secrets/CI:** …` (update whenever scope changes).
+* Maintain `## Executive Summary` at the top; keep it concise and updated as work progresses.
+* Append-only log format:
+  - Use a `## Log` section.
+  - Each entry starts with `### <ISO8601 timestamp with offset> — <scope>`.
+  - Immediately restate scope (`**Mode:** …`, `**Network:** …`, `**Secrets/CI:** …`).
+  - Capture actions as bullets; include command timestamps and commit hashes when relevant.
+  - When reusing patterns, include a “Search receipt” line showing the grep command and hit paths (no contents).
+  - Wrap long outputs, diffs, or logs in `<details>` blocks with a succinct `<summary>` (include line counts when possible).
+* Evidence must be real, complete outputs; redact secrets only. Avoid truncating unless the `<details>` wrapper is used.
+* Use `.github/copilot/deliverables-template.md` as the canonical scaffold for new entries; update the template if the policy evolves.
 
 ---
 

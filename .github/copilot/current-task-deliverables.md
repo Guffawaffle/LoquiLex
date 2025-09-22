@@ -1,3 +1,67 @@
+Task: Conversation — 2025-09-22 Streamline Codex deliverables
+SHA256: n/a (conversation)
+
+**Git:** branch=chore/codex-integration, head=4479b2c, base=origin/main@e72d90a
+**Env:** Python 3.12.3; Ruff n/a (not in PATH); mypy n/a (not in PATH); OS=Ubuntu 24.04.3 LTS
+**Mode:** Workspace-Only
+**Network:** Offline (no model downloads)
+**Secrets/CI:** Unchanged
+
+## Executive Summary
+- Removed reliance on `.github/copilot/current-task.md` in favor of prompt/conversation-driven specs across docs and prompts.
+- Migrated deliverables template and this log to the new timestamped, append-only format with retained legacy history.
+
+## Log
+
+### 2025-09-21T22:41:56-05:00 — Streamline task source & deliverables
+**Mode:** Workspace-Only  
+**Network:** Offline (no model downloads)  
+**Secrets/CI:** Unchanged
+
+- Updated `AGENTS.md`, `README.md`, `PROJECT_OVERVIEW.md`, and `.github/prompts/main.prompt.md` to reference prompt/maintainer specs instead of `.github/copilot/current-task.md`.
+- Refreshed `.github/copilot/deliverables-template.md` to capture task source metadata and append-only log guidance.
+- Restructured `.github/copilot/current-task-deliverables.md` to the new template while preserving legacy entries below.
+- Updated `.github/copilot/current-task.md` to a minimal stub pointing to the new workflow docs.
+- Search receipt: `rg "current-task.md" -n` → no matches (confirms global deprecation).
+- Search receipt: `rg "current-task-deliverables" -n AGENTS.md README.md PROJECT_OVERVIEW.md` → see evidence below.
+- Committed `Streamline Codex deliverables workflow` (4479b2c) and pushed `chore/codex-integration` to origin.
+
+<details><summary>Environment fingerprints</summary>
+
+```text
+python3 --version
+Python 3.12.3
+
+ruff --version
+bash: line 1: ruff: command not found
+
+mypy --version
+bash: line 1: mypy: command not found
+
+lsb_release -ds
+Ubuntu 24.04.3 LTS
+```
+
+</details>
+
+<details><summary>Search receipts</summary>
+
+```text
+rg "current-task.md" -n
+# no matches
+
+rg "current-task-deliverables" -n AGENTS.md README.md PROJECT_OVERVIEW.md
+AGENTS.md:85:* Keep exactly one `.github/copilot/current-task-deliverables.md` on the active feature branch. When a PR merges or the task rotates, archive it (e.g., move to `docs/deliverables/PR-<number>-<YYYYMMDD>.md`) or capture the executive summary/evidence links in the PR description before starting a new log.
+README.md:108:- **Deliverables**: Detailed execution logs in `.github/copilot/current-task-deliverables.md` (one per active branch)
+PROJECT_OVERVIEW.md:28:- ✅ Copilot/Codex agents integrated: prompts in `.github/prompts/` drive execution, `.github/copilot/current-task-deliverables.md` captures the log.
+PROJECT_OVERVIEW.md:60:  - Deliverables are written to `.github/copilot/current-task-deliverables.md` on that branch.
+PROJECT_OVERVIEW.md:68:  - Agents execute tasks from the active prompt/spec and must log full evidence in `.github/copilot/current-task-deliverables.md`.
+```
+
+</details>
+
+<details><summary>Legacy log (pre-2025-09-22)</summary>
+
 ## Executive Summary
 
 Changed several GitHub Actions workflows to add an early step that disables Ubuntu ESM (Enterprise Security Maintainers) to prevent `apt` from contacting `esm.ubuntu.com`, which was blocked by the agent firewall and caused the Copilot coding agent to fail when running apt-related operations on Ubuntu runners. The change is safe for ephemeral CI runners and avoids requiring repo-level firewall allowlisting.
@@ -202,3 +266,5 @@ If you want, I can now remove the deliverable entry that noted the earlier workf
 - `.github/prompts/make-fix.prompt.md`
 - `.github/prompts/make-fix-full.prompt.md`
 - `.github/AGENTS.md` (removed)
+
+</details>

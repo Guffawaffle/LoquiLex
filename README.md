@@ -101,11 +101,11 @@ Tooling (ruff, black, mypy, pytest) is always installed even if not explicitly p
 
 ## Development Workflow
 
-LoquiLex uses a structured GitHub Copilot Coding Agent workflow for development tasks:
+LoquiLex uses a structured GitHub Copilot/Codex workflow for development tasks:
 
-- **Task Management**: Tasks defined in `.github/copilot/current-task.md`
+- **Task Management**: Tasks initiated via prompts in `.github/prompts/` or maintainer directives
 - **Quality Gates**: Automated linting, formatting, type checking, and testing
-- **Deliverables**: Detailed execution logs in `.github/copilot/current-task-deliverables.md`
+- **Deliverables**: Detailed execution logs in `.github/copilot/current-task-deliverables.md` (one per active branch)
 - **Branch Strategy**: Feature branches with imperative commit messages
 
 See [`.github/copilot/README.md`](.github/copilot/README.md) for complete workflow documentation.
