@@ -69,8 +69,8 @@ PROJECT_OVERVIEW.md:60:  - Deliverables are logged locally in `.github/copilot/c
 - Search receipt: `rg "archive/" .gitignore.local`
 
 ### 2025-09-21T22:53:17-05:00 — Archive deliverables snapshot
-**Mode:** Workspace-Only  
-**Network:** Offline (no model downloads)  
+**Mode:** Workspace-Only
+**Network:** Offline (no model downloads)
 **Secrets/CI:** Unchanged
 
 - Added `/.github/copilot/current-task-deliverables.md` to `.gitignore` so the live log stays local-only.
