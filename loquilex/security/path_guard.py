@@ -48,11 +48,11 @@ class PathGuard:
         *,
         allow_relative: bool = True,
         create: bool = False,
-        must_exist: bool = False,
+        must_exist: bool = True,
     ) -> Path:
         """Return a safe directory path subject to guard constraints."""
 
-        path = self._normalise(candidate, allow_relative=allow_relative)
+        path = self._normalise(candidate, allow_relative=allow_relative, must_exist=must_exist)
 
         if path.exists():
             if not path.is_dir():
@@ -113,31 +113,40 @@ class PathGuard:
             raise PathSecurityError(f"path escapes allowed roots: {candidate}")
         return candidate
 
-    def _normalise(self, candidate: str | Path, *, allow_relative: bool) -> Path:
+    def _normalise(self, candidate: str | Path, *, allow_relative: bool, must_exist: bool = False) -> Path:
         path = Path(candidate)
 
-        if path.is_absolute():
-            resolved = path.resolve(strict=False)
-        else:
-            if not allow_relative:
-                raise PathSecurityError("relative paths are not permitted")
-            resolved = (self._default_root / path).resolve(strict=False)
+        try:
+            if path.is_absolute():
+                resolved = path.resolve(strict=must_exist)
+            else:
+                if not allow_relative:
+                    raise PathSecurityError("relative paths are not permitted")
+                resolved = (self._default_root / path).resolve(strict=must_exist)
+        except FileNotFoundError as exc:
+            raise PathSecurityError(f"path not found for resolution: {candidate}") from exc
 
-        if not self._is_within_roots(resolved):
+        if not self._is_within_roots(resolved, strict=True):
             raise PathSecurityError(f"path not permitted: {resolved}")
         return resolved
 
-    def _is_within_roots(self, candidate: Path) -> bool:
+    def _is_within_roots(self, candidate: Path, strict: bool = False) -> bool:
         """
         Returns True if candidate is fully contained in one of the allowed roots,
         following normalization and canonicalization (symlinks resolved as far as possible).
         """
-        # Normalize without requiring existence; resolves symlinks where possible
-        candidate_resolved = candidate.resolve(strict=False)
+        # Normalize, resolving symlinks as strictly as desired
+        try:
+            candidate_resolved = candidate.resolve(strict=strict)
+        except FileNotFoundError:
+            return False
 
         for root in self._allowed_roots:
             # Roots are stored normalized, but re-normalize defensively
-            root_resolved = root.resolve(strict=False)
+                root_resolved = root.resolve(strict=strict)
+            except FileNotFoundError:
+                continue
+            try:
             try:
                 candidate_resolved.relative_to(root_resolved)
             except ValueError:
