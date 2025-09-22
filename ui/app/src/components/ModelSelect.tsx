@@ -3,6 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { ASRModel, MTModel, SessionConfig } from '../types';
 import { applySettingsToSessionConfig, loadSettings, saveSettings, AppSettings } from '../utils/settings';
 
+const LATENCY_MIN_MS = 50;
+const LATENCY_MAX_MS = 1000;
+const LATENCY_STEP_MS = 50;
+
 export function ModelSelect() {
   const navigate = useNavigate();
   const [asrModels, setAsrModels] = useState<ASRModel[]>([]);
@@ -32,7 +36,7 @@ export function ModelSelect() {
     // Load saved settings and apply as defaults
     const defaultConfig = applySettingsToSessionConfig({});
     setConfig(defaultConfig);
-    
+
     // Load latency target from settings
     const settings = loadSettings();
     setLatencyTarget(settings.audio_latency_target_ms);
@@ -267,12 +271,12 @@ export function ModelSelect() {
               type="number"
               className="select"
               value={latencyTarget}
-              min={50}
-              max={1000}
-              step={50}
+              min={LATENCY_MIN_MS}
+              max={LATENCY_MAX_MS}
+              step={LATENCY_STEP_MS}
               onChange={(e) => {
                 const newLatency = parseInt(e.target.value, 10);
-                if (!isNaN(newLatency) && newLatency >= 50 && newLatency <= 1000) {
+                if (!isNaN(newLatency) && newLatency >= LATENCY_MIN_MS && newLatency <= LATENCY_MAX_MS) {
                   setLatencyTarget(newLatency);
                   updatePersistentSetting('audio_latency_target_ms', newLatency);
                 }
