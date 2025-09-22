@@ -17,6 +17,18 @@ import {
 import { RestartBadge } from './RestartBadge';
 import { WithTooltip } from './WithTooltip';
 
+interface DisplayableModel {
+  name: string;
+  size?: string;
+  available?: boolean;
+}
+
+function formatModelOption(model: DisplayableModel): string {
+  const sizePart = model.size ? ` (${model.size})` : '';
+  const availabilityPart = model.available === false ? ' - Download needed' : '';
+  return `${model.name}${sizePart}${availabilityPart}`;
+}
+
 export function SettingsView() {
   const navigate = useNavigate();
   const [asrModels, setAsrModels] = useState<ASRModel[]>([]);
@@ -249,16 +261,14 @@ export function SettingsView() {
                 <option value="">Select ASR Model...</option>
                 {asrModels.map((model) => (
                   <option key={model.id} value={model.id}>
-                    {model.name} ({model.size}) {!model.available && '- Download needed'}
+                    {formatModelOption(model)}
                   </option>
                 ))}
               </select>
             </WithTooltip>
             <div className="model-select__nav">
               {asrModels.map((model) => (
-                <div key={`asr-visible-${model.id}`}>
-                  {model.name} ({model.size}) {!model.available && '- Download needed'}
-                </div>
+                <div key={`asr-visible-${model.id}`}>{formatModelOption(model)}</div>
               ))}
             </div>
           </div>
@@ -283,16 +293,14 @@ export function SettingsView() {
                 <option value="">Select MT Model...</option>
                 {mtModels.map((model) => (
                   <option key={model.id} value={model.id}>
-                    {model.name} ({model.size}) {!model.available && '- Download needed'}
+                    {formatModelOption(model)}
                   </option>
                 ))}
               </select>
             </WithTooltip>
             <div className="model-select__nav">
               {mtModels.map((model) => (
-                <div key={`mt-visible-${model.id}`}>
-                  {model.name} ({model.size}) {!model.available && '- Download needed'}
-                </div>
+                <div key={`mt-visible-${model.id}`}>{formatModelOption(model)}</div>
               ))}
             </div>
           </div>

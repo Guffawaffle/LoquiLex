@@ -22,7 +22,6 @@ When I finish one PR, you immediately move to the next. Your job now is to:
 - Don’t ask for confirmation; make best-effort decisions and document them.
 - Use `gh` CLI to discover/open PRs.
 - If the working tree is dirty, stash or commit `chore: snapshot work in progress` before proceeding (reference it in deliverables).
-- Keep a safety branch: `reconcile/<feature>/<YYYYMMDD-HHMM>` before destructive operations.
 - **Enable reuse of resolutions** (helps parallel branches):
   - `git config rerere.enabled true`
   - `git config rerere.autoUpdate true`
