@@ -264,8 +264,14 @@ class PathGuard:
         # Enforce symlink policy for each path segment
         if not self._follow_symlinks:
             self._reject_symlink_segments(base, resolved_dir)
+        # Final canonicalization: ensure resolved_dir (with symlinks resolved) stays within the canonical base
+        canonical_base = base.resolve()
+        canonical_target = resolved_dir.resolve(strict=False)
+        try:
+            canonical_target.relative_to(canonical_base)
+        except ValueError:
+            raise PathSecurityError("directory outside allowed roots (canonical check)")
         resolved_dir.mkdir(parents=True, exist_ok=True, mode=mode)
-
     # ---------- Quotas ----------
     def compute_usage_bytes(self, root: str) -> int:
         """Compute total size of regular files under a root without following symlinks."""
