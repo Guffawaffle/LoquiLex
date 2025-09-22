@@ -200,6 +200,8 @@ LoquiLex is maintained with an automated security posture:
 - **gitleaks** for CI secret sweeps (with Push Protection enabled in GitHub)
 - **OpenSSF Scorecards** for repo hygiene and best practices
 
+Path safety: All user-influenced filesystem operations are mediated by the centralized `PathGuard`. See docs/SECURITY_PATHS.md for the threat model and required usage patterns.
+
 See [SECURITY.md](./SECURITY.md) for how to report vulnerabilities.
 
 ## Static Analysis (CodeQL)

@@ -132,7 +132,9 @@ def _safe_session_dir(sid: str) -> Path:
     if not re.fullmatch(r"[A-Za-z0-9_-]{6,64}", sid):
         raise HTTPException(status_code=400, detail="bad sid")
     try:
-        return STORAGE_GUARD.ensure_dir(OUT_ROOT / sid, allow_relative=False)
+        path = PATH_GUARD.resolve("sessions", sid)
+        PATH_GUARD.ensure_dir(path)
+        return path
     except PathSecurityError as exc:
         raise HTTPException(status_code=400, detail="invalid path") from exc
 
@@ -143,14 +145,25 @@ app.mount("/out", StaticFiles(directory=str(OUT_ROOT), html=False), name="out")
 MANAGER = SessionManager()
 
 
-# Allowed storage roots for path-based operations
+# Allowed storage roots for path-based operations (named roots)
 _env_allowed_roots = os.getenv("LX_ALLOWED_STORAGE_ROOTS")
 if not _env_allowed_roots:  # Treat missing or empty as default '/tmp'
     _EXTRA_ALLOWED_ROOTS = ["/tmp"]
 else:
     _EXTRA_ALLOWED_ROOTS = [p for p in _env_allowed_roots.split(":") if p]
-ALLOWED_STORAGE_ROOTS: List[Path] = [OUT_ROOT] + [Path(p).resolve() for p in _EXTRA_ALLOWED_ROOTS]
-STORAGE_GUARD = PathGuard(ALLOWED_STORAGE_ROOTS, default_root=OUT_ROOT)
+
+_root_map: Dict[str, Path] = {
+    "sessions": OUT_ROOT,
+    "exports": OUT_ROOT / "exports",
+    "profiles": Path("loquilex/ui/profiles").resolve(),
+}
+for p in _EXTRA_ALLOWED_ROOTS:
+    try:
+        _root_map.setdefault("extra", Path(p).resolve())
+    except Exception:
+        pass
+
+PATH_GUARD = PathGuard(_root_map, follow_symlinks=False)
 
 
 class CreateSessionReq(BaseModel):
@@ -252,25 +265,40 @@ class BaseDirectoryResp(BaseModel):
     message: str
 
 
+def _resolve_storage_dir(candidate: Optional[str]) -> Path:
+    """Resolve a candidate path for storage/info and validation.
+
+    - None -> default OUT_ROOT
+    - Relative -> sessions root relative resolution
+    - Absolute -> allowed only if inside any configured root
+    """
+    if candidate is None:
+        return OUT_ROOT
+    p = Path(candidate)
+    if not p.is_absolute():
+        return PATH_GUARD.resolve("sessions", candidate)
+    # Absolute: allow only when inside one of our roots
+    for base in _root_map.values():
+        if PathGuard._is_within_root(base, p):
+            return p.resolve(strict=False)
+    raise PathSecurityError("path not permitted")
+
+
 # Simple profiles CRUD on disk under loquilex/ui/profiles
 PROFILES_DIR = Path("loquilex/ui/profiles")
 PROFILES_ROOT = PROFILES_DIR.resolve()
-PROFILES_GUARD = PathGuard([PROFILES_ROOT], default_root=PROFILES_ROOT)
 
 
 def _profile_path(name: str, *, must_exist: bool = False, for_write: bool = False) -> Path:
     try:
-        return PROFILES_GUARD.ensure_file(
-            PROFILES_ROOT,
-            name,
-            suffix=".json",
-            create_parents=for_write,
-            must_exist=must_exist,
-            allow_fallback=False,
-        )
+        # Enforce profile filename policy via resolve on the 'profiles' root
+        candidate = PATH_GUARD.resolve("profiles", f"{name}.json")
+        if for_write:
+            PATH_GUARD.ensure_dir(candidate.parent)
+        if must_exist and not candidate.exists():
+            raise HTTPException(status_code=404, detail="not found")
+        return candidate
     except PathSecurityError as exc:
-        if must_exist and "does not exist" in str(exc):
-            raise HTTPException(status_code=404, detail="not found") from exc
         raise HTTPException(status_code=400, detail="invalid profile name") from exc
 
 
@@ -328,12 +356,9 @@ async def get_session_commits(
 @app.get("/storage/info")
 async def get_storage_info(path: Optional[str] = None) -> StorageInfoResp:
     """Get storage information for a given path or current output directory."""
-    candidate = path if path is not None else OUT_ROOT
-
     try:
-        target_path = STORAGE_GUARD.ensure_dir(
-            candidate, allow_relative=False, create=False, must_exist=True
-        )
+        target_path = _resolve_storage_dir(path)
+        PATH_GUARD.ensure_dir(target_path)
     except PathSecurityError as exc:
         raise HTTPException(status_code=400, detail="Cannot access path") from exc
     except Exception as exc:
@@ -435,14 +460,15 @@ async def admin_cache_clear(request: Request) -> Dict[str, Any]:
 @app.post("/storage/base-directory")
 async def set_base_directory(req: BaseDirectoryReq) -> BaseDirectoryResp:
     """Set and validate a new base directory for storage."""
+    # Require absolute path input (UI contract)
     try:
-        target_path = STORAGE_GUARD.ensure_dir(req.path, allow_relative=False, create=True)
+        if not req.path or not Path(req.path).is_absolute():
+            return BaseDirectoryResp(path=req.path, valid=False, message="Path must be absolute")
+        target_path = _resolve_storage_dir(req.path)
+        PATH_GUARD.ensure_dir(target_path)
     except PathSecurityError as exc:
         detail = str(exc)
-        if "relative paths" in detail:
-            message = "Path must be absolute"
-        else:
-            message = f"Invalid path: {detail}"
+        message = f"Invalid path: {detail}"
         return BaseDirectoryResp(path=req.path, valid=False, message=message)
     except Exception as exc:
         return BaseDirectoryResp(path=req.path, valid=False, message=f"Invalid path: {exc}")
@@ -482,7 +508,7 @@ def get_profile(name: str) -> Dict[str, Any]:
     import json as _json
 
     path = _profile_path(name, must_exist=True)
-    with path.open("r", encoding="utf-8") as f:
+    with PATH_GUARD.open_read(path) as f:
         return _json.load(f)
 
 
@@ -492,7 +518,7 @@ def save_profile(name: str, body: Dict[str, Any]) -> Dict[str, Any]:
 
     path = _profile_path(name, for_write=True)
     tmp_path = path.with_suffix(".json.tmp")
-    with tmp_path.open("w", encoding="utf-8") as f:
+    with PATH_GUARD.open_write(tmp_path, overwrite=True, binary=False) as f:
         _json.dump(body, f, ensure_ascii=False, indent=2)
     os.replace(tmp_path, path)
     return {"ok": True}
@@ -502,7 +528,10 @@ def save_profile(name: str, body: Dict[str, Any]) -> Dict[str, Any]:
 def delete_profile(name: str) -> Dict[str, Any]:
     path = _profile_path(name)
     if path.exists():
-        path.unlink()
+        try:
+            path.unlink()
+        except Exception:
+            raise HTTPException(status_code=500, detail="delete failed")
     return {"ok": True}
 
 

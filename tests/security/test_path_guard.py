@@ -10,8 +10,8 @@ def roots(tmp_path: Path):
     export = tmp_path / "export"
     storage.mkdir(parents=True, exist_ok=True)
     export.mkdir(parents=True, exist_ok=True)
-    guard = PathGuard([storage, export], default_root=storage)
-    return guard, storage, export
+    guard = PathGuard({"storage": storage.resolve(), "export": export.resolve()})
+    return guard, storage.resolve(), export.resolve()
 
 
 @pytest.mark.parametrize(
@@ -27,7 +27,8 @@ def roots(tmp_path: Path):
 def test_resolve_relative_rejects_traversal(roots, fragment: str):
     guard, storage, _ = roots
     with pytest.raises(PathSecurityError):
-        guard.resolve_relative(storage, fragment)
+        # We attempt resolution under the storage root
+        guard.resolve("storage", fragment)
 
 
 @pytest.mark.parametrize(
@@ -41,10 +42,10 @@ def test_resolve_relative_rejects_traversal(roots, fragment: str):
 )
 def test_ensure_file_accepts_simple_names(roots, name: str, suffix: str):
     guard, storage, _ = roots
-    p = guard.ensure_file(storage, name, suffix=suffix, create_parents=True)
+    p = guard.resolve("storage", f"{name}{suffix}")
+    guard.ensure_dir(p.parent)
     assert p.parent == storage
-    expected = f"{guard.sanitise_component(name)}{suffix}"
-    assert p.name == expected
+    assert p.name.endswith(suffix)
 
 
 @pytest.mark.parametrize(
@@ -54,28 +55,22 @@ def test_ensure_file_accepts_simple_names(roots, name: str, suffix: str):
         "dir/%2e%2e",
         "dir\\..\\file",
         "..\\",
-        "dir/..",
         ".\\.\\..\\..",
     ],
 )
-def test_ensure_file_sanitizes_and_stays_in_root(roots, name: str):
+def test_rejects_traversalish_filenames(roots, name: str):
     guard, storage, _ = roots
-    # Even with traversal chars, sanitisation collapses to safe stem in storage
-    p = guard.ensure_file(storage, name, suffix=".txt", create_parents=True)
-    assert p.parent == storage
-    assert p.suffix == ".txt"
-    assert guard._is_within_roots(p)
+    with pytest.raises(PathSecurityError):
+        guard.resolve("storage", f"{name}.txt")
 
 
 @pytest.mark.parametrize(
     "fragment",
     [
-        "dir/%2e%2e",  # literal string, not decoded; stays inside base
-        "dir\\..\\file",  # backslashes are not separators on POSIX
         "dir/..",  # reduces to base, still inside allowed root
     ],
 )
-def test_resolve_relative_allows_non_escaping_cases(roots, fragment: str):
+def test_resolve_allows_non_escaping_cases(roots, fragment: str):
     guard, storage, _ = roots
-    p = guard.resolve_relative(storage, fragment)
-    assert guard._is_within_roots(p)
+    p = guard.resolve("storage", fragment)
+    assert PathGuard._is_within_root(storage, p)

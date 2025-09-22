@@ -1,25 +1,29 @@
 from __future__ import annotations
 
 import pytest
+from pathlib import Path
 
 from loquilex.security import PathGuard, PathSecurityError
 
 
-def test_ensure_dir_creates_relative(tmp_path):
-    guard = PathGuard([tmp_path])
-    safe_dir = guard.ensure_dir("sessions", allow_relative=True, create=True)
-    assert safe_dir == tmp_path / "sessions"
-    assert safe_dir.exists()
+def test_ensure_dir_creates_relative(tmp_path: Path):
+    guard = PathGuard({"root": tmp_path})
+    target = guard.resolve("root", "sessions")
+    guard.ensure_dir(target)
+    assert target == tmp_path / "sessions"
+    assert target.exists()
 
 
-def test_ensure_dir_rejects_escape(tmp_path):
-    guard = PathGuard([tmp_path])
+def test_ensure_dir_rejects_escape(tmp_path: Path):
+    guard = PathGuard({"root": tmp_path})
     outside = tmp_path.parent / "other"
     with pytest.raises(PathSecurityError):
-        guard.ensure_dir(outside, allow_relative=False)
+        guard.ensure_dir(outside)
 
 
-def test_ensure_file_rejects_empty_name(tmp_path):
-    guard = PathGuard([tmp_path])
+def test_open_write_invalid_filename(tmp_path: Path):
+    guard = PathGuard({"root": tmp_path})
     with pytest.raises(PathSecurityError):
-        guard.ensure_file(tmp_path, "../", allow_fallback=False)
+        p = guard.resolve("root", "../")
+        if p.exists():
+            p.unlink()

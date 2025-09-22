@@ -1,0 +1,71 @@
+name: Grep Guard
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: grep-guard-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Guard against unsafe path usage
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "Scanning for unsafe path usage patterns…"
+
+          # Only scan tracked Python files; exclude vendor/test/venv and the security module itself.
+          files=(
+            ':(glob)**/*.py'
+            ':(exclude,glob)**/.venv/**'
+            ':(exclude,glob)**/venv/**'
+            ':(exclude,glob)**/node_modules/**'
+            ':(exclude,glob)**/tests/**'
+            ':(exclude,glob)loquilex/security/**'
+          )
+
+          # Patterns flagged when appearing in API or request surface code without PathGuard mediation.
+          # - direct builtin open(
+          # - Path(…user…)
+          # - os.path.join with user-like identifiers
+          # - shutil.rmtree on dynamic paths
+          if git grep -n -E '(?<![A-Za-z0-9_])open\(' -- ${files[@]} | tee /tmp/gg_open || true; then
+            echo "::group::Direct open() occurrences (should use PathGuard.open_*)"
+            while IFS=: read -r file line rest; do
+              [[ -n "${file:-}" && -n "${line:-}" ]] || continue
+              echo "::error file=${file},line=${line}::Direct open() usage found; route IO through PathGuard"
+            done < /tmp/gg_open
+            echo "::endgroup::"
+            found=1
+          else
+            found=0
+          fi
+
+          if git grep -n -E 'Path\(.*(user_|request|req|arg|param|name|path).*\)' -- ${files[@]} | tee /tmp/gg_path || true; then
+            echo "::group::Path(user-derived) occurrences"
+            while IFS=: read -r file line rest; do
+              [[ -n "${file:-}" && -n "${line:-}" ]] || continue
+              echo "::warning file=${file},line=${line}::Path() constructed from user-derived input; ensure PathGuard.resolve mediates this"
+            done < /tmp/gg_path
+            echo "::endgroup::"
+          fi
+
+          # Fail CI if direct open() is detected in guarded areas
+          if [ "$found" -ne 0 ]; then
+            exit 1
+          fi
+
+          echo "Grep guard passed."
