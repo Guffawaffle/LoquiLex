@@ -4,12 +4,21 @@ model: GPT-5
 tools: ['runCommands', 'runTasks', 'edit', 'runNotebooks', 'search', 'todos', 'runTests', 'usages', 'vscodeAPI', 'problems', 'changes', 'testFailure', 'openSimpleBrowser', 'fetch', 'githubRepo', 'filesystem', 'create_branch', 'create_issue', 'create_pull_request', 'download_workflow_run_artifact', 'get_code_scanning_alert', 'get_commit', 'get_dependabot_alert', 'get_file_contents', 'get_global_security_advisory', 'get_job_logs', 'get_pull_request', 'get_pull_request_diff', 'get_pull_request_files', 'get_pull_request_review_comments', 'get_pull_request_reviews', 'get_pull_request_status', 'get_secret_scanning_alert', 'get_workflow_run', 'get_workflow_run_logs', 'get_workflow_run_usage', 'list_branches', 'list_code_scanning_alerts', 'list_commits', 'list_dependabot_alerts', 'list_global_security_advisories', 'list_issue_types', 'list_issues', 'list_org_repository_security_advisories', 'list_pull_requests', 'list_releases', 'list_secret_scanning_alerts', 'list_sub_issues', 'list_tags', 'list_workflow_jobs', 'list_workflow_run_artifacts', 'list_workflow_runs', 'list_workflows', 'push_files', 'remove_sub_issue', 'reprioritize_sub_issue', 'run_workflow', 'search_code', 'search_issues', 'search_orgs', 'search_pull_requests', 'search_repositories', 'update_issue', 'update_pull_request', 'update_pull_request_branch', 'memory', 'pylance mcp server', 'copilotCodingAgent', 'activePullRequest', 'openPullRequest', 'getPythonEnvironmentInfo', 'getPythonExecutableCommand', 'installPythonPackage', 'configurePythonEnvironment', 'configureNotebook', 'listNotebookPackages', 'installNotebookPackages']
 description: 'Execute the repo’s current task and record full deliverables with real, minimal, verifiable evidence.'
 ---
+#runtime-constraints
+- Use MCP tools (fs_loquilex, github) to read/edit—do NOT paste file contents back into chat.
+- Refer to files by path + line ranges; propose unified diffs only.
+- Log all evidence to docs/deliverables/.live.md (gitignored). Chat output = minimal status + next action only.
+- Skip explanations unless something fails or is ambiguous.
+- Batch related edits/tests in one run.
+
+#format
+- Output ONLY: (1) short status, (2) unified diff or exact commands, (3) any TODOs.
 
 #instruction
-Execute the task described in `.github/copilot/current-task.md` while following all project rules in `AGENTS.md`.
+Execute the maintainer-provided task for this run (as described in the active prompt, issue, or conversation) while following all project rules in `AGENTS.md`.
 
 #requirements
-- Work only on the branch specified in `current-task.md` (create/switch as instructed). **Never** use `main`.
+- Work only on the branch specified by the task spec (prompt/issue/conversation). **Never** use `main`.
 - Honor the **offline-first** policy. Do not make network calls or download models unless the task explicitly permits it.
 - Use existing Makefile/CI targets. Do not modify CI workflows, secrets, or repository settings unless the task requires it.
 - If GitHub UI-only steps are needed, mark them **Manual Step Required** with an exact click path.
@@ -29,7 +38,7 @@ Execute the task described in `.github/copilot/current-task.md` while following 
 - **Tool restraint:** Only use tools necessary to complete and verify the task; avoid redundant scans or repeated environment prints if unchanged.
 
 ## Verification Strategy (task-agnostic)
-For **each acceptance criterion** in `current-task.md`:
+For **each acceptance criterion** in the authoritative task spec:
 1. Implement the change with a **minimal diff**.
 2. Capture one **decisive verification** that proves the criterion (command output, test log, file header, grep result, etc.).
 3. Prefer **positive assertions** (status OK, content-type match, test pass) over negative proofs.
@@ -41,7 +50,7 @@ For **each acceptance criterion** in `current-task.md`:
 - When quoting diffs/snippets, include just enough surrounding context to be unambiguous.
 
 #deliverable-format
-Write a single file: `.github/copilot/current-task-deliverables.md`, containing:
+Write a single file: `docs/deliverables/.live.md` (gitignored), containing:
 
 1) **Executive Summary**
    One paragraph: what was attempted, what changed, and the outcome.
@@ -62,4 +71,4 @@ Write a single file: `.github/copilot/current-task-deliverables.md`, containing:
    Each modified file with the kind of change (feature/fix/tests/config/docs).
 
 #output
-Only write `.github/copilot/current-task-deliverables.md`. No additional commentary or files.
+Only write `docs/deliverables/.live.md`. No additional commentary or files.

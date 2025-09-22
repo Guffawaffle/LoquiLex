@@ -1,7 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ASRModel, MTModel, SessionConfig } from '../types';
-import { applySettingsToSessionConfig } from '../utils/settings';
+import { applySettingsToSessionConfig, loadSettings, saveSettings, AppSettings } from '../utils/settings';
+
+const LATENCY_MIN_MS = 50;
+const LATENCY_MAX_MS = 1000;
+const LATENCY_STEP_MS = 50;
 
 export function ModelSelect() {
   const navigate = useNavigate();
@@ -10,6 +14,7 @@ export function ModelSelect() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isStarting, setIsStarting] = useState(false);
+  const [latencyTarget, setLatencyTarget] = useState(200); // Default 200ms
 
   const [config, setConfig] = useState<SessionConfig>({
     asr_model_id: '',
@@ -31,6 +36,10 @@ export function ModelSelect() {
     // Load saved settings and apply as defaults
     const defaultConfig = applySettingsToSessionConfig({});
     setConfig(defaultConfig);
+
+    // Load latency target from settings
+    const settings = loadSettings();
+    setLatencyTarget(settings.audio_latency_target_ms);
   }, []);
 
   const loadModels = async () => {
@@ -65,6 +74,13 @@ export function ModelSelect() {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Helper function to save settings when user preferences change
+  const updatePersistentSetting = <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => {
+    const currentSettings = loadSettings();
+    const updatedSettings = { ...currentSettings, [key]: value };
+    saveSettings(updatedSettings);
   };
 
   const startSession = async () => {
@@ -215,7 +231,11 @@ export function ModelSelect() {
                 <select
                   className="select"
                   value={config.dest_lang}
-                  onChange={(e) => setConfig(prev => ({ ...prev, dest_lang: e.target.value }))}
+                  onChange={(e) => {
+                    const newLang = e.target.value;
+                    setConfig(prev => ({ ...prev, dest_lang: newLang }));
+                    updatePersistentSetting('translation_target', newLang);
+                  }}
                 >
                   <option value="zho_Hans">Chinese (Simplified)</option>
                   <option value="zho_Hant">Chinese (Traditional)</option>
@@ -240,6 +260,28 @@ export function ModelSelect() {
               <option value="cpu">CPU only</option>
               <option value="cuda">CUDA GPU</option>
             </select>
+          </div>
+
+          <div className="form-group">
+            <label className="form-group__label">Audio Latency Target (ms)</label>
+            <p className="form-group__description">
+              Target latency for audio processing. Lower values provide faster response but may increase processing load. Recommended: 200ms.
+            </p>
+            <input
+              type="number"
+              className="select"
+              value={latencyTarget}
+              min={LATENCY_MIN_MS}
+              max={LATENCY_MAX_MS}
+              step={LATENCY_STEP_MS}
+              onChange={(e) => {
+                const newLatency = parseInt(e.target.value, 10);
+                if (!isNaN(newLatency) && newLatency >= LATENCY_MIN_MS && newLatency <= LATENCY_MAX_MS) {
+                  setLatencyTarget(newLatency);
+                  updatePersistentSetting('audio_latency_target_ms', newLatency);
+                }
+              }}
+            />
           </div>
 
           <button

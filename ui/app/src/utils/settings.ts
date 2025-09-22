@@ -1,12 +1,25 @@
 import { SessionConfig } from '../types';
 
+export type RestartScope = 'none' | 'app' | 'backend' | 'full';
+
 export interface AppSettings {
   asr_model_id: string;
   mt_model_id: string;
   device: string;
   cadence_threshold: number; // Word count threshold for triggering EN→ZH translation (1-8). Lower values provide faster but potentially less accurate translations.
   show_timestamps: boolean;
+  translation_target: string; // Target language for translation (e.g., 'zho_Hans', 'spa_Latn')
+  audio_latency_target_ms: number; // Target latency in milliseconds for audio processing
 }
+
+// Restart requirements for each setting
+export const RESTART_METADATA: Record<keyof AppSettings, RestartScope> = {
+  asr_model_id: 'backend',
+  mt_model_id: 'backend', 
+  device: 'backend',
+  cadence_threshold: 'none',
+  show_timestamps: 'none',
+};
 
 export const DEFAULT_SETTINGS: AppSettings = {
   asr_model_id: '',
@@ -14,9 +27,12 @@ export const DEFAULT_SETTINGS: AppSettings = {
   device: 'auto',
   cadence_threshold: 3, // Default: 3 (chosen as a balanced word count for EN→ZH translation)
   show_timestamps: true,
+  translation_target: 'zho_Hans', // Default to Chinese (Simplified)
+  audio_latency_target_ms: 200, // Default target latency of 200ms based on ASR streaming contract
 };
 
 const SETTINGS_KEY = 'loquilex-settings';
+const PENDING_CHANGES_KEY = 'loquilex-pending-changes';
 
 export function loadSettings(): AppSettings {
   try {
@@ -47,6 +63,59 @@ export function clearSettings(): void {
   }
 }
 
+// Pending changes management
+export function savePendingChanges(changes: Partial<AppSettings>): void {
+  try {
+    localStorage.setItem(PENDING_CHANGES_KEY, JSON.stringify(changes));
+  } catch (err) {
+    console.warn('Failed to save pending changes to localStorage:', err);
+  }
+}
+
+export function loadPendingChanges(): Partial<AppSettings> {
+  try {
+    const saved = localStorage.getItem(PENDING_CHANGES_KEY);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      return parsed;
+    }
+  } catch (err) {
+    console.warn('Failed to load pending changes from localStorage:', err);
+  }
+  return {};
+}
+
+export function clearPendingChanges(): void {
+  try {
+    localStorage.removeItem(PENDING_CHANGES_KEY);
+  } catch (err) {
+    console.warn('Failed to clear pending changes from localStorage:', err);
+  }
+}
+
+// Check if any pending changes require restart
+export function getRequiredRestartScope(changes: Partial<AppSettings>): RestartScope {
+  let maxScope: RestartScope = 'none';
+  
+  for (const key in changes) {
+    const setting = key as keyof AppSettings;
+    const scope = RESTART_METADATA[setting];
+    
+    // Priority order: full > backend > app > none
+    if (scope === 'full' || (scope === 'backend' && maxScope !== 'full') || 
+        (scope === 'app' && maxScope === 'none')) {
+      maxScope = scope;
+    }
+  }
+  
+  return maxScope;
+}
+
+// Check if a setting requires restart
+export function requiresRestart(setting: keyof AppSettings): boolean {
+  return RESTART_METADATA[setting] !== 'none';
+}
+
 /**
  * Apply saved settings to a SessionConfig, using settings as defaults
  * while allowing per-session overrides
@@ -62,7 +131,7 @@ export function applySettingsToSessionConfig(
     asr_model_id: config.asr_model_id || savedSettings.asr_model_id,
     mt_enabled: config.mt_enabled ?? true,
     mt_model_id: config.mt_model_id || savedSettings.mt_model_id,
-    dest_lang: config.dest_lang || 'zho_Hans',
+    dest_lang: config.dest_lang || savedSettings.translation_target,
     device: config.device || savedSettings.device,
     vad: config.vad ?? true,
     beams: config.beams ?? 1,

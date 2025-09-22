@@ -1,16 +1,24 @@
 # AGENTS.md
 
-This repository uses GitHub Copilot **Coding Agent** (Preview).
-Roles:
-- **Product lead:** you (maintainer/reviewer)
-- **Senior dev:** Lex (advisor/context)
-- **Junior dev:** Copilot (agent)
+This repository uses AI coding agents under human review.
 
-The agent must follow these steps when working on tasks.
+## Roles
+- **Product lead:** Maintainer/Reviewer (you)
+- **Senior dev:** Lex (advisor/context)
+- **Junior dev:** Agent (executor)
+
+Agents MUST follow the workflow and guardrails below.
 
 ---
 
-## Setup
+## Operating Modes (must declare which one)
+- **Workspace-Only (default):** Edit files in this repo only. No network calls beyond fetching existing deps already pinned in lockfiles. No secret edits.
+- **Cloud Sandbox (optional):** Allowed only if the active task spec (prompt, issue, or maintainer directive) explicitly authorizes it. Clone, run, and test in an isolated sandbox; redact secrets; include full logs/diffs in deliverables.
+- **Full Access:** **Prohibited** unless explicitly granted in the current task.
+
+---
+
+## Setup (task-agnostic)
 ```bash
 python3 -m venv .venv
 . .venv/bin/activate
@@ -20,80 +28,92 @@ python3 -m venv .venv
 ```
 
 ## Build
+
 ```bash
-# If no build step is required, skip.
+# If no build is required, state that clearly.
 echo "No build step"
 ```
 
-## Test
-- If `tests/` exists, run its suite (e.g., `pytest`, `npm test`, etc.).
-- Ensure all lint/type-check targets in CI pass (`ruff`, `mypy`, `phpcs`, etc. if defined).
-- Manual checklists or extra validation should be included in **task deliverables**.
+## Test & Gates
+
+* Run the project’s **lightweight CI parity**:
+
+  ```bash
+  make run-ci-mode || true
+  ```
+* If the task requires heavier checks:
+
+  ```bash
+  make run-local-ci || true
+  ```
+* Respect **offline-first**: tests must not fetch models or hit the network; use fakes/mocks when available.
+* Gates must be **green** before a PR is “ready”: lint/format, typing, unit tests (and e2e when requested).
 
 ---
 
-## Quality Gates
-- **Minimal, focused diffs**: only touch files in scope.
-- **Valid Markdown** (no broken fences).
-- **POSIX-friendly shell** where scripts are required.
-- **CI green**: All tests, lint, and type checks must pass before PR is ready.
+## Quality Rules
+
+* **Minimal, focused diffs**: only files in scope.
+* **Valid Markdown**: no broken fences, no trailing whitespace.
+* **POSIX-friendly shell** for scripts.
+* **No dependency upgrades** or toolchain changes unless the task explicitly asks.
 
 ---
 
-## PR Rules
-- **Commit style**: Use imperative mood (`Add…`, `Fix…`, `Update…`).
-- **PR description**: Must include WHAT changed, WHY it changed, and reference the related task issue.
-- **No secrets/CI/deploy edits** unless explicitly instructed.
+## Git / PR Rules
 
-- **Task Source of Truth**
-  - If `.github/copilot/current-task.md` exists, treat it as the authoritative task description.
-  - Otherwise, follow the acceptance criteria in the assigned issue.
+* **Remotes:** Prefer SSH; do not switch to HTTPS.
+* **Merge strategy (default):** When syncing `origin/main` into a feature branch, use `git merge -X ours origin/main`. If the intent is to prefer main, explicitly use `-X theirs`.
+* **No force-push** unless explicitly instructed.
+* **Commit style:** Imperative mood (`Add…`, `Fix…`, `Update…`).
+* **Squash merge** preferred.
+* **PR description must include:** WHAT changed, WHY it changed, and task reference.
+* **Do not edit secrets/CI/deploy** unless explicitly instructed.
 
-- **Task Results**
-  - Record a detailed review and output in `.github/copilot/current-task-deliverables.md`.
+---
+
+## Source of Truth
+
+* The maintainer-provided task spec (prompt file, issue/PR description, or direct instruction) is authoritative.
+* Record the exact source (path or URL) and digest at the top of the deliverables log so reviewers can trace what was executed.
+* If the spec changes mid-task, add a new timestamped log entry noting the update and the new digest.
+* Active prompt files live under `.github/prompts/`: `main.prompt.md`, `make-fix.prompt.md`, `make-fix-full.prompt.md`, `current-task.prompt.md`, and `next-pr-runner.md`.
 
 ---
 
 ## Deliverables Policy
 
-- After executing a task, always produce `.github/copilot/current-task-deliverables.md` as a detailed running log for the PR.
-- Never omit or over-summarize: include full logs, diffs, error messages, and verification steps.
+* Maintain exactly one local `docs/deliverables/.live.md` (gitignored). This is the ephemeral working log for the active branch.
+* When a PR merges, a hand-off occurs, or reviewers need the state, copy the log to `docs/deliverables/ARCHIVE/PR-<number>-<YYYYMMDD>-<shortsha>.md` (tracked) and share context in the PR notes; reset or remove the root log afterward so the next task starts clean.
+* Top of file requirements:
+  - `Task:` include the authoritative source (e.g., `.github/prompts/next-pr-runner.md`, issue/PR URL, or “Conversation — YYYY-MM-DD”).
+  - `SHA256:` hash of the source file if stored in the repo (`sha256sum <file>`). Use `n/a` when the spec is conversational or remote-only.
+  - Quick fingerprints: `**Git:** branch=…, head=…, base=origin/main@…` and `**Env:** Python …; Ruff …; mypy …; OS=…`.
+  - Current scope declaration: `**Mode:** …`, `**Network:** …`, `**Secrets/CI:** …` (update whenever scope changes).
+* Maintain `## Executive Summary` at the top; keep it concise and updated as work progresses.
+* Append-only log format:
+  - Use a `## Log` section.
+  - Each entry starts with `### <ISO8601 timestamp with offset> — <scope>`.
+  - Immediately restate scope (`**Mode:** …`, `**Network:** …`, `**Secrets/CI:** …`).
+  - Capture actions as bullets; include command timestamps and commit hashes when relevant.
+  - When reusing patterns, include a “Search receipt” line showing the grep command and hit paths (no contents).
+  - Wrap long outputs, diffs, or logs in `<details>` blocks with a succinct `<summary>` (include line counts when possible).
+* Evidence must be real, complete outputs; redact secrets only. Avoid truncating unless the `<details>` wrapper is used.
+* Use `docs/deliverables/templates/deliverables-template.md` as the canonical scaffold for new entries; update the template if the policy evolves.
 
-### Deliverables Report Format
-
-Each deliverables file must include:
-
-1. **Executive Summary**
-   Concise overview of what was attempted, what changed, and the outcome.
-
-2. **Steps Taken**
-   Bullet-point log of how the task was executed (commands, diffs, edits, config changes).
-
-3. **Evidence & Verification**
-   - Full command outputs (`pytest`, `mypy`, `ruff`, etc.).
-   - Before/after diffs or code snippets.
-   - Logs and stack traces where relevant.
-   - Do not truncate — include the complete context needed for analysis.
-
-4. **Final Results**
-   Whether the goals were met, remaining issues, and follow-up recommendations.
-
-5. **Files Changed**
-   List all modified files and the type of change.
-
-### Template
-Use `.github/copilot/deliverables-template.md` as a starting point for new deliverables.
-
-### Logging Policy
-
-- `.github/copilot/current-task-deliverables.md` acts as the **running log** for the PR.
-- Overwrite or extend this file as needed, but never remove historical context unless instructed.
-- This file is part of the review record — keep it detailed and unabridged.
+Treat `docs/deliverables/.live.md` as scratch space during execution. When the work rotates or merges, capture the final state in the archive path and clear the live file so the next assignee starts with a blank log.
 
 ---
 
 ## Guardrails
-- Never run destructive commands.
-- Never delete or edit out-of-scope files.
-- If acceptance criteria are unclear, **open a question in the PR** instead of guessing.
-- Follow repo conventions (tests required, semantic commits, docs when behavior changes).
+
+* Never run destructive commands.
+* Never delete or edit out-of-scope files.
+* If acceptance criteria are unclear, open questions in the PR — do not guess.
+* Search the repo for existing patterns before proposing new APIs/tools.
+* If a task seems too large or complex, break it down and seek approval before proceeding.
+* If blocked, push a draft PR labeled `blocked` with details in the deliverables file.
+* Always respect the project’s existing conventions and style.
+* Do not bypass environment variable rules or introduce hidden side effects.
+* Do not change core API/session contracts without updating tests and documentation.
+* Do not introduce network calls in tests or implicit model downloads.
