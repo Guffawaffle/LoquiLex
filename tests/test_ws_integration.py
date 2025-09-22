@@ -32,14 +32,17 @@ except Exception:
     _HTTPX_AVAILABLE = False
 
 # requests (optional)
-requests: Optional[ModuleType] = None
+requests_mod: Optional[ModuleType] = None
 try:
-    import requests
+    import requests as _requests  # type: ignore[import-untyped]
 
     _REQUESTS_AVAILABLE = True
 except Exception:
-    requests = None
+    _requests = None
     _REQUESTS_AVAILABLE = False
+finally:
+    # Bind to a consistently named optional module variable
+    requests_mod = _requests
 
 # Build the exception tuple used in the except-block dynamically so the
 # test module can be collected even if `requests` is not installed.
@@ -50,8 +53,8 @@ _EXC_TYPES_LIST: List[Type[BaseException]] = [
 ]
 if _HTTPX_AVAILABLE and httpx is not None:
     _EXC_TYPES_LIST.extend([httpx.ConnectError, httpx.HTTPStatusError])
-if _REQUESTS_AVAILABLE and requests is not None:
-    _EXC_TYPES_LIST.append(requests.exceptions.RequestException)
+if _REQUESTS_AVAILABLE and requests_mod is not None:
+    _EXC_TYPES_LIST.append(requests_mod.exceptions.RequestException)
 _EXC_TYPES: Tuple[Type[BaseException], ...] = tuple(_EXC_TYPES_LIST)
 
 
@@ -159,7 +162,8 @@ def test_websocket_envelope_integration():
                     # requests HTTP errors expose response as well
                     elif (
                         _REQUESTS_AVAILABLE
-                        and isinstance(e, requests.exceptions.RequestException)
+                        and requests_mod is not None
+                        and isinstance(e, requests_mod.exceptions.RequestException)
                         and getattr(e, "response", None) is not None
                     ):
                         status_code = getattr(e.response, "status_code", None)
@@ -172,7 +176,7 @@ def test_websocket_envelope_integration():
                         pytest.skip(f"WebSocket connection failed: {e}")
                     if _HTTPX_AVAILABLE and isinstance(e, httpx.ConnectError):
                         pytest.skip(f"WebSocket connection failed: {e}")
-                    if _REQUESTS_AVAILABLE and isinstance(e, requests.exceptions.ConnectionError):
+                    if _REQUESTS_AVAILABLE and isinstance(e, requests_mod.exceptions.ConnectionError):
                         pytest.skip(f"WebSocket connection failed: {e}")
 
                     # Otherwise, re-raise so the test fails and surfaces unexpected errors

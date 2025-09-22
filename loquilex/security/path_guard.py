@@ -129,18 +129,17 @@ class PathGuard:
 
     def _is_within_roots(self, candidate: Path) -> bool:
         """
-        Returns True if candidate is fully contained in one of the allowed roots, 
-        following both normalisation and symlink resolution as far as possible.
+        Returns True if candidate is fully contained in one of the allowed roots,
+        following normalization and canonicalization (symlinks resolved as far as possible).
         """
-        try:
-            # Try to resolve symlinks and ensure canonical path, fail if not all components exist
-            candidate_resolved = candidate.resolve(strict=True)
-        except FileNotFoundError:
-            # If the path doesn't fully exist (e.g., being created), fall back to absolute path
-            candidate_resolved = candidate.absolute()
+        # Normalize without requiring existence; resolves symlinks where possible
+        candidate_resolved = candidate.resolve(strict=False)
+
         for root in self._allowed_roots:
+            # Roots are stored normalized, but re-normalize defensively
+            root_resolved = root.resolve(strict=False)
             try:
-                candidate_resolved.relative_to(root)
+                candidate_resolved.relative_to(root_resolved)
             except ValueError:
                 continue
             else:

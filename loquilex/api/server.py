@@ -56,11 +56,16 @@ DEV_MODE = os.getenv("LX_DEV", "0") == "1"
 _events_alias_warned = False
 
 app = FastAPI(title="LoquiLex API", version="0.1.0")
+
+
 # Global safety net: log exceptions, return generic 500 without internals
 @app.exception_handler(Exception)
 async def unhandled_exception_handler(request: Request, exc: Exception):
-    logger.error("Unhandled exception on %s: %s", getattr(request.url, "path", "?"), exc, exc_info=True)
+    logger.error(
+        "Unhandled exception on %s: %s", getattr(request.url, "path", "?"), exc, exc_info=True
+    )
     return JSONResponse(status_code=500, content={"detail": "Internal Server Error"})
+
 
 # Admin token and simple in-process caches (overridable in tests)
 _ADMIN_TOKEN: Optional[str] = os.getenv("LX_ADMIN_TOKEN")
@@ -460,18 +465,14 @@ async def set_base_directory(req: BaseDirectoryReq) -> BaseDirectoryResp:
             path=str(target_path), valid=True, message="Directory is valid and writable"
         )
     except Exception as exc:
-        return BaseDirectoryResp(
-            path=str(target_path), valid=False, message=f"Invalid path: {exc}"
-        )
+        return BaseDirectoryResp(path=str(target_path), valid=False, message=f"Invalid path: {exc}")
 
 
 @app.get("/profiles")
 def get_profiles() -> List[str]:
     if not PROFILES_ROOT.is_dir():
         return []
-    return sorted(
-        [p.stem for p in PROFILES_ROOT.glob("*.json") if p.is_file()]
-    )
+    return sorted([p.stem for p in PROFILES_ROOT.glob("*.json") if p.is_file()])
 
 
 @app.get("/profiles/{name}")
