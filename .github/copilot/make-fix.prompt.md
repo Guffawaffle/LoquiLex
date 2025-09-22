@@ -1,9 +1,3 @@
----
-mode: 'agent'
-model: GPT-5
-description: 'Run a specified Make target and iterate until it succeeds, fixing blocking failures with minimal diffs.'
----
-
 #instruction
 Run the specified `make` target in the LoquiLex repo and fix failures methodically until the target succeeds.
 
@@ -43,7 +37,7 @@ Run the specified `make` target in the LoquiLex repo and fix failures methodical
    - If CI config must change, justify the necessity and keep the diff minimal.
 
 #deliverable-format
-Write **only** the following report to `docs/deliverables/.live.md` (gitignored):
+Write **only** the following report to `.github/copilot/current-task-deliverables.md`:
 
 1. **Executive Summary**
    - What target was run, the main failures found, key changes made, and the outcome.
@@ -69,8 +63,8 @@ Write **only** the following report to `docs/deliverables/.live.md` (gitignored)
 - Prefer `anyio`-compatible async patterns in tests.
 
 #output
-- Commit changes with imperative messages (e.g., `fix(streaming): prevent loop mismatch in thread handoff`).
-- Produce `docs/deliverables/.live.md` exactly as specified.
+- Commit changes with imperative messages (e.g., `fix(asr): prevent loop mismatch in thread handoff`).
+- Produce `.github/copilot/current-task-deliverables.md` exactly as specified.
 
 #run
 - TARGET: <FILL>

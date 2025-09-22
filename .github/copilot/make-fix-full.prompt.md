@@ -1,9 +1,3 @@
----
-mode: 'agent'
-model: GPT-5
-description: 'Run the full Makefile test suite in offline/online modes and fix failures until all checks pass.'
----
-
 #instruction
 Run the full repository test suite via Makefile targets (CI-equivalent), diagnose failures, and fix them iteratively with minimal diffs until all checks pass.
 
@@ -51,7 +45,7 @@ Run the suite in BOTH environments (OFFLINE first, then ONLINE), reusing the sam
 - Keep commit messages imperative; reference ISSUE_REF if provided.
 
 #deliverable-format
-Write ONLY this report to `docs/deliverables/.live.md` (gitignored):
+Write ONLY this report to `.github/copilot/current-task-deliverables.md`:
 1. Executive Summary — Which target(s) ran, failures found, key changes, outcome (OFFLINE vs ONLINE).
 2. Steps Taken — Bullet list of commands, diagnoses, and edits (per iteration), clearly separated by OFFLINE and ONLINE runs.
 3. Evidence & Verification — Full command outputs for failing→passing runs; relevant diffs/snippets, grouped per environment.

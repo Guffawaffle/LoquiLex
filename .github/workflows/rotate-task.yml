@@ -1,0 +1,30 @@
+name: Rotate Current Task
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 9 * * 1" # Mondays 09:00 UTC
+
+permissions:
+  contents: write   # allow committing generated updates if your rotate step does that
+  pull-requests: write
+
+concurrency:
+  group: rotate-task-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  rotate:
+    name: Rotate task
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Rotate (script or placeholder)
+        run: |
+          if [ -x .github/copilot/rotate-task.sh ]; then
+            .github/copilot/rotate-task.sh
+          else
+            echo "No .github/copilot/rotate-task.sh found; rotation is a no-op."
+          fi
