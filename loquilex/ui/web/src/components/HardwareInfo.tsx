@@ -195,11 +195,13 @@ export default function HardwareInfo({ onRefresh }: Props) {
 
       {/* Memory Info */}
       <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
-        <div className="text-sm text-slate-600 dark:text-slate-400">
-          <strong>System Memory:</strong> {snapshot.memory_available_gb.toFixed(1)}GB available / {snapshot.memory_total_gb.toFixed(1)}GB total
-          <span className="ml-4">
+        <div className="flex flex-wrap items-center gap-x-4 text-sm text-slate-600 dark:text-slate-400">
+          <div>
+            <strong>System Memory:</strong> {snapshot.memory_available_gb.toFixed(1)}GB available / {snapshot.memory_total_gb.toFixed(1)}GB total
+          </div>
+          <div>
             <strong>Platform:</strong> {snapshot.platform_info.system} {snapshot.platform_info.release}
-          </span>
+          </div>
         </div>
       </div>
 

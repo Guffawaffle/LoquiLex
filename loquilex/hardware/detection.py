@@ -14,9 +14,7 @@ from typing import Any, Dict, List, Optional, Tuple
 # Annotate as Any so assigning None in the fallback is type-safe for mypy.
 psutil: Any
 try:
-    import psutil as _psutil
-
-    psutil = _psutil
+    import psutil
 except Exception:
     psutil = None
 
