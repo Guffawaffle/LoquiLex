@@ -8,15 +8,16 @@ from __future__ import annotations
 import os
 import platform
 from dataclasses import dataclass, asdict
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, cast
 
 # Optional runtime import: psutil may not be installed in minimal profiles.
-# Annotate as Any so assigning None in the fallback is type-safe for mypy.
-psutil: Any
+# Use an internal alias and cast to avoid mypy's Module/None assignment conflict.
 try:
-    import psutil
+    import psutil as _psutil
 except Exception:
-    psutil = None
+    _psutil = None  # type: ignore[assignment]
+
+psutil = cast(Any, _psutil)
 
 
 # Module-level fallback memory values (can be overridden via env vars).

@@ -55,6 +55,20 @@ _events_alias_warned = False
 app = FastAPI(title="LoquiLex API", version="0.1.0")
 
 
+# Hardware snapshot cache and configuration
+# TTL for cached snapshot in seconds (default 30s) and timeout for probing (default 10s)
+_HW_SNAPSHOT_TTL = float(os.getenv("LX_HW_SNAPSHOT_TTL_SEC", "30"))
+_HW_SNAPSHOT_TIMEOUT = float(os.getenv("LX_HW_SNAPSHOT_TIMEOUT_SEC", "10"))
+# Cache and lock (kept un-annotated to avoid complex serialization in typecheck)
+_hw_snapshot_cache = None
+_hw_snapshot_cache_ts = 0.0
+_hw_snapshot_lock = None
+
+# Admin token for protected endpoints (optional). When set, endpoints under
+# `/admin/*` require a Bearer token in `Authorization` or `X-Admin-Token` header.
+_ADMIN_TOKEN = os.getenv("LX_ADMIN_TOKEN")
+
+
 # CSP and security headers
 @app.middleware("http")
 async def security_headers(request: Request, call_next):
@@ -313,13 +327,115 @@ def get_mt_langs(model_id: str) -> Dict[str, Any]:
 
 @app.get("/hardware/snapshot")
 async def get_hardware_snapshot_endpoint() -> Dict[str, Any]:
-    """Get hardware system snapshot including GPU/CPU/Audio devices."""
-    try:
-        snapshot = get_hardware_snapshot()
-        return snapshot.to_dict()
-    except Exception as e:
-        logger.error(f"Hardware snapshot failed: {e}")
-        raise HTTPException(status_code=500, detail=f"Hardware detection failed: {e}")
+    """Get hardware system snapshot including GPU/CPU/Audio devices.
+
+    The underlying `get_hardware_snapshot()` performs blocking operations
+    (psutil, PyTorch CUDA queries, sounddevice probing). Run it in a thread
+    pool via `asyncio.to_thread` to avoid blocking the ASGI event loop.
+    """
+    # Declare globals before use so static checkers know these are module-level
+    global _hw_snapshot_cache, _hw_snapshot_cache_ts
+
+    # Fast path: return cached snapshot when fresh
+    now = time.time()
+    if _hw_snapshot_cache is not None and (now - _hw_snapshot_cache_ts) < _HW_SNAPSHOT_TTL:
+        return _hw_snapshot_cache
+
+    # Ensure only one concurrent probe runs when cache is stale. Initialize
+    # the lock lazily to avoid binding event-loop resources at import time.
+    global _hw_snapshot_lock
+    if _hw_snapshot_lock is None:
+        _hw_snapshot_lock = asyncio.Lock()
+
+    async with _hw_snapshot_lock:
+        # Another coroutine might have populated the cache while we waited
+        now = time.time()
+        if _hw_snapshot_cache is not None and (now - _hw_snapshot_cache_ts) < _HW_SNAPSHOT_TTL:
+            return _hw_snapshot_cache
+
+        try:
+            # Run blocking probe in thread pool with a timeout
+            snapshot = await asyncio.wait_for(
+                asyncio.to_thread(get_hardware_snapshot), timeout=_HW_SNAPSHOT_TIMEOUT
+            )
+            data = snapshot.to_dict()
+            # Update cache
+            _hw_snapshot_cache = data
+            _hw_snapshot_cache_ts = time.time()
+            return data
+        except asyncio.TimeoutError:
+            logger.error("Hardware snapshot timed out")
+            raise HTTPException(status_code=504, detail="Hardware detection timed out")
+        except Exception as e:
+            logger.error(f"Hardware snapshot failed: {e}")
+            raise HTTPException(status_code=500, detail=f"Hardware detection failed: {e}")
+
+
+def _check_admin_auth(request: Request) -> None:
+    """Validate admin token from `Authorization: Bearer <token>` or `X-Admin-Token`.
+
+    Raises `HTTPException(status_code=403)` when token is configured but missing/invalid.
+    If `_ADMIN_TOKEN` is not set, admin checks are a no-op (useful for dev).
+    """
+    if not _ADMIN_TOKEN:
+        return
+
+    # Try Authorization header first
+    auth = request.headers.get("authorization") or request.headers.get("Authorization")
+    token = None
+    if auth and auth.lower().startswith("bearer "):
+        token = auth.split(None, 1)[1].strip()
+
+    # Fallback to explicit header
+    if not token:
+        token = request.headers.get("x-admin-token")
+
+    if not token or token != _ADMIN_TOKEN:
+        raise HTTPException(status_code=403, detail="admin auth required")
+
+
+@app.post("/admin/cache/clear", summary="Clear in-memory caches", operation_id="admin_clear_cache")
+async def admin_clear_cache(request: Request) -> Dict[str, Any]:
+    """Admin-only endpoint to clear in-memory caches (hardware snapshot).
+
+    Protected by `LX_ADMIN_TOKEN` when configured. Safe to call multiple times.
+    Returns diagnostic info about previous cache state.
+    """
+    # Validate admin auth (no-op if `_ADMIN_TOKEN` unset)
+    _check_admin_auth(request)
+
+    # Use the same lock as snapshot endpoint if initialized to avoid racing probes.
+    global _hw_snapshot_cache, _hw_snapshot_cache_ts, _hw_snapshot_lock
+    # Capture prior cache diagnostics
+    now = time.time()
+    prior_present = _hw_snapshot_cache is not None
+    prior_age = None
+    if prior_present:
+        prior_age = now - _hw_snapshot_cache_ts if _hw_snapshot_cache_ts else None
+
+    if _hw_snapshot_lock is None:
+        # Nothing in flight; just clear
+        _hw_snapshot_cache = None
+        _hw_snapshot_cache_ts = 0.0
+        return {
+            "ok": True,
+            "cleared": True,
+            "prior_cache_present": prior_present,
+            "prior_cache_age_sec": prior_age,
+            "admin_auth_required": bool(_ADMIN_TOKEN),
+        }
+
+    # Acquire lock to synchronize with any ongoing probes
+    async with _hw_snapshot_lock:
+        _hw_snapshot_cache = None
+        _hw_snapshot_cache_ts = 0.0
+        return {
+            "ok": True,
+            "cleared": True,
+            "prior_cache_present": prior_present,
+            "prior_cache_age_sec": prior_age,
+            "admin_auth_required": bool(_ADMIN_TOKEN),
+        }
 
 
 @app.get("/healthz")

@@ -51,9 +51,7 @@ def _install_fakes() -> None:
     # "module has no attribute" errors in tests running with strict mypy.
     setattr(fake_transformers, "AutoModelForSeq2SeqLM", DummyModel)
     setattr(fake_transformers, "AutoTokenizer", DummyTokenizer)
-    setattr(
-        fake_transformers, "M2M100ForConditionalGeneration", DummyModel
-    )
+    setattr(fake_transformers, "M2M100ForConditionalGeneration", DummyModel)
     setattr(fake_transformers, "M2M100Tokenizer", DummyTokenizer)
 
     sys.modules.setdefault("transformers", fake_transformers)
