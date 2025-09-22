@@ -1,5 +1,84 @@
 ## Executive Summary
 
+## 2025-09-21 — Reconcile PR copilot/fix-105 with origin/main (America/Chicago)
+
+### Executive Summary
+- Selected next PR: #120 "Add persistent settings for translation target language and audio latency goals" (branch `copilot/fix-105`).
+- Created safety branch: `reconcile/copilot/fix-105/20250922-0255`.
+- Merged `origin/main` into safety branch using `-X ours` (no file-level conflicts reported by Git; merge completed cleanly).
+- Verified quality gates locally: ruff, mypy, and pytest — all green (237 passed, 3 skipped).
+- Fast-forwarded and pushed feature branch after integrating remote divergence.
+- Updated PR body with Conflict Resolution summary and merge commit reference.
+
+### Steps Taken
+1) Select next PR
+   - Command: `gh pr list --state open --json number,headRefName,updatedAt,title,labels,assignees`
+   - Choice: most recently updated PR assigned to maintainer — branch `copilot/fix-105` (PR #120).
+2) Prepare branch
+   - `git fetch --all --prune`
+   - `git checkout copilot/fix-105`
+   - `git switch -c reconcile/copilot/fix-105/20250922-0255`
+3) Merge main with momentum
+   - `git merge -X ours origin/main`
+   - Result: Merge by 'ort' strategy; no conflicts surfaced. Many UI files added/updated via feature branch context, retained by ours preference.
+4) Verify quality gates
+   - `make ci` (runs ruff, mypy, pytest in CI-parity mode)
+   - Outcome: lint/typecheck clean; pytest summary `237 passed, 3 skipped, 1 warning` in ~21s.
+5) Push & update PR
+   - Initial push rejected (non-fast-forward) due to remote divergence.
+   - Resolved by merging `origin/copilot/fix-105` into safety with `-X ours`, amending message, then fast-forwarding `copilot/fix-105` to safety and pushing.
+   - PR body updated with Conflict Resolution details and timestamp (America/Chicago).
+
+### Evidence & Verification
+- Lint (ruff): All checks passed
+  - Command: `.venv/bin/python -m ruff check loquilex tests`
+- Typecheck (mypy): Success, no issues in 50 files
+  - Command: `.venv/bin/python -m mypy loquilex`
+- Tests (pytest): `237 passed, 3 skipped, 1 warning`
+  - Command: `LX_OFFLINE= HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 HF_HUB_DISABLE_TELEMETRY=1 .venv/bin/python -m pytest -q`
+- Merge stats (first merge from origin/main into safety):
+  - Git output excerpt:
+```
+Merge made by the 'ort' strategy.
+ .github/copilot/current-task-deliverables.md           | 179 ++++++++++++++++
+ dropoff/loquilex-ui-spec/04_RELAUNCH_MATRIX.md         |  43 ++++
+ dropoff/loquilex-ui-spec/05_SETTINGS_SCHEMA.json       |  89 ++++++++
+ ui/app/package-lock.json                               |  24 +++
+ ui/app/package.json                                    |  14 +-
+ ui/app/playwright.a11y.config.ts                       |  40 ++++
+ ...
+ 25 files changed, 2225 insertions(+), 52 deletions(-)
+```
+- Push resolution (remote divergence fix):
+```
+git merge -X ours origin/copilot/fix-105
+[copilot/fix-105 d41e597] merge: incorporate origin/copilot/fix-105; prefer ours; sync with origin/main
+Date: Sun Sep 21 21:59:19 2025 -0500
+To github.com:Guffawaffle/LoquiLex.git
+   86b1303..d41e597  copilot/fix-105 -> copilot/fix-105
+```
+
+### Conflict Resolution Report
+- Strategy: `git merge -X ours origin/main` into safety branch `reconcile/copilot/fix-105/20250922-0255`.
+- File-level decisions:
+  - No manual conflict hunks reported by Git; merge completed without per-file conflicts.
+  - Exceptions per policy: none required (no `.github/workflows/**` or lockfile conflicts surfaced in this merge).
+- Remote divergence handling:
+  - Performed `git merge -X ours origin/copilot/fix-105` on the feature branch context to include remote updates while preserving local resolution.
+  - Amended merge message for clarity.
+
+### Final Results
+- Status: Ready — branch `copilot/fix-105` pushed and PR updated.
+- PR: will reflect appended Conflict Resolution section with timestamp and merge SHA.
+- Follow-ups: None required; CI gates pass locally.
+
+### Files Changed (by merge from origin/main)
+- See git stat excerpt above; representative paths include:
+  - `ui/app/src/components/SchemaSettingsView.tsx` (new)
+  - `ui/app/src/components/forms/**` (new form system)
+  - `ui/app/src/utils/settings.ts` (updated)
+  - `ui/app/src/test/e2e/settings-a11y.spec.ts` (added)
+
 Changed several GitHub Actions workflows to add an early step that disables Ubuntu ESM (Enterprise Security Maintainers) to prevent `apt` from contacting `esm.ubuntu.com`, which was blocked by the agent firewall and caused the Copilot coding agent to fail when running apt-related operations on Ubuntu runners. The change is safe for ephemeral CI runners and avoids requiring repo-level firewall allowlisting.
 
 
