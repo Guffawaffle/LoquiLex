@@ -51,17 +51,18 @@ class PathGuard:
         must_exist: bool = True,
     ) -> Path:
         """Return a safe directory path subject to guard constraints."""
-
-        path = self._normalise(candidate, allow_relative=allow_relative, must_exist=must_exist)
+        # When creating, normalisation must not require existence
+        effective_must_exist = False if create else must_exist
+        path = self._normalise(candidate, allow_relative=allow_relative, must_exist=effective_must_exist)
 
         if path.exists():
             if not path.is_dir():
                 raise PathSecurityError(f"{path} is not a directory")
         else:
-            if must_exist:
-                raise PathSecurityError(f"directory does not exist: {path}")
             if create:
                 path.mkdir(parents=True, exist_ok=True)
+            elif must_exist:
+                raise PathSecurityError(f"directory does not exist: {path}")
 
         return path
 
@@ -106,9 +107,11 @@ class PathGuard:
 
     def resolve_relative(self, base_dir: str | Path, fragment: str | Path) -> Path:
         """Resolve ``fragment`` as a child of ``base_dir`` while enforcing constraints."""
-
         base_path = self.ensure_dir(base_dir, allow_relative=False, create=False)
-        candidate = (base_path / Path(fragment)).resolve(strict=False)
+        frag = Path(fragment)
+        if frag.is_absolute():
+            raise PathSecurityError("absolute fragments are not permitted")
+        candidate = (base_path / frag).resolve(strict=False)
         if not self._is_within_roots(candidate):
             raise PathSecurityError(f"path escapes allowed roots: {candidate}")
         return candidate

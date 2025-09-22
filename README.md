@@ -201,3 +201,26 @@ LoquiLex is maintained with an automated security posture:
 - **OpenSSF Scorecards** for repo hygiene and best practices
 
 See [SECURITY.md](./SECURITY.md) for how to report vulnerabilities.
+
+## Static Analysis (CodeQL)
+
+Run CodeQL locally and view results quickly:
+
+```bash
+# Analyze JS + Python (default suites)
+make codeql
+
+# Extended security suite
+make codeql-extended
+
+# Language-specific
+make codeql-js
+make codeql-py
+
+# Summarize existing SARIF files
+make codeql-view
+
+# Direct script usage
+bash scripts/run-codeql.sh --extended --threads 4
+bash scripts/run-codeql.sh view --lang js --out codeql-out --limit 50
+```
