@@ -1,7 +1,15 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { BrowserRouter } from 'react-router-dom';
 import { SettingsView } from '../SettingsView';
+
+// Mock ResizeObserver for tooltip positioning logic
+(globalThis as any).ResizeObserver = vi.fn().mockImplementation(() => ({
+  observe: vi.fn(),
+  unobserve: vi.fn(),
+  disconnect: vi.fn(),
+}));
 
 // Mock the settings module
 vi.mock('../../utils/settings', () => ({
@@ -92,7 +100,7 @@ describe('SettingsView', () => {
       expect(screen.getByText('Settings')).toBeInTheDocument();
     });
 
-  // Check that all form elements are present
+    // Check that all form elements are present
     expect(screen.getByRole('combobox', { name: /ASR Model/ })).toBeInTheDocument();
     expect(screen.getByRole('combobox', { name: /MT Model/ })).toBeInTheDocument();
     expect(screen.getByRole('combobox', { name: /Device/ })).toBeInTheDocument();
@@ -109,17 +117,15 @@ describe('SettingsView', () => {
     renderSettingsView();
 
     await waitFor(() => {
-      expect(screen.getByText('Settings')).toBeInTheDocument();
+      expect(screen.getByText('Whisper Small (244MB)')).toBeInTheDocument();
+      expect(screen.getByText('Whisper Large (1.5GB) - Download needed')).toBeInTheDocument();
+      expect(screen.getByText('NLLB 600M (1.2GB)')).toBeInTheDocument();
+      expect(screen.getByText('NLLB 1.3B (2.7GB) - Download needed')).toBeInTheDocument();
     });
 
-    const asrSelect = screen.getByLabelText('ASR Model');
-    const mtSelect = screen.getByLabelText('MT Model');
-
-    expect(asrSelect).toBeInTheDocument();
-    expect(mtSelect).toBeInTheDocument();
-
-    const deviceSelect = screen.getByLabelText('Device');
-    expect(deviceSelect).toBeInTheDocument();
+    expect(screen.getByLabelText('ASR Model')).toBeInTheDocument();
+    expect(screen.getByLabelText('MT Model')).toBeInTheDocument();
+    expect(screen.getByLabelText('Device')).toBeInTheDocument();
   });
 
   it('should update cadence threshold when slider changes', async () => {
@@ -180,6 +186,67 @@ describe('SettingsView', () => {
     });
   });
 
+  it('should show tooltips on hover for accessibility', async () => {
+    const user = userEvent.setup();
+    renderSettingsView();
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('ASR Model')).toBeInTheDocument();
+    });
+
+    const asrSelect = screen.getByLabelText('ASR Model');
+    await user.hover(asrSelect);
+
+    await waitFor(() => {
+      expect(screen.getByRole('tooltip')).toBeInTheDocument();
+      expect(screen.getByText(/speech recognition model/i)).toBeInTheDocument();
+    });
+
+    await user.unhover(asrSelect);
+
+    await waitFor(() => {
+      expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
+    });
+  });
+
+  it('should show tooltips on focus for keyboard accessibility', async () => {
+    const user = userEvent.setup();
+    renderSettingsView();
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Device')).toBeInTheDocument();
+    });
+
+    const deviceSelect = screen.getByLabelText('Device');
+    await user.click(deviceSelect);
+
+    await waitFor(() => {
+      expect(screen.getByRole('tooltip')).toBeInTheDocument();
+      expect(screen.getByText(/CUDA GPU provides/i)).toBeInTheDocument();
+    });
+  });
+
+  it('should have proper ARIA attributes for tooltips', async () => {
+    const user = userEvent.setup();
+    renderSettingsView();
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Save Settings' })).toBeInTheDocument();
+    });
+
+    const saveButton = screen.getByRole('button', { name: 'Save Settings' });
+    await user.hover(saveButton);
+
+    await waitFor(() => {
+      const tooltip = screen.getByRole('tooltip');
+      expect(tooltip).toHaveAttribute('role', 'tooltip');
+      expect(tooltip).toHaveAttribute('aria-hidden', 'false');
+
+      const tooltipId = tooltip.getAttribute('id');
+      expect(saveButton).toHaveAttribute('aria-describedby', tooltipId);
+    });
+  });
+
   it('should display restart badges for backend-restart settings', async () => {
     renderSettingsView();
 
@@ -209,7 +276,7 @@ describe('SettingsView', () => {
 
   // Accessibility tests
   describe('Accessibility', () => {
-  it('should have proper form labels and descriptions', async () => {
+    it('should have proper form labels and descriptions', async () => {
       renderSettingsView();
 
       await waitFor(() => {

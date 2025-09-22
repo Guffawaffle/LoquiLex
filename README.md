@@ -1,6 +1,6 @@
 # LoquiLex
 
-## Quickstart
+## Quickstart .
 
 ### Local Development
 ```bash
@@ -101,14 +101,16 @@ Tooling (ruff, black, mypy, pytest) is always installed even if not explicitly p
 
 ## Development Workflow
 
-LoquiLex uses a structured GitHub Copilot Coding Agent workflow for development tasks:
+LoquiLex uses a structured GitHub Copilot/Codex workflow for development tasks:
 
-- **Task Management**: Tasks defined in `.github/copilot/current-task.md`
+- **Task Management**: Tasks initiated via prompts in `.github/prompts/` or maintainer directives
 - **Quality Gates**: Automated linting, formatting, type checking, and testing
-- **Deliverables**: Detailed execution logs in `.github/copilot/current-task-deliverables.md`
+- **Deliverables**: Live log in `docs/deliverables/.live.md` (gitignored) with archived copies tracked under `docs/deliverables/ARCHIVE/PR-<number>-<YYYYMMDD>-<shortsha>.md`
 - **Branch Strategy**: Feature branches with imperative commit messages
 
-See [`.github/copilot/README.md`](.github/copilot/README.md) for complete workflow documentation.
+See `AGENTS.md` for complete workflow documentation.
+
+We’re prompt-driven (Codex/Copilot). See `AGENTS.md` and `.github/prompts/*`. The live working log is `docs/deliverables/.live.md` (ignored), archived under `docs/deliverables/ARCHIVE/` on merge.
 
 ## Documentation
 
