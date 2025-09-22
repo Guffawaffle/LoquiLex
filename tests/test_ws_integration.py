@@ -176,7 +176,9 @@ def test_websocket_envelope_integration():
                         pytest.skip(f"WebSocket connection failed: {e}")
                     if _HTTPX_AVAILABLE and isinstance(e, httpx.ConnectError):
                         pytest.skip(f"WebSocket connection failed: {e}")
-                    if _REQUESTS_AVAILABLE and isinstance(e, requests_mod.exceptions.ConnectionError):
+                    if _REQUESTS_AVAILABLE and isinstance(
+                        e, requests_mod.exceptions.ConnectionError
+                    ):
                         pytest.skip(f"WebSocket connection failed: {e}")
 
                     # Otherwise, re-raise so the test fails and surfaces unexpected errors
