@@ -15,6 +15,19 @@ import {
   RESTART_METADATA
 } from '../utils/settings';
 import { RestartBadge } from './RestartBadge';
+import { WithTooltip } from './WithTooltip';
+
+interface DisplayableModel {
+  name: string;
+  size?: string;
+  available?: boolean;
+}
+
+function formatModelOption(model: DisplayableModel): string {
+  const sizePart = model.size ? ` (${model.size})` : '';
+  const availabilityPart = model.available === false ? ' - Download needed' : '';
+  return `${model.name}${sizePart}${availabilityPart}`;
+}
 
 export function SettingsView() {
   const navigate = useNavigate();
@@ -170,6 +183,16 @@ export function SettingsView() {
 
   const hasPendingChanges = Object.keys(pendingChanges).length > 0;
   const requiredRestartScope = getRequiredRestartScope(pendingChanges);
+  const restartScopeLabel =
+    requiredRestartScope === 'backend'
+      ? 'backend service'
+      : requiredRestartScope === 'app'
+        ? 'application'
+        : 'entire system';
+  const applyTooltip = `Apply pending changes and restart the ${restartScopeLabel}.`;
+  const saveTooltip = hasPendingChanges
+    ? 'Save settings that take effect immediately. Use Apply & Relaunch for restart-required changes.'
+    : 'Save settings that take effect immediately.';
 
   if (loading) {
     return (
@@ -219,147 +242,166 @@ export function SettingsView() {
 
         <div className="settings-form">
           <div className="form-group">
-            <label className="form-group__label" htmlFor="asr-model-select">
-              ASR Model
-            </label>
+            <WithTooltip xHelp="Choose the default speech recognition model for new sessions. Different models offer varying levels of accuracy and performance.">
+              <label className="form-group__label" htmlFor="asr-model-select">
+                ASR Model
+              </label>
+            </WithTooltip>
             <p className="form-group__description">
               Choose the default speech recognition model for new sessions.
             </p>
             <RestartBadge scope={RESTART_METADATA.asr_model_id} />
-            <select
-              id="asr-model-select"
-              className="select"
-              value={settings.asr_model_id}
-              onChange={(e) => updateSetting('asr_model_id', e.target.value)}
-            >
-              <option value="">Select ASR Model...</option>
-              {asrModels.map((model) => (
-                <option key={model.id} value={model.id}>
-                  {model.name}
-                </option>
-              ))}
-            </select>
+            <WithTooltip xHelp="Select from available ASR models. Models marked 'Download needed' require internet connection to download.">
+              <select
+                id="asr-model-select"
+                className="select"
+                value={settings.asr_model_id}
+                onChange={(e) => updateSetting('asr_model_id', e.target.value)}
+              >
+                <option value="">Select ASR Model...</option>
+                {asrModels.map((model) => (
+                  <option key={model.id} value={model.id}>
+                    {formatModelOption(model)}
+                  </option>
+                ))}
+              </select>
+            </WithTooltip>
             <div className="model-select__nav">
               {asrModels.map((model) => (
-                <div key={`asr-visible-${model.id}`}>
-                  {model.name} ({model.size}) {!model.available && '- Download needed'}
-                </div>
+                <div key={`asr-visible-${model.id}`}>{formatModelOption(model)}</div>
               ))}
             </div>
           </div>
 
           <div className="form-group">
-            <label className="form-group__label" htmlFor="mt-model-select">
-              MT Model
-            </label>
+            <WithTooltip xHelp="Choose the default translation model for English to Chinese translation. Different models have different capabilities and performance characteristics.">
+              <label className="form-group__label" htmlFor="mt-model-select">
+                MT Model
+              </label>
+            </WithTooltip>
             <p className="form-group__description">
               Choose the default translation model for new sessions.
             </p>
             <RestartBadge scope={RESTART_METADATA.mt_model_id} />
-            <select
-              id="mt-model-select"
-              className="select"
-              value={settings.mt_model_id}
-              onChange={(e) => updateSetting('mt_model_id', e.target.value)}
-            >
-              <option value="">Select MT Model...</option>
-              {mtModels.map((model) => (
-                <option key={model.id} value={model.id}>
-                  {model.name}
-                </option>
-              ))}
-            </select>
+            <WithTooltip xHelp="Select from available machine translation models. NLLB models generally provide better quality for English-Chinese translation.">
+              <select
+                id="mt-model-select"
+                className="select"
+                value={settings.mt_model_id}
+                onChange={(e) => updateSetting('mt_model_id', e.target.value)}
+              >
+                <option value="">Select MT Model...</option>
+                {mtModels.map((model) => (
+                  <option key={model.id} value={model.id}>
+                    {formatModelOption(model)}
+                  </option>
+                ))}
+              </select>
+            </WithTooltip>
             <div className="model-select__nav">
               {mtModels.map((model) => (
-                <div key={`mt-visible-${model.id}`}>
-                  {model.name} ({model.size}) {!model.available && '- Download needed'}
-                </div>
+                <div key={`mt-visible-${model.id}`}>{formatModelOption(model)}</div>
               ))}
             </div>
           </div>
 
           <div className="form-group">
-            <label className="form-group__label" htmlFor="device-select">
-              Device
-            </label>
+            <WithTooltip xHelp="Choose the compute device for processing. Auto detection usually selects the best available option (GPU if available, otherwise CPU).">
+              <label className="form-group__label" htmlFor="device-select">
+                Device
+              </label>
+            </WithTooltip>
             <p className="form-group__description">
               Choose the compute device for processing. Auto detects best available option.
             </p>
             <RestartBadge scope={RESTART_METADATA.device} />
-            <select
-              id="device-select"
-              className="select"
-              value={settings.device}
-              onChange={(e) => updateSetting('device', e.target.value)}
-            >
-              <option value="auto">Auto (recommended)</option>
-              <option value="cpu">CPU only</option>
-              <option value="cuda">CUDA GPU</option>
-            </select>
+            <WithTooltip xHelp="CUDA GPU provides the fastest processing but requires compatible NVIDIA hardware. CPU works on all systems but is slower.">
+              <select
+                id="device-select"
+                className="select"
+                value={settings.device}
+                onChange={(e) => updateSetting('device', e.target.value)}
+              >
+                <option value="auto">Auto (recommended)</option>
+                <option value="cpu">CPU only</option>
+                <option value="cuda">CUDA GPU</option>
+              </select>
+            </WithTooltip>
           </div>
 
           <div className="form-group">
-            <label className="form-group__label" htmlFor="cadence-slider">
-              Cadence Threshold: {settings.cadence_threshold} words
-            </label>
+            <WithTooltip xHelp="Controls how many words to accumulate before triggering translation. Lower values provide faster but potentially less accurate translations.">
+              <label className="form-group__label" htmlFor="cadence-slider">
+                Cadence Threshold: {settings.cadence_threshold} words
+              </label>
+            </WithTooltip>
             <p className="form-group__description">
               Number of words to accumulate before triggering EN→ZH translation (1-8).
               Lower values provide faster translation but may be less accurate.
             </p>
-            <input
-              id="cadence-slider"
-              type="range"
-              className="slider"
-              min="1"
-              max="8"
-              value={settings.cadence_threshold}
-              onChange={(e) => updateSetting('cadence_threshold', parseInt(e.target.value))}
-            />
+            <WithTooltip xHelp="Drag to adjust between 1 (fastest, less accurate) and 8 (slower, more accurate). Recommended range is 2-4 for most use cases.">
+              <input
+                id="cadence-slider"
+                type="range"
+                className="slider"
+                min="1"
+                max="8"
+                value={settings.cadence_threshold}
+                onChange={(e) => updateSetting('cadence_threshold', parseInt(e.target.value))}
+              />
+            </WithTooltip>
             <div className="slider-labels">
               <span>1 (Fast)</span>
               <span>8 (Accurate)</span>
             </div>
           </div>
           <div className="form-group">
-            <label className="form-group__label" htmlFor="timestamps-checkbox">
-              Show Timestamps
-            </label>
+            <WithTooltip xHelp="When enabled, timestamps will appear in the caption view and be included when exporting captions to files.">
+              <label className="form-group__label" htmlFor="timestamps-checkbox">
+                <input
+                  id="timestamps-checkbox"
+                  type="checkbox"
+                  checked={settings.show_timestamps}
+                  onChange={(e) => updateSetting('show_timestamps', e.target.checked)}
+                  className="checkbox-input"
+                />
+                Show Timestamps
+              </label>
+            </WithTooltip>
             <p className="form-group__description">
               Display timestamps in the caption view and include them in exports.
             </p>
-            <input
-              id="timestamps-checkbox"
-              type="checkbox"
-              checked={settings.show_timestamps}
-              onChange={(e) => updateSetting('show_timestamps', e.target.checked)}
-            />
           </div>
           <div className="settings-actions">
             {hasPendingChanges && (
+              <WithTooltip xHelp={applyTooltip}>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={applyAndRelaunch}
+                >
+                  Apply & Relaunch ({Object.keys(pendingChanges).length} change{Object.keys(pendingChanges).length !== 1 ? 's' : ''})
+                </button>
+              </WithTooltip>
+            )}
+            <WithTooltip xHelp={saveTooltip}>
               <button
                 type="button"
                 className="btn btn-primary"
-                onClick={applyAndRelaunch}
-                title={`Apply changes and restart ${requiredRestartScope}`}
+                onClick={saveSettingsHandler}
               >
-                Apply & Relaunch ({Object.keys(pendingChanges).length} change{Object.keys(pendingChanges).length !== 1 ? 's' : ''})
+                Save Settings
               </button>
-            )}
-            <button
-              type="button"
-              className="btn btn-primary"
-              onClick={saveSettingsHandler}
-              title={hasPendingChanges ? 'Use Apply & Relaunch for settings that require restart' : 'Save settings that take effect immediately'}
-            >
-              Save Settings
-            </button>
-            <button
-              type="button"
-              className="btn"
-              onClick={resetSettings}
-            >
-              Reset to Defaults
-            </button>
+            </WithTooltip>
+            <WithTooltip xHelp="Reset all settings to their default values. This will clear any saved preferences.">
+              <button
+                type="button"
+                className="btn"
+                onClick={resetSettings}
+              >
+                Reset to Defaults
+              </button>
+            </WithTooltip>
           </div>
         </div>
       </main>
