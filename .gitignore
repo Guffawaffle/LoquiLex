@@ -58,3 +58,5 @@ ui/app/test-results/
 
 .ruff_cache/
 /.github/copilot/current-task-deliverables.md
+docs/deliverables/
+docs/deliverables/**

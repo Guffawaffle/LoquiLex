@@ -83,7 +83,7 @@ echo "No build step"
 ## Deliverables Policy
 
 * Maintain exactly one local `.github/copilot/current-task-deliverables.md` (gitignored). This is the live working log for the active branch.
-* When a PR merges, a hand-off occurs, or reviewers need the state, copy the log to `docs/deliverables/PR-<number>-<YYYYMMDD>.md` (tracked) or capture the executive summary/evidence links in the PR description before rotating the task.
+* When a PR merges, a hand-off occurs, or reviewers need the state, copy the log to `docs/deliverables/PR-<number>-<YYYYMMDD>.md` (also gitignored) and attach/share it out-of-band (PR comment upload, external doc), or summarize key evidence directly in the PR description before rotating the task.
 * Top of file requirements:
   - `Task:` include the authoritative source (e.g., `.github/prompts/next-pr-runner.md`, issue/PR URL, or “Conversation — YYYY-MM-DD”).
   - `SHA256:` hash of the source file if stored in the repo (`sha256sum <file>`). Use `n/a` when the spec is conversational or remote-only.
