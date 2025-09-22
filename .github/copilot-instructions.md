@@ -24,7 +24,7 @@ Local-first live captioning + EN↔ZH translation with:
 - Lint/format/typing must pass (Ruff, Black@100, mypy) before proposing a PR.
 
 ## Workflow
-1. Read `.github/copilot/current-task.md`. Keep architecture changes minimal.
+1. Read the relevant prompt file in `.github/prompts/` (e.g., `/run-current-task`). Keep architecture changes minimal.
 2. **Search the repo first** (ripgrep/grep) for similar functions/classes. Reuse patterns.
 3. Propose focused changes; avoid new dependencies unless the task asks.
 4. Record full logs/diffs/outcomes to `.github/copilot/current-task-deliverables.md`.
