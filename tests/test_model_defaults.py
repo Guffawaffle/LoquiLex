@@ -8,6 +8,7 @@ from pathlib import Path
 
 from loquilex.config.model_defaults import ModelDefaults, ModelDefaultsManager
 
+
 def test_model_defaults_serialization():
     """Test ModelDefaults serialization to/from dict."""
     defaults = ModelDefaults(

@@ -40,10 +40,18 @@ class ModelIndexer:
         """Initialize indexer.
 
         Args:
-            cache_path: Path to cache file. Defaults to loquilex/out/model_index.json
+            cache_path: Path to cache file. Defaults to `<OUT_DIR>/model_index.json`,
+                where `OUT_DIR` comes from `LX_OUT_DIR` (or legacy `LLX_OUT_DIR`) and
+                falls back to `loquilex/out`.
             refresh_interval: Seconds between automatic re-indexing (default 5 minutes)
         """
-        self.cache_path = cache_path or Path("loquilex/out/model_index.json")
+        if cache_path is None:
+            out_dir_env = os.getenv("LX_OUT_DIR")
+            if not out_dir_env:
+                out_dir_env = os.getenv("LLX_OUT_DIR") or "loquilex/out"
+            self.cache_path = Path(out_dir_env) / "model_index.json"
+        else:
+            self.cache_path = cache_path
         self.refresh_interval = refresh_interval
         self._index: Optional[ModelIndex] = None
         self._lock = threading.RLock()
