@@ -14,8 +14,8 @@ SHA256: n/a (conversation)
 ## Log
 
 ### 2025-09-21T22:41:56-05:00 — Streamline task source & deliverables
-**Mode:** Workspace-Only  
-**Network:** Offline (no model downloads)  
+**Mode:** Workspace-Only
+**Network:** Offline (no model downloads)
 **Secrets/CI:** Unchanged
 
 - Updated `AGENTS.md`, `README.md`, `PROJECT_OVERVIEW.md`, and `.github/prompts/main.prompt.md` to reference prompt/maintainer specs instead of `.github/copilot/current-task.md`.
@@ -61,12 +61,21 @@ PROJECT_OVERVIEW.md:68:  - Agents execute tasks from the active prompt/spec and 
 </details>
 
 ### 2025-09-21T22:45:38-05:00 — Ignore deliverables archive
-**Mode:** Workspace-Only  
-**Network:** Offline (no model downloads)  
+**Mode:** Workspace-Only
+**Network:** Offline (no model downloads)
 **Secrets/CI:** Unchanged
 
 - Updated local-only `.gitignore.local` to ignore `.github/copilot/current-task-deliverables.md` explicitly and the `.github/copilot/archive/` directory.
 - Search receipt: `rg "archive/" .gitignore.local`
+
+### 2025-09-21T22:53:17-05:00 — Archive deliverables snapshot
+**Mode:** Workspace-Only  
+**Network:** Offline (no model downloads)  
+**Secrets/CI:** Unchanged
+
+- Added `/.github/copilot/current-task-deliverables.md` to `.gitignore` so the live log stays local-only.
+- Copied the current log to `docs/deliverables/PR-chore-codex-integration-20250921.md` for reviewers.
+- Search receipt: `rg "current-task-deliverables" docs/deliverables -n`
 
 <details><summary>Legacy log (pre-2025-09-22)</summary>
 
