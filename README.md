@@ -1,6 +1,6 @@
 # LoquiLex
 
-## Quickstart
+## Quickstart .
 
 ### Local Development
 ```bash
