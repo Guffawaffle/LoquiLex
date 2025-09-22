@@ -18,6 +18,7 @@ from pydantic import BaseModel, Field, model_validator
 
 from .model_discovery import list_asr_models, list_mt_models, mt_supported_languages
 from loquilex.hardware.detection import get_hardware_snapshot
+from loquilex.config.model_defaults import get_model_defaults_manager
 from .supervisor import SessionConfig, SessionManager, StreamingSession
 
 logger = logging.getLogger(__name__)
@@ -112,6 +113,9 @@ if DEV_MODE:
 OUT_ROOT = Path(os.getenv("LLX_OUT_DIR", "loquilex/out")).resolve()
 OUT_ROOT.mkdir(parents=True, exist_ok=True)
 
+# Application-controlled safe root for user-specified base directories
+SAFE_ROOT = OUT_ROOT
+
 # UI static files path (mounted later to avoid shadowing API routes)
 UI_DIST_PATH = Path("ui/app/dist").resolve()
 
@@ -132,7 +136,11 @@ MANAGER = SessionManager()
 
 
 # Allowed storage roots for path-based operations
-_EXTRA_ALLOWED_ROOTS = [p for p in os.getenv("LX_ALLOWED_STORAGE_ROOTS", "/tmp").split(":") if p]
+_env_allowed_roots = os.getenv("LX_ALLOWED_STORAGE_ROOTS")
+if not _env_allowed_roots:  # Treat missing or empty as default '/tmp'
+    _EXTRA_ALLOWED_ROOTS = ["/tmp"]
+else:
+    _EXTRA_ALLOWED_ROOTS = [p for p in _env_allowed_roots.split(":") if p]
 ALLOWED_STORAGE_ROOTS: List[Path] = [OUT_ROOT] + [Path(p).resolve() for p in _EXTRA_ALLOWED_ROOTS]
 
 
@@ -428,6 +436,24 @@ async def set_base_directory(req: BaseDirectoryReq) -> BaseDirectoryResp:
             return BaseDirectoryResp(path=req.path, valid=False, message="Path must be absolute")
 
         target_path = original_path.resolve()
+
+        # Enforce SAFE_ROOT/allowed roots constraint using commonpath to prevent escapes
+        allowed_roots = [str(SAFE_ROOT)] + [
+            str(p) for p in ALLOWED_STORAGE_ROOTS if str(p) != str(SAFE_ROOT)
+        ]
+        try:
+            ok_under_some_root = any(
+                os.path.commonpath([str(target_path), root]) == root for root in allowed_roots
+            )
+        except Exception:
+            ok_under_some_root = False
+        if not ok_under_some_root:
+            allowed = ", ".join(allowed_roots)
+            return BaseDirectoryResp(
+                path=str(target_path),
+                valid=False,
+                message=f"Invalid path: must reside under one of: {allowed}",
+            )
         try:
             _ensure_allowed_path(target_path)
         except HTTPException as he:
@@ -435,7 +461,7 @@ async def set_base_directory(req: BaseDirectoryReq) -> BaseDirectoryResp:
                 path=str(target_path),
                 valid=False,
                 message=f"Invalid path: {he.detail}",
-            )  # type: ignore[arg-type]
+            )
 
         # Try to create directory if it doesn't exist
         if not target_path.exists():
@@ -541,6 +567,31 @@ async def api_health() -> Dict[str, Any]:
 @app.head("/api/health")
 async def api_health_head() -> Response:
     return Response(status_code=200)
+
+
+# Model defaults management
+@app.get("/settings/defaults")
+def get_model_defaults() -> Dict[str, Any]:
+    mgr = get_model_defaults_manager()
+    return mgr.get_defaults().to_dict()
+
+
+class _ModelDefaultsUpdate(BaseModel):
+    asr_model_id: Optional[str] = None
+    asr_device: Optional[str] = None
+    asr_compute_type: Optional[str] = None
+    mt_model_id: Optional[str] = None
+    mt_device: Optional[str] = None
+    mt_compute_type: Optional[str] = None
+    tts_model_id: Optional[str] = None
+    tts_device: Optional[str] = None
+
+
+@app.post("/settings/defaults")
+def post_model_defaults(update: _ModelDefaultsUpdate) -> Dict[str, Any]:
+    mgr = get_model_defaults_manager()
+    updated = mgr.update_defaults(**{k: v for k, v in update.model_dump().items()})
+    return updated.to_dict()
 
 
 @app.post("/models/download")
