@@ -326,6 +326,22 @@ async def get_storage_info(path: Optional[str] = None) -> StorageInfoResp:
     try:
         # Ensure path exists and is accessible
         target_path = target_path.resolve()
+        # Enforce SAFE_ROOT/allowed roots constraint using commonpath to prevent escapes
+        allowed_roots = [str(SAFE_ROOT)] + [
+            str(p) for p in ALLOWED_STORAGE_ROOTS if str(p) != str(SAFE_ROOT)
+        ]
+        try:
+            ok_under_some_root = any(
+                os.path.commonpath([str(target_path), root]) == root for root in allowed_roots
+            )
+        except Exception:
+            ok_under_some_root = False
+        if not ok_under_some_root:
+            allowed = ", ".join(allowed_roots)
+            raise HTTPException(
+                status_code=400,
+                detail=f"Cannot access path: must reside under one of: {allowed}",
+            )
         _ensure_allowed_path(target_path)
         if not target_path.exists():
             target_path.mkdir(parents=True, exist_ok=True)
