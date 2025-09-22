@@ -115,7 +115,14 @@ export function Tooltip({
   }, [isVisible, placement]);
 
   // Clone children to add event handlers and ARIA attributes
-  const eventHandlers: any = {};
+  type TooltipEventHandlers = {
+    onMouseEnter?: React.MouseEventHandler;
+    onMouseLeave?: React.MouseEventHandler;
+    onFocus?: React.FocusEventHandler;
+    onBlur?: React.FocusEventHandler;
+    onKeyDown?: React.KeyboardEventHandler;
+  };
+  const eventHandlers: TooltipEventHandlers = {};
   
   if (trigger === 'hover' || trigger === 'both') {
     eventHandlers.onMouseEnter = (e: React.MouseEvent) => {
