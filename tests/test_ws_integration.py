@@ -16,14 +16,14 @@ from typing import Optional, List, Tuple, Type
 # Optional runtime modules used only in certain environments
 _websockets: Optional[ModuleType] = None
 try:
-    import websockets as _websockets  # type: ignore
+    import websockets as _websockets
 except Exception:
     _websockets = None
 
 # httpx (optional)
 httpx: Optional[ModuleType] = None
 try:
-    import httpx  # type: ignore
+    import httpx
 
     # keep name for runtime checks
     _HTTPX_AVAILABLE = True
@@ -34,7 +34,7 @@ except Exception:
 # requests (optional)
 requests: Optional[ModuleType] = None
 try:
-    import requests  # type: ignore
+    import requests
 
     _REQUESTS_AVAILABLE = True
 except Exception:
