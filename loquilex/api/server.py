@@ -18,6 +18,7 @@ from pydantic import BaseModel, Field, model_validator
 from .model_discovery import mt_supported_languages
 from .supervisor import SessionConfig, SessionManager, StreamingSession
 from ..config.model_defaults import get_model_defaults_manager
+from ..config.paths import resolve_out_dir
 from ..indexing import get_model_indexer
 from ..hardware import get_hardware_snapshot
 
@@ -119,7 +120,7 @@ if DEV_MODE:
     )
 
 # Serve outputs directory for easy linking from UI (hardened)
-OUT_ROOT = Path(os.getenv("LLX_OUT_DIR", "loquilex/out")).resolve()
+OUT_ROOT = resolve_out_dir().resolve()
 OUT_ROOT.mkdir(parents=True, exist_ok=True)
 
 # UI static files path (mounted later to avoid shadowing API routes)

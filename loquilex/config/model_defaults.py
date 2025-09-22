@@ -9,6 +9,8 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any, Dict, Optional
 
+from .paths import resolve_out_dir
+
 logger = logging.getLogger(__name__)
 
 
@@ -54,12 +56,10 @@ class ModelDefaultsManager:
                 `loquilex/out`.
         """
         if storage_path is None:
-            out_dir_env = os.getenv("LX_OUT_DIR")
-            if not out_dir_env:
-                out_dir_env = os.getenv("LLX_OUT_DIR") or "loquilex/out"
-            self.storage_path = Path(out_dir_env) / "model_defaults.json"
+            out_dir = resolve_out_dir()
+            self.storage_path = out_dir / "model_defaults.json"
         else:
-            self.storage_path = storage_path
+            self.storage_path = Path(storage_path)
         self._defaults: Optional[ModelDefaults] = None
 
         # Ensure storage directory exists

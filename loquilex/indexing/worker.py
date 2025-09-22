@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import os
 import logging
 import threading
 import time
@@ -12,6 +11,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from ..api.model_discovery import list_asr_models, list_mt_models
+from ..config.paths import resolve_out_dir
 
 logger = logging.getLogger(__name__)
 
@@ -36,6 +36,9 @@ class ModelIndex:
 class ModelIndexer:
     """Background worker for indexing and caching locally available models."""
 
+    STOP_TIMEOUT_SEC = 5.0
+    ERROR_RETRY_SLEEP_SEC = 30.0
+
     def __init__(self, cache_path: Optional[Path] = None, refresh_interval: int = 300):
         """Initialize indexer.
 
@@ -46,12 +49,10 @@ class ModelIndexer:
             refresh_interval: Seconds between automatic re-indexing (default 5 minutes)
         """
         if cache_path is None:
-            out_dir_env = os.getenv("LX_OUT_DIR")
-            if not out_dir_env:
-                out_dir_env = os.getenv("LLX_OUT_DIR") or "loquilex/out"
-            self.cache_path = Path(out_dir_env) / "model_index.json"
+            out_dir = resolve_out_dir()
+            self.cache_path = out_dir / "model_index.json"
         else:
-            self.cache_path = cache_path
+            self.cache_path = Path(cache_path)
         self.refresh_interval = refresh_interval
         self._index: Optional[ModelIndex] = None
         self._lock = threading.RLock()
@@ -179,7 +180,7 @@ class ModelIndexer:
             return
 
         self._stop_event.set()
-        self._worker_thread.join(timeout=5.0)
+        self._worker_thread.join(timeout=self.STOP_TIMEOUT_SEC)
         if self._worker_thread.is_alive():
             logger.warning("Background worker did not stop cleanly")
         else:
@@ -201,7 +202,7 @@ class ModelIndexer:
             except Exception as e:
                 logger.error(f"Error in background model indexing: {e}")
                 # Continue running despite errors
-                time.sleep(30)  # Brief pause before retrying
+                time.sleep(self.ERROR_RETRY_SLEEP_SEC)  # Brief pause before retrying
 
 
 # Global singleton instance
