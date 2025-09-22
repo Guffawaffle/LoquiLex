@@ -374,8 +374,8 @@ def update_model_defaults(req: UpdateDefaultsReq) -> ModelDefaultsResp:
     """Update model defaults."""
     manager = get_model_defaults_manager()
 
-    # Extract non-None values from request
-    updates = {k: v for k, v in req.model_dump().items() if v is not None}
+    # Pass all values from request; filtering of None values is handled in update_defaults
+    updates = req.model_dump()
 
     # Update defaults
     defaults = manager.update_defaults(**updates)
