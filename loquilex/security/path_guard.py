@@ -325,20 +325,24 @@ class PathGuard:
 
     @staticmethod
     def _iter_segments(base: Path, target: Path) -> Iterable[Path]:
-        # Yield each cumulative path from base to target (inclusive)
+        # Yield each cumulative path from base to target (inclusive), with strict containment check
         base_r = base.resolve(strict=False)
-        target_r = target.resolve(strict=False)
+        # Normalize and resolve target
+        target_norm = os.path.normpath(str(target))
+        target_r = Path(target_norm).resolve(strict=False)
+        # Ensure target_r is strictly within base_r (prevent path traversal or symlink escapes)
         try:
+            # Both must be absolute, compare as strings for commonpath, then relative_to for Path
+            if os.path.commonpath([str(target_r), str(base_r)]) != str(base_r):
+                raise PathSecurityError("target is outside base directory (path traversal)")
             rel = target_r.relative_to(base_r)
         except ValueError:
-            yield target_r
-            return
+            raise PathSecurityError("target is outside base directory (not a subpath)")
         cur = base_r
         yield cur
         for part in rel.parts:
             cur = cur / part
             yield cur
-
     def _reject_symlink_segments(self, base: Path, candidate: Path) -> None:
         for seg in self._iter_segments(base, candidate):
             try:
