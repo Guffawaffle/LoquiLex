@@ -19,6 +19,36 @@ except Exception:
     psutil = None
 
 
+# Module-level fallback memory values (can be overridden via env vars).
+#
+# Rationale and guidance for future developers / AI agents:
+# - These constants provide safe defaults when `psutil` is not available at
+#   runtime (minimal containers, CI runners, or lightweight installs).
+# - Values are expressed in gigabytes (GB) as floats.
+# - Override using environment variables when creating reproducible test
+#   environments or when running in constrained systems:
+#     - `LX_FALLBACK_MEMORY_TOTAL_GB` (default: "8.0")
+#     - `LX_FALLBACK_MEMORY_AVAILABLE_GB` (default: "4.0")
+# - Choose conservative defaults that won't falsely mark typical developer
+#   machines as unusable; tests and CI can set these env vars to smaller
+#   values to simulate low-memory environments.
+# - If the project later centralizes runtime configuration, consider moving
+#   these to a single config module (e.g., `loquilex.config`) and using a
+#   typed settings object for runtime overrides.
+#
+# Examples:
+# ```bash
+# LX_FALLBACK_MEMORY_TOTAL_GB=16 LX_FALLBACK_MEMORY_AVAILABLE_GB=12 python -m loquilex
+# ```
+#
+# Implementation note: keep these as module-level constants to make them easy
+# to patch in unit tests (monkeypatch / import-time overrides).
+FALLBACK_MEMORY_TOTAL_GB: float = float(os.getenv("LX_FALLBACK_MEMORY_TOTAL_GB", "8.0"))
+FALLBACK_MEMORY_AVAILABLE_GB: float = float(
+    os.getenv("LX_FALLBACK_MEMORY_AVAILABLE_GB", "4.0")
+)
+
+
 @dataclass
 class CPUInfo:
     """CPU information."""
@@ -386,9 +416,9 @@ def get_hardware_snapshot() -> HardwareSnapshot:
         memory_total_gb = memory.total / (1024**3)
         memory_available_gb = memory.available / (1024**3)
     else:
-        # Fallback without psutil
-        memory_total_gb = 8.0  # Assume 8GB
-        memory_available_gb = 4.0  # Assume 4GB available
+        # Fallback without psutil - use module-level configurable defaults
+        memory_total_gb = FALLBACK_MEMORY_TOTAL_GB
+        memory_available_gb = FALLBACK_MEMORY_AVAILABLE_GB
 
     # Platform information
     platform_info = {
