@@ -1,0 +1,14 @@
+[2025-09-22 06:43:49] This is codeql database analyze ql-db-js github/security-and-quality --format=sarifv2.1.0 --output codeql-js.sarif
+[2025-09-22 06:43:49] Log file was started late.
+[2025-09-22 06:43:49] [PROGRESS] database analyze> Running queries.
+[2025-09-22 06:43:49] Running plumbing command: codeql database run-queries --evaluator-log-level=5 --warnings=show --qlconfig-file=/home/guff/LoquiLex/qlconfig.yml --dynamic-join-order-mode=none --no-rerun --interpret-passthrough=null,--format=sarifv2.1.0,-o=/home/guff/LoquiLex/codeql-js.sarif,--max-paths=4,--csv-location-format=line-column,--print-diagnostics-summary,--print-metrics-summary,--qlconfig-file=/home/guff/LoquiLex/qlconfig.yml,--,/home/guff/LoquiLex/ql-db-js,github/security-and-quality -- /home/guff/LoquiLex/ql-db-js github/security-and-quality
+[2025-09-22 06:43:49] Calling plumbing command: codeql resolve ram --dataset=/home/guff/LoquiLex/ql-db-js/db-javascript --format=json
+[2025-09-22 06:43:49] [PROGRESS] resolve ram> Stringpool size measured as 5800362
+[2025-09-22 06:43:49] Plumbing command codeql resolve ram completed:
+                      [
+                        "-J-Xmx1800M",
+                        "--off-heap-ram=1457"
+                      ]
+[2025-09-22 06:43:49] Chaining via /tmp/codeql.ZaeoVXua to plumbing: execute queries -J-Xmx1800M --off-heap-ram=1457 --verbosity=progress --logdir=/home/guff/LoquiLex/ql-db-js/log --evaluator-log-level=5 --warnings=show --qlconfig-file=/home/guff/LoquiLex/qlconfig.yml --dynamic-join-order-mode=none --no-rerun --interpret-passthrough=null,--format=sarifv2.1.0,-o=/home/guff/LoquiLex/codeql-js.sarif,--max-paths=4,--csv-location-format=line-column,--print-diagnostics-summary,--print-metrics-summary,--qlconfig-file=/home/guff/LoquiLex/qlconfig.yml,--,/home/guff/LoquiLex/ql-db-js,github/security-and-quality --output=/home/guff/LoquiLex/ql-db-js/results -- /home/guff/LoquiLex/ql-db-js/db-javascript github/security-and-quality
+[2025-09-22 06:43:49] Plumbing command codeql database run-queries completed with status 70.
+[2025-09-22 06:43:49] Exiting with code 70

@@ -1,0 +1,1422 @@
+[2025-09-22 06:43:27] This is codeql database create ql-db-js --language=javascript --source-root . --overwrite
+[2025-09-22 06:43:27] Log file was started late.
+[2025-09-22 06:43:27] [PROGRESS] database create> Initializing database at /home/guff/LoquiLex/ql-db-js.
+[2025-09-22 06:43:27] Running plumbing command: codeql database init --overwrite --language=javascript --extractor-options-verbosity=1 --qlconfig-file=/home/guff/LoquiLex/qlconfig.yml --source-root=/home/guff/LoquiLex --allow-missing-source-root=false --allow-already-existing -- /home/guff/LoquiLex/ql-db-js
+[2025-09-22 06:43:27] Calling plumbing command: codeql resolve languages --extractor-options-verbosity=1 --format=betterjson
+[2025-09-22 06:43:27] [DETAILS] resolve languages> Scanning for [codeql-extractor.yml] from /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/.codeqlmanifest.json
+[2025-09-22 06:43:27] [DETAILS] resolve languages> Parsing /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/python/codeql-extractor.yml.
+[2025-09-22 06:43:27] [DETAILS] resolve languages> Parsing /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/cpp/codeql-extractor.yml.
+[2025-09-22 06:43:27] [DETAILS] resolve languages> Parsing /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/html/codeql-extractor.yml.
+[2025-09-22 06:43:27] [DETAILS] resolve languages> Parsing /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/swift/codeql-extractor.yml.
+[2025-09-22 06:43:27] [DETAILS] resolve languages> Parsing /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/java/codeql-extractor.yml.
+[2025-09-22 06:43:27] [DETAILS] resolve languages> Parsing /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/rust/codeql-extractor.yml.
+[2025-09-22 06:43:27] [DETAILS] resolve languages> Parsing /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/go/codeql-extractor.yml.
+[2025-09-22 06:43:27] [DETAILS] resolve languages> Parsing /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/xml/codeql-extractor.yml.
+[2025-09-22 06:43:27] [DETAILS] resolve languages> Parsing /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/codeql-extractor.yml.
+[2025-09-22 06:43:27] [DETAILS] resolve languages> Parsing /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/csv/codeql-extractor.yml.
+[2025-09-22 06:43:27] [DETAILS] resolve languages> Parsing /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/yaml/codeql-extractor.yml.
+[2025-09-22 06:43:27] [DETAILS] resolve languages> Parsing /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/actions/codeql-extractor.yml.
+[2025-09-22 06:43:27] [DETAILS] resolve languages> Parsing /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/csharp/codeql-extractor.yml.
+[2025-09-22 06:43:27] [DETAILS] resolve languages> Parsing /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/ruby/codeql-extractor.yml.
+[2025-09-22 06:43:27] [DETAILS] resolve languages> Parsing /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/properties/codeql-extractor.yml.
+[2025-09-22 06:43:27] Plumbing command codeql resolve languages completed:
+                      {
+                        "aliases" : {
+                          "c" : "cpp",
+                          "c++" : "cpp",
+                          "c-c++" : "cpp",
+                          "c-cpp" : "cpp",
+                          "c#" : "csharp",
+                          "java-kotlin" : "java",
+                          "kotlin" : "java",
+                          "javascript-typescript" : "javascript",
+                          "typescript" : "javascript"
+                        },
+                        "extractors" : {
+                          "python" : [
+                            {
+                              "extractor_root" : "/home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/python",
+                              "extractor_options" : {
+                                "logging" : {
+                                  "title" : "Options pertaining to logging.",
+                                  "description" : "Options pertaining to logging.",
+                                  "type" : "object",
+                                  "properties" : {
+                                    "verbosity" : {
+                                      "title" : "Python extractor logging verbosity level.",
+                                      "description" : "Controls the level of verbosity of the CodeQL Python extractor.\nThe supported levels are (in order of increasing verbosity):\n\n  - off\n  - errors\n  - warnings\n  - info or progress\n  - debug or progress+\n  - trace or progress++\n  - progress+++\n",
+                                      "type" : "string",
+                                      "pattern" : "^(off|errors|warnings|(info|progress)|(debug|progress\\+)|(trace|progress\\+\\+)|progress\\+\\+\\+)$"
+                                    }
+                                  }
+                                },
+                                "python_executable_name" : {
+                                  "title" : "Controls the name of the Python executable used by the Python extractor.",
+                                  "description" : "The Python extractor uses platform-dependent heuristics to determine the name of the Python executable to use. Specifying a value for this option overrides the name of the Python executable used by the extractor. Accepted values are py, python and python3. Use this setting with caution, the Python extractor requires Python 3 to run.\n",
+                                  "type" : "string",
+                                  "pattern" : "^(py|python|python3)$"
+                                }
+                              }
+                            }
+                          ],
+                          "cpp" : [
+                            {
+                              "extractor_root" : "/home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/cpp",
+                              "extractor_options" : {
+                                "scale_timeouts" : {
+                                  "title" : "Value to scale compiler introspection timeouts with",
+                                  "description" : "The extractor attempts to determine what compiler the source code being extracted is compiled with. To this end the extractor makes additional calls to the compiler, some of which are expected to return within a certain fixed time (either 10s or 15s). On some systems that are under high load this time might be too short, and can be scaled up using this option.\n",
+                                  "type" : "string",
+                                  "pattern" : "[0-9]+"
+                                },
+                                "log_verbosity" : {
+                                  "title" : "Verbosity of the extractor logging",
+                                  "description" : "Set the verbosity of the extractor logging to 'quiet' (0), 'normal' (1), 'chatty' (2), or 'noisy' (3). The default is 'normal'.\n",
+                                  "type" : "string",
+                                  "pattern" : "[0-3]"
+                                }
+                              }
+                            }
+                          ],
+                          "html" : [
+                            {
+                              "extractor_root" : "/home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/html"
+                            }
+                          ],
+                          "swift" : [
+                            {
+                              "extractor_root" : "/home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/swift"
+                            }
+                          ],
+                          "java" : [
+                            {
+                              "extractor_root" : "/home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/java",
+                              "extractor_options" : {
+                                "exclude" : {
+                                  "title" : "A glob excluding files from analysis.",
+                                  "description" : "A glob indicating what files to exclude from the analysis. This accepts glob patterns that are supported by Java's 'getPathMatcher' implementation.\n",
+                                  "type" : "string"
+                                },
+                                "add_prefer_source" : {
+                                  "title" : "Whether to always prefer source files over class files.",
+                                  "description" : "A value indicating whether source files should be preferred over class files. If set to 'true', the extraction adds '-Xprefer:source' to the javac command line. If set to 'false', the extraction uses the default javac behavior ('-Xprefer:newer'). The default is 'true'.\n",
+                                  "type" : "string",
+                                  "pattern" : "^(false|true)$"
+                                },
+                                "buildless" : {
+                                  "title" : "Whether to use buildless (standalone) extraction (experimental).",
+                                  "description" : "A value indicating, which type of extraction the autobuilder should perform. If 'true', then the standalone extractor will be used, otherwise tracing extraction will be performed. The default is 'false'. Note that buildless extraction will generally yield less accurate analysis results, and should only be used in cases where it is not possible to build the code (for example if it uses inaccessible dependencies).\n",
+                                  "type" : "string",
+                                  "pattern" : "^(false|true)$"
+                                },
+                                "buildless_dependency_dir" : {
+                                  "title" : "The path where buildless (standalone) extraction should keep dependencies.",
+                                  "description" : "If set, the buildless (standalone) extractor will store dependencies in this directory.\n",
+                                  "type" : "string"
+                                },
+                                "minimize_dependency_jars" : {
+                                  "title" : "Whether to rewrite and minimize downloaded JAR dependencies (experimental).",
+                                  "description" : "If 'true', JAR dependencies downloaded during extraction will be rewritten to remove unneeded data, such as method bodies. The default is 'false'.\n",
+                                  "type" : "string",
+                                  "pattern" : "^(false|true)$"
+                                }
+                              }
+                            }
+                          ],
+                          "rust" : [
+                            {
+                              "extractor_root" : "/home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/rust",
+                              "extractor_options" : {
+                                "trap" : {
+                                  "title" : "Options pertaining to TRAP.",
+                                  "description" : "Options pertaining to TRAP.",
+                                  "type" : "object",
+                                  "properties" : {
+                                    "compression" : {
+                                      "title" : "Controls compression for the TRAP files written by the extractor.",
+                                      "description" : "This option is only intended for use in debugging the extractor. Accepted values are 'gzip' (to write gzip-compressed TRAP) 'zstd' (to write Zstandard-compressed TRAP) and 'none' (the default, to write uncompressed TRAP).\n",
+                                      "type" : "string",
+                                      "pattern" : "^(none|gzip|zstd)$"
+                                    }
+                                  }
+                                },
+                                "cargo_target_dir" : {
+                                  "title" : "Directory to use for cargo output files.",
+                                  "description" : "This value is an optional path to use as `CARGO_TARGET_DIR` for the internal cargo commands the extractor uses. Pointing it to a persistent directory may reduce execution time of consecutive extractor runs. By default, a new scratch directory is used for each run.\n",
+                                  "type" : "string"
+                                },
+                                "cargo_target" : {
+                                  "title" : "Target architecture",
+                                  "description" : "Target architecture to use for analysis, analogous to `cargo --target`. By default the host architecture is used.\n",
+                                  "type" : "string"
+                                },
+                                "cargo_features" : {
+                                  "title" : "Cargo features to turn on",
+                                  "description" : "Comma-separated list of features to turn on. By default all features are enabled. If any features are specified, then only those features are enabled. The `default` feature must be explicitly specified if only default features are desired. Can be repeated.\n",
+                                  "type" : "array"
+                                },
+                                "cargo_cfg_overrides" : {
+                                  "title" : "Cargo cfg overrides",
+                                  "description" : "Comma-separated list of cfg settings to enable, or disable if prefixed with `-`. Can be repeated.\n",
+                                  "type" : "array"
+                                },
+                                "logging" : {
+                                  "title" : "Options pertaining to logging.",
+                                  "description" : "Options pertaining to logging.",
+                                  "type" : "object",
+                                  "properties" : {
+                                    "verbosity" : {
+                                      "title" : "Extractor logging verbosity level.",
+                                      "description" : "Controls the level of verbosity of the extractor. The supported levels are (in order of increasing verbosity):\n  - off\n  - errors\n  - warnings\n  - info or progress\n  - debug or progress+\n  - trace or progress++\n  - progress+++\n",
+                                      "type" : "string",
+                                      "pattern" : "^(off|errors|warnings|(info|progress)|(debug|progress\\+)|(trace|progress\\+\\+)|progress\\+\\+\\+)$"
+                                    },
+                                    "flamegraph" : {
+                                      "title" : "[Experimental] File path for write flame graph log",
+                                      "description" : "Collect flame graph data using the `tracing-flame` crate. To render a flame graph or chart, run the `inferno-flamegraph` command. See also: https://crates.io/crates/tracing-flame\n",
+                                      "type" : "string"
+                                    }
+                                  }
+                                },
+                                "extract_dependencies_as_source" : {
+                                  "title" : "Extract dependencies as source code",
+                                  "description" : "Extract the full source code of dependencies instead of only extracting signatures.\n",
+                                  "type" : "string",
+                                  "pattern" : "^(false|true)$"
+                                }
+                              }
+                            }
+                          ],
+                          "go" : [
+                            {
+                              "extractor_root" : "/home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/go",
+                              "extractor_options" : {
+                                "extract_tests" : {
+                                  "title" : "Whether to include Go test files in the CodeQL database.",
+                                  "description" : "A value indicating whether Go test files should be included in the CodeQL database. The default is 'false'.\n",
+                                  "type" : "string",
+                                  "pattern" : "^(false|true)$"
+                                },
+                                "extract_vendor_dirs" : {
+                                  "title" : "Whether to include Go vendor directories in the CodeQL database.",
+                                  "description" : "A value indicating whether Go vendor directories should be included in the CodeQL database. The default is 'false'.\n",
+                                  "type" : "string",
+                                  "pattern" : "^(false|true)$"
+                                }
+                              }
+                            }
+                          ],
+                          "xml" : [
+                            {
+                              "extractor_root" : "/home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/xml"
+                            }
+                          ],
+                          "javascript" : [
+                            {
+                              "extractor_root" : "/home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript",
+                              "extractor_options" : {
+                                "skip_types" : {
+                                  "title" : "Skip type extraction for TypeScript",
+                                  "description" : "Whether to skip the extraction of types in a TypeScript application",
+                                  "type" : "string",
+                                  "pattern" : "^(false|true)$"
+                                }
+                              }
+                            }
+                          ],
+                          "csv" : [
+                            {
+                              "extractor_root" : "/home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/csv"
+                            }
+                          ],
+                          "yaml" : [
+                            {
+                              "extractor_root" : "/home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/yaml"
+                            }
+                          ],
+                          "actions" : [
+                            {
+                              "extractor_root" : "/home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/actions",
+                              "extractor_options" : { }
+                            }
+                          ],
+                          "csharp" : [
+                            {
+                              "extractor_root" : "/home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/csharp",
+                              "extractor_options" : {
+                                "trap" : {
+                                  "title" : "Options pertaining to TRAP.",
+                                  "description" : "Options pertaining to TRAP.",
+                                  "type" : "object",
+                                  "properties" : {
+                                    "compression" : {
+                                      "title" : "Controls compression for the TRAP files written by the extractor.",
+                                      "description" : "This option is only intended for use in debugging the extractor. Accepted values are 'brotli' (the default, to write brotli-compressed TRAP), 'gzip', and 'none' (to write uncompressed TRAP).\n",
+                                      "type" : "string",
+                                      "pattern" : "^(none|gzip|brotli)$"
+                                    }
+                                  }
+                                },
+                                "buildless" : {
+                                  "title" : "DEPRECATED - Whether to use buildless (standalone) extraction.",
+                                  "description" : "DEPRECATED: Use `--build-mode none` instead.\nA value indicating, which type of extraction the autobuilder should perform. If 'true', then the standalone extractor will be used, otherwise tracing extraction will be performed. The default is 'false'. Note that buildless extraction will generally yield less accurate analysis results, and should only be used in cases where it is not possible to build the code (for example if it uses inaccessible dependencies).\n",
+                                  "type" : "string",
+                                  "pattern" : "^(false|true)$"
+                                },
+                                "logging" : {
+                                  "title" : "Options pertaining to logging.",
+                                  "description" : "Options pertaining to logging.",
+                                  "type" : "object",
+                                  "properties" : {
+                                    "verbosity" : {
+                                      "title" : "Extractor logging verbosity level.",
+                                      "description" : "Controls the level of verbosity of the extractor. The supported levels are (in order of increasing verbosity):\n  - off\n  - errors\n  - warnings\n  - info or progress\n  - debug or progress+\n  - trace or progress++\n  - progress+++\n",
+                                      "type" : "string",
+                                      "pattern" : "^(off|errors|warnings|(info|progress)|(debug|progress\\+)|(trace|progress\\+\\+)|progress\\+\\+\\+)$"
+                                    }
+                                  }
+                                },
+                                "binlog" : {
+                                  "title" : "Binlog",
+                                  "description" : "[EXPERIMENTAL] The value is a path to the MsBuild binary log file that should be extracted. This option only works when `--build-mode none` is also specified.\n",
+                                  "type" : "array"
+                                }
+                              }
+                            }
+                          ],
+                          "ruby" : [
+                            {
+                              "extractor_root" : "/home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/ruby",
+                              "extractor_options" : {
+                                "trap" : {
+                                  "title" : "Options pertaining to TRAP.",
+                                  "description" : "Options pertaining to TRAP.",
+                                  "type" : "object",
+                                  "properties" : {
+                                    "compression" : {
+                                      "title" : "Controls compression for the TRAP files written by the extractor.",
+                                      "description" : "This option is only intended for use in debugging the extractor. Accepted values are 'gzip' (the default, to write gzip-compressed TRAP) 'zstd' (to write Zstandard-compressed TRAP) and 'none' (to write uncompressed TRAP).\n",
+                                      "type" : "string",
+                                      "pattern" : "^(none|gzip|zstd)$"
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          ],
+                          "properties" : [
+                            {
+                              "extractor_root" : "/home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/properties"
+                            }
+                          ]
+                        }
+                      }
+[2025-09-22 06:43:27] [PROGRESS] database init> Calculating baseline information in /home/guff/LoquiLex
+[2025-09-22 06:43:27] [SPAMMY] database init> Ignoring the following directories when processing baseline information: .git, .hg, .svn.
+[2025-09-22 06:43:27] [DETAILS] database init> Running command in /home/guff/LoquiLex: /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/tools/linux64/scc --by-file --exclude-dir .git,.hg,.svn --format json --no-large --no-min .
+[2025-09-22 06:43:27] Using configure-baseline script /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/configure-baseline.sh.
+[2025-09-22 06:43:27] [PROGRESS] database init> Running command in /home/guff/LoquiLex: [/home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/configure-baseline.sh]
+[2025-09-22 06:43:28] [SPAMMY] database init> Found 118 baseline files for python.
+[2025-09-22 06:43:28] [SPAMMY] database init> Found 83 baseline files for javascript.
+[2025-09-22 06:43:28] [PROGRESS] database init> Calculated baseline information for languages: javascript, python (119ms).
+[2025-09-22 06:43:28] [PROGRESS] database init> Resolving extractor javascript.
+[2025-09-22 06:43:28] [DETAILS] database init> Found candidate extractor root for javascript: /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript.
+[2025-09-22 06:43:28] [PROGRESS] database init> Successfully loaded extractor JavaScript/TypeScript (javascript) from /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript.
+[2025-09-22 06:43:28] [PROGRESS] database init> Created skeleton CodeQL database at /home/guff/LoquiLex/ql-db-js. This in-progress database is ready to be populated by an extractor.
+[2025-09-22 06:43:28] Plumbing command codeql database init completed.
+[2025-09-22 06:43:28] [PROGRESS] database create> Running build command: []
+[2025-09-22 06:43:28] Running plumbing command: codeql database trace-command --working-dir=/home/guff/LoquiLex --index-traceless-dbs --no-db-cluster -- /home/guff/LoquiLex/ql-db-js
+[2025-09-22 06:43:28] Using autobuild script /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/autobuild.sh.
+[2025-09-22 06:43:28] [PROGRESS] database trace-command> Running command in /home/guff/LoquiLex: [/home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/autobuild.sh]
+[2025-09-22 06:43:28] [build-stdout] Single-threaded extraction.
+[2025-09-22 06:43:32] [build-stdout] loquilex/ui/web/package.json: Main file not found
+[2025-09-22 06:43:32] [build-stdout] ui/app/package.json: Main file not found
+[2025-09-22 06:43:32] [build-stdout] Extracting /home/guff/LoquiLex/loquilex/ui/web/index.html
+[2025-09-22 06:43:32] [build-stdout] Done extracting /home/guff/LoquiLex/loquilex/ui/web/index.html (59 ms)
+[2025-09-22 06:43:32] [build-stdout] Extracting /home/guff/LoquiLex/ui/app/dist/index.html
+[2025-09-22 06:43:32] [build-stdout] Done extracting /home/guff/LoquiLex/ui/app/dist/index.html (6 ms)
+[2025-09-22 06:43:32] [build-stdout] Extracting /home/guff/LoquiLex/ui/app/index.html
+[2025-09-22 06:43:32] [build-stdout] Done extracting /home/guff/LoquiLex/ui/app/index.html (3 ms)
+[2025-09-22 06:43:32] [build-stdout] Extracting /home/guff/LoquiLex/ui/dist/index.html
+[2025-09-22 06:43:32] [build-stdout] Done extracting /home/guff/LoquiLex/ui/dist/index.html (3 ms)
+[2025-09-22 06:43:32] [build-stdout] Extracting /home/guff/LoquiLex/coverage_html/class_index.html
+[2025-09-22 06:43:32] [build-stdout] Done extracting /home/guff/LoquiLex/coverage_html/class_index.html (67 ms)
+[2025-09-22 06:43:32] [build-stdout] Extracting /home/guff/LoquiLex/coverage_html/function_index.html
+[2025-09-22 06:43:32] [build-stdout] Done extracting /home/guff/LoquiLex/coverage_html/function_index.html (67 ms)
+[2025-09-22 06:43:32] [build-stdout] Extracting /home/guff/LoquiLex/coverage_html/index.html
+[2025-09-22 06:43:32] [build-stdout] Done extracting /home/guff/LoquiLex/coverage_html/index.html (10 ms)
+[2025-09-22 06:43:32] [build-stdout] Extracting /home/guff/LoquiLex/coverage_html/z_14822e21d44ff6d4___init___py.html
+[2025-09-22 06:43:32] [build-stdout] Done extracting /home/guff/LoquiLex/coverage_html/z_14822e21d44ff6d4___init___py.html (7 ms)
+[2025-09-22 06:43:32] [build-stdout] Extracting /home/guff/LoquiLex/coverage_html/z_14822e21d44ff6d4_protocol_py.html
+[2025-09-22 06:43:32] [build-stdout] Done extracting /home/guff/LoquiLex/coverage_html/z_14822e21d44ff6d4_protocol_py.html (17 ms)
+[2025-09-22 06:43:32] [build-stdout] Extracting /home/guff/LoquiLex/coverage_html/z_14822e21d44ff6d4_registry_py.html
+[2025-09-22 06:43:32] [build-stdout] Done extracting /home/guff/LoquiLex/coverage_html/z_14822e21d44ff6d4_registry_py.html (12 ms)
+[2025-09-22 06:43:32] [build-stdout] Extracting /home/guff/LoquiLex/coverage_html/z_14822e21d44ff6d4_types_py.html
+[2025-09-22 06:43:32] [build-stdout] Done extracting /home/guff/LoquiLex/coverage_html/z_14822e21d44ff6d4_types_py.html (9 ms)
+[2025-09-22 06:43:32] [build-stdout] Extracting /home/guff/LoquiLex/coverage_html/z_14822e21d44ff6d4_util_py.html
+[2025-09-22 06:43:32] [build-stdout] Done extracting /home/guff/LoquiLex/coverage_html/z_14822e21d44ff6d4_util_py.html (11 ms)
+[2025-09-22 06:43:32] [build-stdout] Extracting /home/guff/LoquiLex/coverage_html/z_217312d27ede12b3___init___py.html
+[2025-09-22 06:43:32] [build-stdout] Done extracting /home/guff/LoquiLex/coverage_html/z_217312d27ede12b3___init___py.html (5 ms)
+[2025-09-22 06:43:32] [build-stdout] Extracting /home/guff/LoquiLex/coverage_html/z_217312d27ede12b3_m2m_py.html
+[2025-09-22 06:43:32] [build-stdout] Done extracting /home/guff/LoquiLex/coverage_html/z_217312d27ede12b3_m2m_py.html (13 ms)
+[2025-09-22 06:43:32] [build-stdout] Extracting /home/guff/LoquiLex/coverage_html/z_217312d27ede12b3_nllb_py.html
+[2025-09-22 06:43:32] [build-stdout] Done extracting /home/guff/LoquiLex/coverage_html/z_217312d27ede12b3_nllb_py.html (13 ms)
+[2025-09-22 06:43:32] [build-stdout] Extracting /home/guff/LoquiLex/coverage_html/z_2cf94fac544a7cbe_paths_py.html
+[2025-09-22 06:43:32] [build-stdout] Done extracting /home/guff/LoquiLex/coverage_html/z_2cf94fac544a7cbe_paths_py.html (13 ms)
+[2025-09-22 06:43:32] [build-stdout] Extracting /home/guff/LoquiLex/coverage_html/z_2cf94fac544a7cbe_srt_py.html
+[2025-09-22 06:43:32] [build-stdout] Done extracting /home/guff/LoquiLex/coverage_html/z_2cf94fac544a7cbe_srt_py.html (48 ms)
+[2025-09-22 06:43:32] [build-stdout] Extracting /home/guff/LoquiLex/coverage_html/z_2cf94fac544a7cbe_text_io_py.html
+[2025-09-22 06:43:32] [build-stdout] Done extracting /home/guff/LoquiLex/coverage_html/z_2cf94fac544a7cbe_text_io_py.html (31 ms)
+[2025-09-22 06:43:32] [build-stdout] Extracting /home/guff/LoquiLex/coverage_html/z_2cf94fac544a7cbe_vtt_py.html
+[2025-09-22 06:43:32] [build-stdout] Done extracting /home/guff/LoquiLex/coverage_html/z_2cf94fac544a7cbe_vtt_py.html (32 ms)
+[2025-09-22 06:43:32] [build-stdout] Extracting /home/guff/LoquiLex/coverage_html/z_411cb593cd5466e2___init___py.html
+[2025-09-22 06:43:32] [build-stdout] Done extracting /home/guff/LoquiLex/coverage_html/z_411cb593cd5466e2___init___py.html (10 ms)
+[2025-09-22 06:43:32] [build-stdout] Extracting /home/guff/LoquiLex/coverage_html/z_411cb593cd5466e2_ct2_m2m_py.html
+[2025-09-22 06:43:32] [build-stdout] Done extracting /home/guff/LoquiLex/coverage_html/z_411cb593cd5466e2_ct2_m2m_py.html (45 ms)
+[2025-09-22 06:43:32] [build-stdout] Extracting /home/guff/LoquiLex/coverage_html/z_411cb593cd5466e2_ct2_nllb_py.html
+[2025-09-22 06:43:32] [build-stdout] Done extracting /home/guff/LoquiLex/coverage_html/z_411cb593cd5466e2_ct2_nllb_py.html (33 ms)
+[2025-09-22 06:43:32] [build-stdout] Extracting /home/guff/LoquiLex/coverage_html/z_6150a4d985d8e675_zh_text_py.html
+[2025-09-22 06:43:32] [build-stdout] Done extracting /home/guff/LoquiLex/coverage_html/z_6150a4d985d8e675_zh_text_py.html (13 ms)
+[2025-09-22 06:43:32] [build-stdout] Extracting /home/guff/LoquiLex/coverage_html/z_8fbc2c585b28de7f_vtt_to_zh_py.html
+[2025-09-22 06:43:32] [build-stdout] Done extracting /home/guff/LoquiLex/coverage_html/z_8fbc2c585b28de7f_vtt_to_zh_py.html (24 ms)
+[2025-09-22 06:43:32] [build-stdout] Extracting /home/guff/LoquiLex/coverage_html/z_8fbc2c585b28de7f_wav_to_vtt_py.html
+[2025-09-22 06:43:32] [build-stdout] Done extracting /home/guff/LoquiLex/coverage_html/z_8fbc2c585b28de7f_wav_to_vtt_py.html (26 ms)
+[2025-09-22 06:43:32] [build-stdout] Extracting /home/guff/LoquiLex/coverage_html/z_a61f031d84123d68_defaults_py.html
+[2025-09-22 06:43:32] [build-stdout] Done extracting /home/guff/LoquiLex/coverage_html/z_a61f031d84123d68_defaults_py.html (45 ms)
+[2025-09-22 06:43:32] [build-stdout] Extracting /home/guff/LoquiLex/coverage_html/z_c3e27a092011cfbf___init___py.html
+[2025-09-22 06:43:32] [build-stdout] Done extracting /home/guff/LoquiLex/coverage_html/z_c3e27a092011cfbf___init___py.html (2 ms)
+[2025-09-22 06:43:32] [build-stdout] Extracting /home/guff/LoquiLex/coverage_html/z_c3e27a092011cfbf_test_contract_provider_py.html
+[2025-09-22 06:43:32] [build-stdout] Done extracting /home/guff/LoquiLex/coverage_html/z_c3e27a092011cfbf_test_contract_provider_py.html (41 ms)
+[2025-09-22 06:43:32] [build-stdout] Extracting /home/guff/LoquiLex/coverage_html/z_d393c0bb44b6e987___init___py.html
+[2025-09-22 06:43:32] [build-stdout] Done extracting /home/guff/LoquiLex/coverage_html/z_d393c0bb44b6e987___init___py.html (6 ms)
+[2025-09-22 06:43:32] [build-stdout] Extracting /home/guff/LoquiLex/coverage_html/z_d393c0bb44b6e987_aggregator_py.html
+[2025-09-22 06:43:32] [build-stdout] Done extracting /home/guff/LoquiLex/coverage_html/z_d393c0bb44b6e987_aggregator_py.html (82 ms)
+[2025-09-22 06:43:32] [build-stdout] Extracting /home/guff/LoquiLex/coverage_html/z_d393c0bb44b6e987_metrics_py.html
+[2025-09-22 06:43:32] [build-stdout] Done extracting /home/guff/LoquiLex/coverage_html/z_d393c0bb44b6e987_metrics_py.html (41 ms)
+[2025-09-22 06:43:32] [build-stdout] Extracting /home/guff/LoquiLex/coverage_html/z_d393c0bb44b6e987_stream_py.html
+[2025-09-22 06:43:32] [build-stdout] Done extracting /home/guff/LoquiLex/coverage_html/z_d393c0bb44b6e987_stream_py.html (82 ms)
+[2025-09-22 06:43:32] [build-stdout] Extracting /home/guff/LoquiLex/coverage_html/z_d393c0bb44b6e987_whisper_engine_py.html
+[2025-09-22 06:43:32] [build-stdout] Done extracting /home/guff/LoquiLex/coverage_html/z_d393c0bb44b6e987_whisper_engine_py.html (36 ms)
+[2025-09-22 06:43:32] [build-stdout] Extracting /home/guff/LoquiLex/coverage_html/z_e345eb0c3919bbba___init___py.html
+[2025-09-22 06:43:32] [build-stdout] Done extracting /home/guff/LoquiLex/coverage_html/z_e345eb0c3919bbba___init___py.html (4 ms)
+[2025-09-22 06:43:32] [build-stdout] Extracting /home/guff/LoquiLex/coverage_html/z_e345eb0c3919bbba_integration_py.html
+[2025-09-22 06:43:32] [build-stdout] Done extracting /home/guff/LoquiLex/coverage_html/z_e345eb0c3919bbba_integration_py.html (27 ms)
+[2025-09-22 06:43:32] [build-stdout] Extracting /home/guff/LoquiLex/coverage_html/z_e345eb0c3919bbba_service_py.html
+[2025-09-22 06:43:33] [build-stdout] Done extracting /home/guff/LoquiLex/coverage_html/z_e345eb0c3919bbba_service_py.html (26 ms)
+[2025-09-22 06:43:33] [build-stdout] Extracting /home/guff/LoquiLex/coverage_html/z_e345eb0c3919bbba_translator_py.html
+[2025-09-22 06:43:33] [build-stdout] Done extracting /home/guff/LoquiLex/coverage_html/z_e345eb0c3919bbba_translator_py.html (38 ms)
+[2025-09-22 06:43:33] [build-stdout] Extracting /home/guff/LoquiLex/coverage_html/z_e5c654c383fde765_aggregator_py.html
+[2025-09-22 06:43:33] [build-stdout] Done extracting /home/guff/LoquiLex/coverage_html/z_e5c654c383fde765_aggregator_py.html (11 ms)
+[2025-09-22 06:43:33] [build-stdout] Extracting /home/guff/LoquiLex/coverage_html/z_f76430000059ff3f___init___py.html
+[2025-09-22 06:43:33] [build-stdout] Done extracting /home/guff/LoquiLex/coverage_html/z_f76430000059ff3f___init___py.html (2 ms)
+[2025-09-22 06:43:33] [build-stdout] Extracting /home/guff/LoquiLex/coverage_html/z_fdf30875ac134cbe___init___py.html
+[2025-09-22 06:43:33] [build-stdout] Done extracting /home/guff/LoquiLex/coverage_html/z_fdf30875ac134cbe___init___py.html (1 ms)
+[2025-09-22 06:43:33] [build-stdout] Extracting /home/guff/LoquiLex/coverage_html/z_fdf30875ac134cbe_bounded_queue_py.html
+[2025-09-22 06:43:33] [build-stdout] Done extracting /home/guff/LoquiLex/coverage_html/z_fdf30875ac134cbe_bounded_queue_py.html (32 ms)
+[2025-09-22 06:43:33] [build-stdout] Extracting /home/guff/LoquiLex/coverage_html/z_fdf30875ac134cbe_events_py.html
+[2025-09-22 06:43:33] [build-stdout] Done extracting /home/guff/LoquiLex/coverage_html/z_fdf30875ac134cbe_events_py.html (6 ms)
+[2025-09-22 06:43:33] [build-stdout] Extracting /home/guff/LoquiLex/coverage_html/z_fdf30875ac134cbe_vu_py.html
+[2025-09-22 06:43:33] [build-stdout] Done extracting /home/guff/LoquiLex/coverage_html/z_fdf30875ac134cbe_vu_py.html (8 ms)
+[2025-09-22 06:43:33] [build-stdout] Extracting /home/guff/LoquiLex/coverage_html/z_fdf30875ac134cbe_ws_protocol_py.html
+[2025-09-22 06:43:33] [build-stdout] Done extracting /home/guff/LoquiLex/coverage_html/z_fdf30875ac134cbe_ws_protocol_py.html (158 ms)
+[2025-09-22 06:43:33] [build-stdout] Extracting /home/guff/LoquiLex/coverage_html/z_fdf30875ac134cbe_ws_types_py.html
+[2025-09-22 06:43:33] [build-stdout] Done extracting /home/guff/LoquiLex/coverage_html/z_fdf30875ac134cbe_ws_types_py.html (79 ms)
+[2025-09-22 06:43:33] [build-stdout] Extracting /home/guff/LoquiLex/htmlcov/class_index.html
+[2025-09-22 06:43:33] [build-stdout] Done extracting /home/guff/LoquiLex/htmlcov/class_index.html (9 ms)
+[2025-09-22 06:43:33] [build-stdout] Extracting /home/guff/LoquiLex/htmlcov/function_index.html
+[2025-09-22 06:43:33] [build-stdout] Done extracting /home/guff/LoquiLex/htmlcov/function_index.html (16 ms)
+[2025-09-22 06:43:33] [build-stdout] Extracting /home/guff/LoquiLex/htmlcov/index.html
+[2025-09-22 06:43:33] [build-stdout] Done extracting /home/guff/LoquiLex/htmlcov/index.html (3 ms)
+[2025-09-22 06:43:33] [build-stdout] Extracting /home/guff/LoquiLex/htmlcov/z_2cf94fac544a7cbe_paths_py.html
+[2025-09-22 06:43:33] [build-stdout] Done extracting /home/guff/LoquiLex/htmlcov/z_2cf94fac544a7cbe_paths_py.html (5 ms)
+[2025-09-22 06:43:33] [build-stdout] Extracting /home/guff/LoquiLex/htmlcov/z_2cf94fac544a7cbe_srt_py.html
+[2025-09-22 06:43:33] [build-stdout] Done extracting /home/guff/LoquiLex/htmlcov/z_2cf94fac544a7cbe_srt_py.html (19 ms)
+[2025-09-22 06:43:33] [build-stdout] Extracting /home/guff/LoquiLex/htmlcov/z_2cf94fac544a7cbe_text_io_py.html
+[2025-09-22 06:43:33] [build-stdout] Done extracting /home/guff/LoquiLex/htmlcov/z_2cf94fac544a7cbe_text_io_py.html (14 ms)
+[2025-09-22 06:43:33] [build-stdout] Extracting /home/guff/LoquiLex/htmlcov/z_2cf94fac544a7cbe_vtt_py.html
+[2025-09-22 06:43:33] [build-stdout] Done extracting /home/guff/LoquiLex/htmlcov/z_2cf94fac544a7cbe_vtt_py.html (19 ms)
+[2025-09-22 06:43:33] [build-stdout] Extracting /home/guff/LoquiLex/htmlcov/z_6150a4d985d8e675_zh_text_py.html
+[2025-09-22 06:43:33] [build-stdout] Done extracting /home/guff/LoquiLex/htmlcov/z_6150a4d985d8e675_zh_text_py.html (9 ms)
+[2025-09-22 06:43:33] [build-stdout] Extracting /home/guff/LoquiLex/htmlcov/z_8fbc2c585b28de7f_vtt_to_zh_py.html
+[2025-09-22 06:43:33] [build-stdout] Done extracting /home/guff/LoquiLex/htmlcov/z_8fbc2c585b28de7f_vtt_to_zh_py.html (16 ms)
+[2025-09-22 06:43:33] [build-stdout] Extracting /home/guff/LoquiLex/htmlcov/z_8fbc2c585b28de7f_wav_to_vtt_py.html
+[2025-09-22 06:43:33] [build-stdout] Done extracting /home/guff/LoquiLex/htmlcov/z_8fbc2c585b28de7f_wav_to_vtt_py.html (17 ms)
+[2025-09-22 06:43:33] [build-stdout] Extracting /home/guff/LoquiLex/htmlcov/z_a61f031d84123d68_defaults_py.html
+[2025-09-22 06:43:33] [build-stdout] Done extracting /home/guff/LoquiLex/htmlcov/z_a61f031d84123d68_defaults_py.html (25 ms)
+[2025-09-22 06:43:33] [build-stdout] Extracting /home/guff/LoquiLex/htmlcov/z_d393c0bb44b6e987___init___py.html
+[2025-09-22 06:43:33] [build-stdout] Done extracting /home/guff/LoquiLex/htmlcov/z_d393c0bb44b6e987___init___py.html (5 ms)
+[2025-09-22 06:43:33] [build-stdout] Extracting /home/guff/LoquiLex/htmlcov/z_d393c0bb44b6e987_aggregator_py.html
+[2025-09-22 06:43:33] [build-stdout] Done extracting /home/guff/LoquiLex/htmlcov/z_d393c0bb44b6e987_aggregator_py.html (96 ms)
+[2025-09-22 06:43:33] [build-stdout] Extracting /home/guff/LoquiLex/htmlcov/z_d393c0bb44b6e987_metrics_py.html
+[2025-09-22 06:43:33] [build-stdout] Done extracting /home/guff/LoquiLex/htmlcov/z_d393c0bb44b6e987_metrics_py.html (35 ms)
+[2025-09-22 06:43:33] [build-stdout] Extracting /home/guff/LoquiLex/htmlcov/z_d393c0bb44b6e987_stream_py.html
+[2025-09-22 06:43:33] [build-stdout] Done extracting /home/guff/LoquiLex/htmlcov/z_d393c0bb44b6e987_stream_py.html (73 ms)
+[2025-09-22 06:43:33] [build-stdout] Extracting /home/guff/LoquiLex/htmlcov/z_d393c0bb44b6e987_whisper_engine_py.html
+[2025-09-22 06:43:33] [build-stdout] Done extracting /home/guff/LoquiLex/htmlcov/z_d393c0bb44b6e987_whisper_engine_py.html (33 ms)
+[2025-09-22 06:43:33] [build-stdout] Extracting /home/guff/LoquiLex/htmlcov/z_e345eb0c3919bbba_translator_py.html
+[2025-09-22 06:43:33] [build-stdout] Done extracting /home/guff/LoquiLex/htmlcov/z_e345eb0c3919bbba_translator_py.html (34 ms)
+[2025-09-22 06:43:33] [build-stdout] Extracting /home/guff/LoquiLex/htmlcov/z_e5c654c383fde765_aggregator_py.html
+[2025-09-22 06:43:33] [build-stdout] Done extracting /home/guff/LoquiLex/htmlcov/z_e5c654c383fde765_aggregator_py.html (10 ms)
+[2025-09-22 06:43:33] [build-stdout] Extracting /home/guff/LoquiLex/htmlcov/z_f76430000059ff3f___init___py.html
+[2025-09-22 06:43:33] [build-stdout] Done extracting /home/guff/LoquiLex/htmlcov/z_f76430000059ff3f___init___py.html (3 ms)
+[2025-09-22 06:43:33] [build-stdout] Extracting /home/guff/LoquiLex/htmlcov/z_fdf30875ac134cbe___init___py.html
+[2025-09-22 06:43:33] [build-stdout] Done extracting /home/guff/LoquiLex/htmlcov/z_fdf30875ac134cbe___init___py.html (2 ms)
+[2025-09-22 06:43:33] [build-stdout] Extracting /home/guff/LoquiLex/htmlcov/z_fdf30875ac134cbe_events_py.html
+[2025-09-22 06:43:33] [build-stdout] Done extracting /home/guff/LoquiLex/htmlcov/z_fdf30875ac134cbe_events_py.html (6 ms)
+[2025-09-22 06:43:33] [build-stdout] Extracting /home/guff/LoquiLex/htmlcov/z_fdf30875ac134cbe_vu_py.html
+[2025-09-22 06:43:33] [build-stdout] Done extracting /home/guff/LoquiLex/htmlcov/z_fdf30875ac134cbe_vu_py.html (8 ms)
+[2025-09-22 06:43:33] [build-stdout] Found Node.js at: node
+[2025-09-22 06:43:33] [build-stdout] Found Node.js version: v22.19.0
+[2025-09-22 06:43:33] [build-stdout] Memory for TypeScript process: 2000 MB, and 400 MB reserve
+[2025-09-22 06:43:34] [build-stdout] Extracting /home/guff/LoquiLex/loquilex/ui/web/src/orchestration/__tests__/bounded-queue.test.ts
+[2025-09-22 06:43:34] [build-stdout] Done extracting /home/guff/LoquiLex/loquilex/ui/web/src/orchestration/__tests__/bounded-queue.test.ts (154 ms)
+[2025-09-22 06:43:34] [build-stdout] Extracting /home/guff/LoquiLex/loquilex/ui/web/src/orchestration/__tests__/cancellation.test.ts
+[2025-09-22 06:43:34] [build-stdout] Done extracting /home/guff/LoquiLex/loquilex/ui/web/src/orchestration/__tests__/cancellation.test.ts (43 ms)
+[2025-09-22 06:43:34] [build-stdout] Extracting /home/guff/LoquiLex/loquilex/ui/web/src/orchestration/__tests__/concurrency.test.ts
+[2025-09-22 06:43:34] [build-stdout] Done extracting /home/guff/LoquiLex/loquilex/ui/web/src/orchestration/__tests__/concurrency.test.ts (33 ms)
+[2025-09-22 06:43:34] [build-stdout] Extracting /home/guff/LoquiLex/loquilex/ui/web/src/orchestration/__tests__/progress-worker.test.ts
+[2025-09-22 06:43:34] [build-stdout] Done extracting /home/guff/LoquiLex/loquilex/ui/web/src/orchestration/__tests__/progress-worker.test.ts (32 ms)
+[2025-09-22 06:43:34] [build-stdout] Extracting /home/guff/LoquiLex/loquilex/ui/web/src/orchestration/__tests__/retry.test.ts
+[2025-09-22 06:43:34] [build-stdout] Done extracting /home/guff/LoquiLex/loquilex/ui/web/src/orchestration/__tests__/retry.test.ts (53 ms)
+[2025-09-22 06:43:34] [build-stdout] Extracting /home/guff/LoquiLex/loquilex/ui/web/src/orchestration/__tests__/store-helpers.test.ts
+[2025-09-22 06:43:34] [build-stdout] Done extracting /home/guff/LoquiLex/loquilex/ui/web/src/orchestration/__tests__/store-helpers.test.ts (47 ms)
+[2025-09-22 06:43:34] [build-stdout] Extracting /home/guff/LoquiLex/loquilex/ui/web/src/orchestration/__tests__/throttle.test.ts
+[2025-09-22 06:43:34] [build-stdout] Done extracting /home/guff/LoquiLex/loquilex/ui/web/src/orchestration/__tests__/throttle.test.ts (34 ms)
+[2025-09-22 06:43:34] [build-stdout] Extracting /home/guff/LoquiLex/loquilex/ui/web/src/orchestration/__tests__/ws-resilience.test.ts
+[2025-09-22 06:43:34] [build-stdout] Done extracting /home/guff/LoquiLex/loquilex/ui/web/src/orchestration/__tests__/ws-resilience.test.ts (48 ms)
+[2025-09-22 06:43:34] [build-stdout] Extracting /home/guff/LoquiLex/loquilex/ui/web/src/orchestration/client/ws-client.ts
+[2025-09-22 06:43:34] [build-stdout] Done extracting /home/guff/LoquiLex/loquilex/ui/web/src/orchestration/client/ws-client.ts (38 ms)
+[2025-09-22 06:43:34] [build-stdout] Extracting /home/guff/LoquiLex/loquilex/ui/web/src/orchestration/examples/downloads-store-fixed.ts
+[2025-09-22 06:43:34] [build-stdout] Done extracting /home/guff/LoquiLex/loquilex/ui/web/src/orchestration/examples/downloads-store-fixed.ts (34 ms)
+[2025-09-22 06:43:34] [build-stdout] Extracting /home/guff/LoquiLex/loquilex/ui/web/src/orchestration/examples/downloads-store.ts
+[2025-09-22 06:43:34] [build-stdout] Done extracting /home/guff/LoquiLex/loquilex/ui/web/src/orchestration/examples/downloads-store.ts (32 ms)
+[2025-09-22 06:43:34] [build-stdout] Extracting /home/guff/LoquiLex/loquilex/ui/web/src/orchestration/examples/progress-demo.tsx
+[2025-09-22 06:43:34] [build-stdout] Done extracting /home/guff/LoquiLex/loquilex/ui/web/src/orchestration/examples/progress-demo.tsx (24 ms)
+[2025-09-22 06:43:34] [build-stdout] Extracting /home/guff/LoquiLex/loquilex/ui/web/src/orchestration/logging/data-redactor.ts
+[2025-09-22 06:43:34] [build-stdout] Done extracting /home/guff/LoquiLex/loquilex/ui/web/src/orchestration/logging/data-redactor.ts (16 ms)
+[2025-09-22 06:43:34] [build-stdout] Extracting /home/guff/LoquiLex/loquilex/ui/web/src/orchestration/logging/index.ts
+[2025-09-22 06:43:34] [build-stdout] Done extracting /home/guff/LoquiLex/loquilex/ui/web/src/orchestration/logging/index.ts (1 ms)
+[2025-09-22 06:43:34] [build-stdout] Extracting /home/guff/LoquiLex/loquilex/ui/web/src/orchestration/logging/performance-metrics.ts
+[2025-09-22 06:43:34] [build-stdout] Done extracting /home/guff/LoquiLex/loquilex/ui/web/src/orchestration/logging/performance-metrics.ts (54 ms)
+[2025-09-22 06:43:34] [build-stdout] Extracting /home/guff/LoquiLex/loquilex/ui/web/src/orchestration/logging/structured-logger.ts
+[2025-09-22 06:43:34] [build-stdout] Done extracting /home/guff/LoquiLex/loquilex/ui/web/src/orchestration/logging/structured-logger.ts (33 ms)
+[2025-09-22 06:43:34] [build-stdout] Extracting /home/guff/LoquiLex/loquilex/ui/web/src/orchestration/store/helpers.ts
+[2025-09-22 06:43:34] [build-stdout] Done extracting /home/guff/LoquiLex/loquilex/ui/web/src/orchestration/store/helpers.ts (38 ms)
+[2025-09-22 06:43:34] [build-stdout] Extracting /home/guff/LoquiLex/loquilex/ui/web/src/orchestration/types/index.ts
+[2025-09-22 06:43:34] [build-stdout] Done extracting /home/guff/LoquiLex/loquilex/ui/web/src/orchestration/types/index.ts (27 ms)
+[2025-09-22 06:43:34] [build-stdout] Extracting /home/guff/LoquiLex/loquilex/ui/web/src/orchestration/types/legacy.ts
+[2025-09-22 06:43:34] [build-stdout] Done extracting /home/guff/LoquiLex/loquilex/ui/web/src/orchestration/types/legacy.ts (3 ms)
+[2025-09-22 06:43:34] [build-stdout] Extracting /home/guff/LoquiLex/loquilex/ui/web/src/orchestration/utils/bounded-queue.ts
+[2025-09-22 06:43:34] [build-stdout] Done extracting /home/guff/LoquiLex/loquilex/ui/web/src/orchestration/utils/bounded-queue.ts (21 ms)
+[2025-09-22 06:43:34] [build-stdout] Extracting /home/guff/LoquiLex/loquilex/ui/web/src/orchestration/utils/cancellation.ts
+[2025-09-22 06:43:34] [build-stdout] Done extracting /home/guff/LoquiLex/loquilex/ui/web/src/orchestration/utils/cancellation.ts (12 ms)
+[2025-09-22 06:43:34] [build-stdout] Extracting /home/guff/LoquiLex/loquilex/ui/web/src/orchestration/utils/concurrency-fixed.ts
+[2025-09-22 06:43:34] [build-stdout] Done extracting /home/guff/LoquiLex/loquilex/ui/web/src/orchestration/utils/concurrency-fixed.ts (16 ms)
+[2025-09-22 06:43:34] [build-stdout] Extracting /home/guff/LoquiLex/loquilex/ui/web/src/orchestration/utils/concurrency.ts
+[2025-09-22 06:43:34] [build-stdout] Done extracting /home/guff/LoquiLex/loquilex/ui/web/src/orchestration/utils/concurrency.ts (16 ms)
+[2025-09-22 06:43:34] [build-stdout] Extracting /home/guff/LoquiLex/loquilex/ui/web/src/orchestration/utils/retry.ts
+[2025-09-22 06:43:34] [build-stdout] Done extracting /home/guff/LoquiLex/loquilex/ui/web/src/orchestration/utils/retry.ts (15 ms)
+[2025-09-22 06:43:34] [build-stdout] Extracting /home/guff/LoquiLex/loquilex/ui/web/src/orchestration/utils/throttle.ts
+[2025-09-22 06:43:34] [build-stdout] Done extracting /home/guff/LoquiLex/loquilex/ui/web/src/orchestration/utils/throttle.ts (21 ms)
+[2025-09-22 06:43:34] [build-stdout] Extracting /home/guff/LoquiLex/loquilex/ui/web/src/orchestration/worker/progress-worker-fixed.ts
+[2025-09-22 06:43:34] [build-stdout] Done extracting /home/guff/LoquiLex/loquilex/ui/web/src/orchestration/worker/progress-worker-fixed.ts (8 ms)
+[2025-09-22 06:43:34] [build-stdout] Extracting /home/guff/LoquiLex/loquilex/ui/web/src/orchestration/worker/progress-worker-implementation.ts
+[2025-09-22 06:43:34] [build-stdout] Done extracting /home/guff/LoquiLex/loquilex/ui/web/src/orchestration/worker/progress-worker-implementation.ts (17 ms)
+[2025-09-22 06:43:34] [build-stdout] Extracting /home/guff/LoquiLex/loquilex/ui/web/src/orchestration/worker/progress-worker.ts
+[2025-09-22 06:43:35] [build-stdout] Done extracting /home/guff/LoquiLex/loquilex/ui/web/src/orchestration/worker/progress-worker.ts (17 ms)
+[2025-09-22 06:43:35] [build-stdout] Extracting /home/guff/LoquiLex/loquilex/ui/web/src/orchestration/worker/progress.worker.ts
+[2025-09-22 06:43:35] [build-stdout] Done extracting /home/guff/LoquiLex/loquilex/ui/web/src/orchestration/worker/progress.worker.ts (18 ms)
+[2025-09-22 06:43:35] [build-stdout] Extracting /home/guff/LoquiLex/loquilex/ui/web/src/orchestration/worker/worker-channel-fixed.ts
+[2025-09-22 06:43:35] [build-stdout] Done extracting /home/guff/LoquiLex/loquilex/ui/web/src/orchestration/worker/worker-channel-fixed.ts (21 ms)
+[2025-09-22 06:43:35] [build-stdout] Extracting /home/guff/LoquiLex/loquilex/ui/web/src/orchestration/worker/worker-channel.ts
+[2025-09-22 06:43:35] [build-stdout] Done extracting /home/guff/LoquiLex/loquilex/ui/web/src/orchestration/worker/worker-channel.ts (24 ms)
+[2025-09-22 06:43:35] [build-stdout] Extracting /home/guff/LoquiLex/ui/app/src/components/forms/__tests__/SchemaForm.test.tsx
+[2025-09-22 06:43:35] [build-stdout] Done extracting /home/guff/LoquiLex/ui/app/src/components/forms/__tests__/SchemaForm.test.tsx (19 ms)
+[2025-09-22 06:43:35] [build-stdout] Extracting /home/guff/LoquiLex/loquilex/ui/web/src/components/HardwareInfo.tsx
+[2025-09-22 06:43:35] [build-stdout] Done extracting /home/guff/LoquiLex/loquilex/ui/web/src/components/HardwareInfo.tsx (35 ms)
+[2025-09-22 06:43:35] [build-stdout] Extracting /home/guff/LoquiLex/loquilex/ui/web/src/components/LaunchWizard.tsx
+[2025-09-22 06:43:35] [build-stdout] Done extracting /home/guff/LoquiLex/loquilex/ui/web/src/components/LaunchWizard.tsx (37 ms)
+[2025-09-22 06:43:35] [build-stdout] Extracting /home/guff/LoquiLex/loquilex/ui/web/src/components/SessionTab.tsx
+[2025-09-22 06:43:35] [build-stdout] Done extracting /home/guff/LoquiLex/loquilex/ui/web/src/components/SessionTab.tsx (40 ms)
+[2025-09-22 06:43:35] [build-stdout] Extracting /home/guff/LoquiLex/loquilex/ui/web/src/components/SettingsDialog.tsx
+[2025-09-22 06:43:35] [build-stdout] Done extracting /home/guff/LoquiLex/loquilex/ui/web/src/components/SettingsDialog.tsx (24 ms)
+[2025-09-22 06:43:35] [build-stdout] Extracting /home/guff/LoquiLex/loquilex/ui/web/src/components/VuMeter.tsx
+[2025-09-22 06:43:35] [build-stdout] Done extracting /home/guff/LoquiLex/loquilex/ui/web/src/components/VuMeter.tsx (4 ms)
+[2025-09-22 06:43:35] [build-stdout] Extracting /home/guff/LoquiLex/loquilex/ui/web/src/orchestration/index.ts
+[2025-09-22 06:43:35] [build-stdout] Done extracting /home/guff/LoquiLex/loquilex/ui/web/src/orchestration/index.ts (10 ms)
+[2025-09-22 06:43:35] [build-stdout] Extracting /home/guff/LoquiLex/ui/app/src/components/__tests__/ModelSelect.test.tsx
+[2025-09-22 06:43:35] [build-stdout] Done extracting /home/guff/LoquiLex/ui/app/src/components/__tests__/ModelSelect.test.tsx (10 ms)
+[2025-09-22 06:43:35] [build-stdout] Extracting /home/guff/LoquiLex/ui/app/src/components/__tests__/SettingsView.test.tsx
+[2025-09-22 06:43:35] [build-stdout] Done extracting /home/guff/LoquiLex/ui/app/src/components/__tests__/SettingsView.test.tsx (66 ms)
+[2025-09-22 06:43:35] [build-stdout] Extracting /home/guff/LoquiLex/ui/app/src/components/__tests__/Tooltip.test.tsx
+[2025-09-22 06:43:35] [build-stdout] Done extracting /home/guff/LoquiLex/ui/app/src/components/__tests__/Tooltip.test.tsx (27 ms)
+[2025-09-22 06:43:35] [build-stdout] Extracting /home/guff/LoquiLex/ui/app/src/components/__tests__/WithTooltip.test.tsx
+[2025-09-22 06:43:35] [build-stdout] Done extracting /home/guff/LoquiLex/ui/app/src/components/__tests__/WithTooltip.test.tsx (23 ms)
+[2025-09-22 06:43:35] [build-stdout] Extracting /home/guff/LoquiLex/ui/app/src/components/forms/FieldRenderer.tsx
+[2025-09-22 06:43:35] [build-stdout] Done extracting /home/guff/LoquiLex/ui/app/src/components/forms/FieldRenderer.tsx (16 ms)
+[2025-09-22 06:43:35] [build-stdout] Extracting /home/guff/LoquiLex/ui/app/src/components/forms/FormGroup.tsx
+[2025-09-22 06:43:35] [build-stdout] Done extracting /home/guff/LoquiLex/ui/app/src/components/forms/FormGroup.tsx (4 ms)
+[2025-09-22 06:43:35] [build-stdout] Extracting /home/guff/LoquiLex/ui/app/src/components/forms/SchemaForm.tsx
+[2025-09-22 06:43:35] [build-stdout] Done extracting /home/guff/LoquiLex/ui/app/src/components/forms/SchemaForm.tsx (13 ms)
+[2025-09-22 06:43:35] [build-stdout] Extracting /home/guff/LoquiLex/ui/app/src/components/forms/index.ts
+[2025-09-22 06:43:35] [build-stdout] Done extracting /home/guff/LoquiLex/ui/app/src/components/forms/index.ts (2 ms)
+[2025-09-22 06:43:35] [build-stdout] Extracting /home/guff/LoquiLex/ui/app/src/components/forms/types.ts
+[2025-09-22 06:43:35] [build-stdout] Done extracting /home/guff/LoquiLex/ui/app/src/components/forms/types.ts (5 ms)
+[2025-09-22 06:43:35] [build-stdout] Extracting /home/guff/LoquiLex/ui/app/src/components/forms/validation.ts
+[2025-09-22 06:43:35] [build-stdout] Done extracting /home/guff/LoquiLex/ui/app/src/components/forms/validation.ts (7 ms)
+[2025-09-22 06:43:35] [build-stdout] Extracting /home/guff/LoquiLex/ui/app/src/orchestration/worker/worker-channel.ts
+[2025-09-22 06:43:35] [build-stdout] Done extracting /home/guff/LoquiLex/ui/app/src/orchestration/worker/worker-channel.ts (6 ms)
+[2025-09-22 06:43:35] [build-stdout] Extracting /home/guff/LoquiLex/ui/app/src/test/e2e/basic.spec.ts
+[2025-09-22 06:43:35] [build-stdout] Done extracting /home/guff/LoquiLex/ui/app/src/test/e2e/basic.spec.ts (7 ms)
+[2025-09-22 06:43:35] [build-stdout] Extracting /home/guff/LoquiLex/ui/app/src/test/e2e/settings-a11y.spec.ts
+[2025-09-22 06:43:35] [build-stdout] Done extracting /home/guff/LoquiLex/ui/app/src/test/e2e/settings-a11y.spec.ts (43 ms)
+[2025-09-22 06:43:35] [build-stdout] Extracting /home/guff/LoquiLex/ui/app/src/utils/__tests__/settings.test.ts
+[2025-09-22 06:43:35] [build-stdout] Done extracting /home/guff/LoquiLex/ui/app/src/utils/__tests__/settings.test.ts (19 ms)
+[2025-09-22 06:43:35] [build-stdout] Extracting /home/guff/LoquiLex/loquilex/ui/web/src/App.tsx
+[2025-09-22 06:43:35] [build-stdout] Done extracting /home/guff/LoquiLex/loquilex/ui/web/src/App.tsx (8 ms)
+[2025-09-22 06:43:35] [build-stdout] Extracting /home/guff/LoquiLex/loquilex/ui/web/src/api.ts
+[2025-09-22 06:43:35] [build-stdout] Done extracting /home/guff/LoquiLex/loquilex/ui/web/src/api.ts (15 ms)
+[2025-09-22 06:43:35] [build-stdout] Extracting /home/guff/LoquiLex/loquilex/ui/web/src/hooks.ts
+[2025-09-22 06:43:35] [build-stdout] Done extracting /home/guff/LoquiLex/loquilex/ui/web/src/hooks.ts (4 ms)
+[2025-09-22 06:43:35] [build-stdout] Extracting /home/guff/LoquiLex/loquilex/ui/web/src/jsx-fallback.d.ts
+[2025-09-22 06:43:35] [build-stdout] Done extracting /home/guff/LoquiLex/loquilex/ui/web/src/jsx-fallback.d.ts (2 ms)
+[2025-09-22 06:43:35] [build-stdout] Extracting /home/guff/LoquiLex/loquilex/ui/web/src/main.tsx
+[2025-09-22 06:43:35] [build-stdout] Done extracting /home/guff/LoquiLex/loquilex/ui/web/src/main.tsx (22 ms)
+[2025-09-22 06:43:35] [build-stdout] Extracting /home/guff/LoquiLex/loquilex/ui/web/src/store.ts
+[2025-09-22 06:43:35] [build-stdout] Done extracting /home/guff/LoquiLex/loquilex/ui/web/src/store.ts (20 ms)
+[2025-09-22 06:43:35] [build-stdout] Extracting /home/guff/LoquiLex/loquilex/ui/web/src/types.ts
+[2025-09-22 06:43:35] [build-stdout] Done extracting /home/guff/LoquiLex/loquilex/ui/web/src/types.ts (18 ms)
+[2025-09-22 06:43:35] [build-stdout] Extracting /home/guff/LoquiLex/loquilex/ui/web/src/vite-env.d.ts
+[2025-09-22 06:43:35] [build-stdout] Done extracting /home/guff/LoquiLex/loquilex/ui/web/src/vite-env.d.ts (4 ms)
+[2025-09-22 06:43:35] [build-stdout] Extracting /home/guff/LoquiLex/loquilex/ui/web/src/ws.ts
+[2025-09-22 06:43:35] [build-stdout] Done extracting /home/guff/LoquiLex/loquilex/ui/web/src/ws.ts (15 ms)
+[2025-09-22 06:43:35] [build-stdout] Extracting /home/guff/LoquiLex/ui/app/src/components/DualPanelsView.tsx
+[2025-09-22 06:43:35] [build-stdout] Done extracting /home/guff/LoquiLex/ui/app/src/components/DualPanelsView.tsx (54 ms)
+[2025-09-22 06:43:35] [build-stdout] Extracting /home/guff/LoquiLex/ui/app/src/components/ModelSelect.tsx
+[2025-09-22 06:43:35] [build-stdout] Done extracting /home/guff/LoquiLex/ui/app/src/components/ModelSelect.tsx (33 ms)
+[2025-09-22 06:43:35] [build-stdout] Extracting /home/guff/LoquiLex/ui/app/src/components/RestartBadge.tsx
+[2025-09-22 06:43:35] [build-stdout] Done extracting /home/guff/LoquiLex/ui/app/src/components/RestartBadge.tsx (3 ms)
+[2025-09-22 06:43:35] [build-stdout] Extracting /home/guff/LoquiLex/ui/app/src/components/SchemaSettingsView.tsx
+[2025-09-22 06:43:35] [build-stdout] Done extracting /home/guff/LoquiLex/ui/app/src/components/SchemaSettingsView.tsx (19 ms)
+[2025-09-22 06:43:35] [build-stdout] Extracting /home/guff/LoquiLex/ui/app/src/components/SettingsView.tsx
+[2025-09-22 06:43:35] [build-stdout] Done extracting /home/guff/LoquiLex/ui/app/src/components/SettingsView.tsx (42 ms)
+[2025-09-22 06:43:35] [build-stdout] Extracting /home/guff/LoquiLex/ui/app/src/components/StorageStep.tsx
+[2025-09-22 06:43:35] [build-stdout] Done extracting /home/guff/LoquiLex/ui/app/src/components/StorageStep.tsx (26 ms)
+[2025-09-22 06:43:35] [build-stdout] Extracting /home/guff/LoquiLex/ui/app/src/components/Tooltip.tsx
+[2025-09-22 06:43:35] [build-stdout] Done extracting /home/guff/LoquiLex/ui/app/src/components/Tooltip.tsx (19 ms)
+[2025-09-22 06:43:35] [build-stdout] Extracting /home/guff/LoquiLex/ui/app/src/components/WithTooltip.tsx
+[2025-09-22 06:43:35] [build-stdout] Done extracting /home/guff/LoquiLex/ui/app/src/components/WithTooltip.tsx (5 ms)
+[2025-09-22 06:43:35] [build-stdout] Extracting /home/guff/LoquiLex/ui/app/src/hooks/useSettingsSchema.ts
+[2025-09-22 06:43:35] [build-stdout] Done extracting /home/guff/LoquiLex/ui/app/src/hooks/useSettingsSchema.ts (4 ms)
+[2025-09-22 06:43:35] [build-stdout] Extracting /home/guff/LoquiLex/ui/app/src/test/setup.ts
+[2025-09-22 06:43:35] [build-stdout] Done extracting /home/guff/LoquiLex/ui/app/src/test/setup.ts (1 ms)
+[2025-09-22 06:43:35] [build-stdout] Extracting /home/guff/LoquiLex/ui/app/src/types/index.ts
+[2025-09-22 06:43:35] [build-stdout] Done extracting /home/guff/LoquiLex/ui/app/src/types/index.ts (5 ms)
+[2025-09-22 06:43:35] [build-stdout] Extracting /home/guff/LoquiLex/ui/app/src/utils/settings.ts
+[2025-09-22 06:43:35] [build-stdout] Done extracting /home/guff/LoquiLex/ui/app/src/utils/settings.ts (6 ms)
+[2025-09-22 06:43:35] [build-stdout] Extracting /home/guff/LoquiLex/ui/app/src/utils/ws.ts
+[2025-09-22 06:43:35] [build-stdout] Done extracting /home/guff/LoquiLex/ui/app/src/utils/ws.ts (3 ms)
+[2025-09-22 06:43:35] [build-stdout] Extracting /home/guff/LoquiLex/loquilex/ui/web/vite.config.ts
+[2025-09-22 06:43:35] [build-stdout] Done extracting /home/guff/LoquiLex/loquilex/ui/web/vite.config.ts (6 ms)
+[2025-09-22 06:43:35] [build-stdout] Extracting /home/guff/LoquiLex/loquilex/ui/web/vitest.config.ts
+[2025-09-22 06:43:35] [build-stdout] Done extracting /home/guff/LoquiLex/loquilex/ui/web/vitest.config.ts (2 ms)
+[2025-09-22 06:43:35] [build-stdout] Extracting /home/guff/LoquiLex/ui/app/src/App.tsx
+[2025-09-22 06:43:35] [build-stdout] Done extracting /home/guff/LoquiLex/ui/app/src/App.tsx (3 ms)
+[2025-09-22 06:43:35] [build-stdout] Extracting /home/guff/LoquiLex/ui/app/src/main.tsx
+[2025-09-22 06:43:35] [build-stdout] Done extracting /home/guff/LoquiLex/ui/app/src/main.tsx (1 ms)
+[2025-09-22 06:43:35] [build-stdout] Extracting /home/guff/LoquiLex/ui/app/playwright.a11y.config.ts
+[2025-09-22 06:43:35] [build-stdout] Done extracting /home/guff/LoquiLex/ui/app/playwright.a11y.config.ts (3 ms)
+[2025-09-22 06:43:35] [build-stdout] Extracting /home/guff/LoquiLex/ui/app/playwright.config.ts
+[2025-09-22 06:43:35] [build-stdout] Done extracting /home/guff/LoquiLex/ui/app/playwright.config.ts (3 ms)
+[2025-09-22 06:43:35] [build-stdout] Extracting /home/guff/LoquiLex/ui/app/vite.config.ts
+[2025-09-22 06:43:35] [build-stdout] Done extracting /home/guff/LoquiLex/ui/app/vite.config.ts (5 ms)
+[2025-09-22 06:43:35] [build-stdout] Extracting /home/guff/LoquiLex/ui/app/dist/assets/index-CDurCR1n.js
+[2025-09-22 06:43:37] [build-stdout] Done extracting /home/guff/LoquiLex/ui/app/dist/assets/index-CDurCR1n.js (1706 ms)
+[2025-09-22 06:43:37] [build-stdout] Extracting /home/guff/LoquiLex/loquilex/ui/web/package.json
+[2025-09-22 06:43:37] [build-stdout] Done extracting /home/guff/LoquiLex/loquilex/ui/web/package.json (4 ms)
+[2025-09-22 06:43:37] [build-stdout] Extracting /home/guff/LoquiLex/loquilex/ui/web/postcss.config.js
+[2025-09-22 06:43:37] [build-stdout] Done extracting /home/guff/LoquiLex/loquilex/ui/web/postcss.config.js (3 ms)
+[2025-09-22 06:43:37] [build-stdout] Extracting /home/guff/LoquiLex/loquilex/ui/web/tailwind.config.js
+[2025-09-22 06:43:37] [build-stdout] Done extracting /home/guff/LoquiLex/loquilex/ui/web/tailwind.config.js (3 ms)
+[2025-09-22 06:43:37] [build-stdout] Extracting /home/guff/LoquiLex/loquilex/ui/web/tsconfig.json
+[2025-09-22 06:43:37] [build-stdout] Done extracting /home/guff/LoquiLex/loquilex/ui/web/tsconfig.json (0 ms)
+[2025-09-22 06:43:37] [build-stdout] Extracting /home/guff/LoquiLex/ui/dist/assets/index-BiSE1hUH.js
+[2025-09-22 06:43:38] [build-stdout] Done extracting /home/guff/LoquiLex/ui/dist/assets/index-BiSE1hUH.js (947 ms)
+[2025-09-22 06:43:38] [build-stdout] Extracting /home/guff/LoquiLex/.github/workflows/ci.yml
+[2025-09-22 06:43:38] [build-stdout] Done extracting /home/guff/LoquiLex/.github/workflows/ci.yml (33 ms)
+[2025-09-22 06:43:38] [build-stdout] Extracting /home/guff/LoquiLex/.github/workflows/codeql.yml
+[2025-09-22 06:43:38] [build-stdout] Done extracting /home/guff/LoquiLex/.github/workflows/codeql.yml (5 ms)
+[2025-09-22 06:43:38] [build-stdout] Extracting /home/guff/LoquiLex/.github/workflows/dead-code-analysis.yml
+[2025-09-22 06:43:38] [build-stdout] Done extracting /home/guff/LoquiLex/.github/workflows/dead-code-analysis.yml (7 ms)
+[2025-09-22 06:43:38] [build-stdout] Extracting /home/guff/LoquiLex/.github/workflows/dependency-review.yml
+[2025-09-22 06:43:38] [build-stdout] Done extracting /home/guff/LoquiLex/.github/workflows/dependency-review.yml (2 ms)
+[2025-09-22 06:43:38] [build-stdout] Extracting /home/guff/LoquiLex/.github/workflows/gitleaks.yml
+[2025-09-22 06:43:38] [build-stdout] Done extracting /home/guff/LoquiLex/.github/workflows/gitleaks.yml (2 ms)
+[2025-09-22 06:43:38] [build-stdout] Extracting /home/guff/LoquiLex/.github/workflows/preexec-guard.yml
+[2025-09-22 06:43:38] [build-stdout] Done extracting /home/guff/LoquiLex/.github/workflows/preexec-guard.yml (1 ms)
+[2025-09-22 06:43:38] [build-stdout] Extracting /home/guff/LoquiLex/.github/workflows/scorecards.yml
+[2025-09-22 06:43:38] [build-stdout] Done extracting /home/guff/LoquiLex/.github/workflows/scorecards.yml (2 ms)
+[2025-09-22 06:43:38] [build-stdout] Extracting /home/guff/LoquiLex/docs/mt/compatibility.yaml
+[2025-09-22 06:43:38] [build-stdout] Done extracting /home/guff/LoquiLex/docs/mt/compatibility.yaml (2 ms)
+[2025-09-22 06:43:38] [build-stdout] Extracting /home/guff/LoquiLex/ui/app/package.json
+[2025-09-22 06:43:38] [build-stdout] Done extracting /home/guff/LoquiLex/ui/app/package.json (1 ms)
+[2025-09-22 06:43:38] [build-stdout] Extracting /home/guff/LoquiLex/ui/app/tsconfig.json
+[2025-09-22 06:43:38] [build-stdout] Done extracting /home/guff/LoquiLex/ui/app/tsconfig.json (0 ms)
+[2025-09-22 06:43:38] [build-stdout] Extracting /home/guff/LoquiLex/ui/app/tsconfig.node.json
+[2025-09-22 06:43:38] [build-stdout] Done extracting /home/guff/LoquiLex/ui/app/tsconfig.node.json (0 ms)
+[2025-09-22 06:43:38] [build-stdout] Extracting /home/guff/LoquiLex/.github/agent-task.yml
+[2025-09-22 06:43:38] [build-stdout] Done extracting /home/guff/LoquiLex/.github/agent-task.yml (1 ms)
+[2025-09-22 06:43:38] [build-stdout] Extracting /home/guff/LoquiLex/.github/dependabot.yml
+[2025-09-22 06:43:38] [build-stdout] Done extracting /home/guff/LoquiLex/.github/dependabot.yml (2 ms)
+[2025-09-22 06:43:38] [build-stdout] Extracting /home/guff/LoquiLex/coverage_html/coverage_html_cb_6fb7b396.js
+[2025-09-22 06:43:38] [build-stdout] Done extracting /home/guff/LoquiLex/coverage_html/coverage_html_cb_6fb7b396.js (72 ms)
+[2025-09-22 06:43:38] [build-stdout] Extracting /home/guff/LoquiLex/htmlcov/coverage_html_cb_6fb7b396.js
+[2025-09-22 06:43:38] [build-stdout] Done extracting /home/guff/LoquiLex/htmlcov/coverage_html_cb_6fb7b396.js (78 ms)
+[2025-09-22 06:43:38] [build-stdout] Extracting /home/guff/LoquiLex/.yamllint.yaml
+[2025-09-22 06:43:38] [build-stdout] Done extracting /home/guff/LoquiLex/.yamllint.yaml (4 ms)
+[2025-09-22 06:43:38] [build-stdout] Extracting /home/guff/LoquiLex/docker-compose.gpu.yml
+[2025-09-22 06:43:38] [build-stdout] Done extracting /home/guff/LoquiLex/docker-compose.gpu.yml (3 ms)
+[2025-09-22 06:43:38] [build-stdout] Extracting /home/guff/LoquiLex/docker-compose.yml
+[2025-09-22 06:43:38] [build-stdout] Done extracting /home/guff/LoquiLex/docker-compose.yml (2 ms)
+[2025-09-22 06:43:38] [build-stdout] Extracting /home/guff/LoquiLex/package.json
+[2025-09-22 06:43:38] [build-stdout] Done extracting /home/guff/LoquiLex/package.json (5 ms)
+[2025-09-22 06:43:38] [build-stderr] No externs trap cache found
+[2025-09-22 06:43:38] [build-stdout] Extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/nodejs/string_decoder.js
+[2025-09-22 06:43:38] [build-stdout] Done extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/nodejs/string_decoder.js (25 ms)
+[2025-09-22 06:43:38] [build-stdout] Extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/nodejs/querystring.js
+[2025-09-22 06:43:38] [build-stdout] Done extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/nodejs/querystring.js (10 ms)
+[2025-09-22 06:43:38] [build-stdout] Extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/nodejs/punycode.js
+[2025-09-22 06:43:38] [build-stdout] Done extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/nodejs/punycode.js (4 ms)
+[2025-09-22 06:43:38] [build-stdout] Extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/nodejs/zlib.js
+[2025-09-22 06:43:38] [build-stdout] Done extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/nodejs/zlib.js (24 ms)
+[2025-09-22 06:43:38] [build-stdout] Extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/nodejs/util.js
+[2025-09-22 06:43:38] [build-stdout] Done extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/nodejs/util.js (13 ms)
+[2025-09-22 06:43:38] [build-stdout] Extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/nodejs/dgram.js
+[2025-09-22 06:43:38] [build-stdout] Done extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/nodejs/dgram.js (11 ms)
+[2025-09-22 06:43:38] [build-stdout] Extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/nodejs/console.js
+[2025-09-22 06:43:38] [build-stdout] Done extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/nodejs/console.js (2 ms)
+[2025-09-22 06:43:38] [build-stdout] Extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/nodejs/assert.js
+[2025-09-22 06:43:38] [build-stdout] Done extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/nodejs/assert.js (9 ms)
+[2025-09-22 06:43:38] [build-stdout] Extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/nodejs/domain.js
+[2025-09-22 06:43:38] [build-stdout] Done extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/nodejs/domain.js (5 ms)
+[2025-09-22 06:43:38] [build-stdout] Extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/nodejs/http.js
+[2025-09-22 06:43:38] [build-stdout] Done extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/nodejs/http.js (27 ms)
+[2025-09-22 06:43:38] [build-stdout] Extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/nodejs/assert_legacy.js
+[2025-09-22 06:43:38] [build-stdout] Done extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/nodejs/assert_legacy.js (2 ms)
+[2025-09-22 06:43:38] [build-stdout] Extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/nodejs/process.js
+[2025-09-22 06:43:38] [build-stdout] Done extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/nodejs/process.js (1 ms)
+[2025-09-22 06:43:38] [build-stdout] Extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/nodejs/child_process.js
+[2025-09-22 06:43:38] [build-stdout] Done extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/nodejs/child_process.js (45 ms)
+[2025-09-22 06:43:38] [build-stdout] Extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/nodejs/url.js
+[2025-09-22 06:43:38] [build-stdout] Done extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/nodejs/url.js (5 ms)
+[2025-09-22 06:43:38] [build-stdout] Extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/nodejs/stream.js
+[2025-09-22 06:43:39] [build-stdout] Done extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/nodejs/stream.js (36 ms)
+[2025-09-22 06:43:39] [build-stdout] Extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/nodejs/readline.js
+[2025-09-22 06:43:39] [build-stdout] Done extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/nodejs/readline.js (11 ms)
+[2025-09-22 06:43:39] [build-stdout] Extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/nodejs/fs.js
+[2025-09-22 06:43:39] [build-stdout] Done extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/nodejs/fs.js (75 ms)
+[2025-09-22 06:43:39] [build-stdout] Extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/nodejs/v8.js
+[2025-09-22 06:43:39] [build-stdout] Done extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/nodejs/v8.js (3 ms)
+[2025-09-22 06:43:39] [build-stdout] Extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/nodejs/sys.js
+[2025-09-22 06:43:39] [build-stdout] Done extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/nodejs/sys.js (2 ms)
+[2025-09-22 06:43:39] [build-stdout] Extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/nodejs/https.js
+[2025-09-22 06:43:39] [build-stdout] Done extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/nodejs/https.js (8 ms)
+[2025-09-22 06:43:39] [build-stdout] Extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/nodejs/globals.js
+[2025-09-22 06:43:39] [build-stdout] Done extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/nodejs/globals.js (109 ms)
+[2025-09-22 06:43:39] [build-stdout] Extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/nodejs/repl.js
+[2025-09-22 06:43:39] [build-stdout] Done extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/nodejs/repl.js (6 ms)
+[2025-09-22 06:43:39] [build-stdout] Extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/nodejs/path.js
+[2025-09-22 06:43:39] [build-stdout] Done extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/nodejs/path.js (13 ms)
+[2025-09-22 06:43:39] [build-stdout] Extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/nodejs/os.js
+[2025-09-22 06:43:39] [build-stdout] Done extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/nodejs/os.js (11 ms)
+[2025-09-22 06:43:39] [build-stdout] Extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/nodejs/vm.js
+[2025-09-22 06:43:39] [build-stdout] Done extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/nodejs/vm.js (8 ms)
+[2025-09-22 06:43:39] [build-stdout] Extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/nodejs/timers.js
+[2025-09-22 06:43:39] [build-stdout] Done extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/nodejs/timers.js (5 ms)
+[2025-09-22 06:43:39] [build-stdout] Extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/nodejs/net.js
+[2025-09-22 06:43:39] [build-stdout] Done extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/nodejs/net.js (20 ms)
+[2025-09-22 06:43:39] [build-stdout] Extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/nodejs/buffer.js
+[2025-09-22 06:43:39] [build-stdout] Done extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/nodejs/buffer.js (6 ms)
+[2025-09-22 06:43:39] [build-stdout] Extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/nodejs/events.js
+[2025-09-22 06:43:39] [build-stdout] Done extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/nodejs/events.js (6 ms)
+[2025-09-22 06:43:39] [build-stdout] Extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/nodejs/dns.js
+[2025-09-22 06:43:39] [build-stdout] Done extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/nodejs/dns.js (12 ms)
+[2025-09-22 06:43:39] [build-stdout] Extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/nodejs/constants.js
+[2025-09-22 06:43:39] [build-stdout] Done extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/nodejs/constants.js (69 ms)
+[2025-09-22 06:43:39] [build-stdout] Extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/nodejs/module.js
+[2025-09-22 06:43:39] [build-stdout] Done extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/nodejs/module.js (4 ms)
+[2025-09-22 06:43:39] [build-stdout] Extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/nodejs/cluster.js
+[2025-09-22 06:43:39] [build-stdout] Done extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/nodejs/cluster.js (49 ms)
+[2025-09-22 06:43:39] [build-stdout] Extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/nodejs/tty.js
+[2025-09-22 06:43:39] [build-stdout] Done extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/nodejs/tty.js (6 ms)
+[2025-09-22 06:43:39] [build-stdout] Extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/nodejs/crypto.js
+[2025-09-22 06:43:39] [build-stdout] Done extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/nodejs/crypto.js (44 ms)
+[2025-09-22 06:43:39] [build-stdout] Extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/nodejs/tls.js
+[2025-09-22 06:43:39] [build-stdout] Done extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/nodejs/tls.js (22 ms)
+[2025-09-22 06:43:39] [build-stdout] Extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/lib/bdd.js
+[2025-09-22 06:43:39] [build-stdout] Done extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/lib/bdd.js (5 ms)
+[2025-09-22 06:43:39] [build-stdout] Extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/lib/vows.js
+[2025-09-22 06:43:39] [build-stdout] Done extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/lib/vows.js (11 ms)
+[2025-09-22 06:43:39] [build-stdout] Extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/lib/should.js
+[2025-09-22 06:43:39] [build-stdout] Done extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/lib/should.js (10 ms)
+[2025-09-22 06:43:39] [build-stdout] Extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/lib/jquery-3.2.js
+[2025-09-22 06:43:39] [build-stdout] Done extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/lib/jquery-3.2.js (114 ms)
+[2025-09-22 06:43:39] [build-stdout] Extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/web/w3c_xml.js
+[2025-09-22 06:43:39] [build-stdout] Done extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/web/w3c_xml.js (13 ms)
+[2025-09-22 06:43:39] [build-stdout] Extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/web/w3c_dom4.js
+[2025-09-22 06:43:39] [build-stdout] Done extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/web/w3c_dom4.js (2 ms)
+[2025-09-22 06:43:39] [build-stdout] Extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/web/intl.js
+[2025-09-22 06:43:39] [build-stdout] Done extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/web/intl.js (7 ms)
+[2025-09-22 06:43:39] [build-stdout] Extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/web/w3c_gamepad.js
+[2025-09-22 06:43:39] [build-stdout] Done extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/web/w3c_gamepad.js (3 ms)
+[2025-09-22 06:43:39] [build-stdout] Extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/web/w3c_rtc.js
+[2025-09-22 06:43:39] [build-stdout] Done extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/web/w3c_rtc.js (71 ms)
+[2025-09-22 06:43:39] [build-stdout] Extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/web/mediasource.js
+[2025-09-22 06:43:39] [build-stdout] Done extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/web/mediasource.js (7 ms)
+[2025-09-22 06:43:39] [build-stdout] Extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/web/w3c_device_sensor_event.js
+[2025-09-22 06:43:39] [build-stdout] Done extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/web/w3c_device_sensor_event.js (3 ms)
+[2025-09-22 06:43:39] [build-stdout] Extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/web/webkit_dom.js
+[2025-09-22 06:43:39] [build-stdout] Done extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/web/webkit_dom.js (12 ms)
+[2025-09-22 06:43:39] [build-stdout] Extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/web/webkit_notifications.js
+[2025-09-22 06:43:39] [build-stdout] Done extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/web/webkit_notifications.js (8 ms)
+[2025-09-22 06:43:39] [build-stdout] Extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/web/ie_vml.js
+[2025-09-22 06:43:39] [build-stdout] Done extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/web/ie_vml.js (2 ms)
+[2025-09-22 06:43:39] [build-stdout] Extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/web/w3c_encoding.js
+[2025-09-22 06:43:39] [build-stdout] Done extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/web/w3c_encoding.js (2 ms)
+[2025-09-22 06:43:39] [build-stdout] Extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/web/w3c_screen_orientation.js
+[2025-09-22 06:43:39] [build-stdout] Done extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/web/w3c_screen_orientation.js (1 ms)
+[2025-09-22 06:43:39] [build-stdout] Extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/web/w3c_midi.js
+[2025-09-22 06:43:39] [build-stdout] Done extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/web/w3c_midi.js (9 ms)
+[2025-09-22 06:43:39] [build-stdout] Extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/web/w3c_range.js
+[2025-09-22 06:43:39] [build-stdout] Done extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/web/w3c_range.js (8 ms)
+[2025-09-22 06:43:39] [build-stdout] Extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/web/w3c_anim_timing.js
+[2025-09-22 06:43:39] [build-stdout] Done extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/web/w3c_anim_timing.js (3 ms)
+[2025-09-22 06:43:39] [build-stdout] Extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/web/whatwg_encoding.js
+[2025-09-22 06:43:39] [build-stdout] Done extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/web/whatwg_encoding.js (2 ms)
+[2025-09-22 06:43:39] [build-stdout] Extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/web/webstorage.js
+[2025-09-22 06:43:39] [build-stdout] Done extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/web/webstorage.js (5 ms)
+[2025-09-22 06:43:39] [build-stdout] Extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/web/webgl.js
+[2025-09-22 06:43:39] [build-stdout] Done extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/web/webgl.js (111 ms)
+[2025-09-22 06:43:39] [build-stdout] Extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/web/w3c_indexeddb.js
+[2025-09-22 06:43:39] [build-stdout] Done extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/web/w3c_indexeddb.js (30 ms)
+[2025-09-22 06:43:39] [build-stdout] Extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/web/w3c_selectors.js
+[2025-09-22 06:43:39] [build-stdout] Done extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/web/w3c_selectors.js (5 ms)
+[2025-09-22 06:43:39] [build-stdout] Extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/web/w3c_batterystatus.js
+[2025-09-22 06:43:39] [build-stdout] Done extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/web/w3c_batterystatus.js (2 ms)
+[2025-09-22 06:43:39] [build-stdout] Extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/web/webkit_usercontent.js
+[2025-09-22 06:43:39] [build-stdout] Done extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/web/webkit_usercontent.js (2 ms)
+[2025-09-22 06:43:39] [build-stdout] Extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/web/ie_dom.js
+[2025-09-22 06:43:40] [build-stdout] Done extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/web/ie_dom.js (61 ms)
+[2025-09-22 06:43:40] [build-stdout] Extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/web/webkit_event.js
+[2025-09-22 06:43:40] [build-stdout] Done extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/web/webkit_event.js (2 ms)
+[2025-09-22 06:43:40] [build-stdout] Extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/web/url.js
+[2025-09-22 06:43:40] [build-stdout] Done extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/web/url.js (5 ms)
+[2025-09-22 06:43:40] [build-stdout] Extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/web/w3c_permissions.js
+[2025-09-22 06:43:40] [build-stdout] Done extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/web/w3c_permissions.js (4 ms)
+[2025-09-22 06:43:40] [build-stdout] Extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/web/html5.js
+[2025-09-22 06:43:40] [build-stdout] Done extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/web/html5.js (130 ms)
+[2025-09-22 06:43:40] [build-stdout] Extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/web/gecko_dom.js
+[2025-09-22 06:43:40] [build-stdout] Done extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/web/gecko_dom.js (24 ms)
+[2025-09-22 06:43:40] [build-stdout] Extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/web/w3c_css3d.js
+[2025-09-22 06:43:40] [build-stdout] Done extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/web/w3c_css3d.js (6 ms)
+[2025-09-22 06:43:40] [build-stdout] Extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/web/w3c_pointer_events.js
+[2025-09-22 06:43:40] [build-stdout] Done extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/web/w3c_pointer_events.js (4 ms)
+[2025-09-22 06:43:40] [build-stdout] Extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/web/gecko_event.js
+[2025-09-22 06:43:40] [build-stdout] Done extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/web/gecko_event.js (4 ms)
+[2025-09-22 06:43:40] [build-stdout] Extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/web/w3c_dom3.js
+[2025-09-22 06:43:40] [build-stdout] Done extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/web/w3c_dom3.js (23 ms)
+[2025-09-22 06:43:40] [build-stdout] Extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/web/page_visibility.js
+[2025-09-22 06:43:40] [build-stdout] Done extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/web/page_visibility.js (1 ms)
+[2025-09-22 06:43:40] [build-stdout] Extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/web/w3c_dom2.js
+[2025-09-22 06:43:40] [build-stdout] Done extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/web/w3c_dom2.js (64 ms)
+[2025-09-22 06:43:40] [build-stdout] Extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/web/streamsapi.js
+[2025-09-22 06:43:40] [build-stdout] Done extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/web/streamsapi.js (19 ms)
+[2025-09-22 06:43:40] [build-stdout] Extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/web/w3c_requestidlecallback.js
+[2025-09-22 06:43:40] [build-stdout] Done extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/web/w3c_requestidlecallback.js (3 ms)
+[2025-09-22 06:43:40] [build-stdout] Extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/web/ie_css.js
+[2025-09-22 06:43:40] [build-stdout] Done extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/web/ie_css.js (34 ms)
+[2025-09-22 06:43:40] [build-stdout] Extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/web/w3c_event.js
+[2025-09-22 06:43:40] [build-stdout] Done extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/web/w3c_event.js (36 ms)
+[2025-09-22 06:43:40] [build-stdout] Extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/web/w3c_elementtraversal.js
+[2025-09-22 06:43:40] [build-stdout] Done extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/web/w3c_elementtraversal.js (4 ms)
+[2025-09-22 06:43:40] [build-stdout] Extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/web/fileapi.js
+[2025-09-22 06:43:40] [build-stdout] Done extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/web/fileapi.js (29 ms)
+[2025-09-22 06:43:40] [build-stdout] Extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/web/chrome.js
+[2025-09-22 06:43:40] [build-stdout] Done extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/web/chrome.js (19 ms)
+[2025-09-22 06:43:40] [build-stdout] Extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/web/gecko_ext.js
+[2025-09-22 06:43:40] [build-stdout] Done extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/web/gecko_ext.js (1 ms)
+[2025-09-22 06:43:40] [build-stdout] Extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/web/w3c_geolocation.js
+[2025-09-22 06:43:40] [build-stdout] Done extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/web/w3c_geolocation.js (5 ms)
+[2025-09-22 06:43:40] [build-stdout] Extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/web/w3c_navigation_timing.js
+[2025-09-22 06:43:40] [build-stdout] Done extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/web/w3c_navigation_timing.js (9 ms)
+[2025-09-22 06:43:40] [build-stdout] Extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/web/gecko_css.js
+[2025-09-22 06:43:40] [build-stdout] Done extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/web/gecko_css.js (8 ms)
+[2025-09-22 06:43:40] [build-stdout] Extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/web/w3c_serviceworker.js
+[2025-09-22 06:43:40] [build-stdout] Done extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/web/w3c_serviceworker.js (19 ms)
+[2025-09-22 06:43:40] [build-stdout] Extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/web/webkit_css.js
+[2025-09-22 06:43:40] [build-stdout] Done extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/web/webkit_css.js (41 ms)
+[2025-09-22 06:43:40] [build-stdout] Extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/web/window.js
+[2025-09-22 06:43:40] [build-stdout] Done extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/web/window.js (5 ms)
+[2025-09-22 06:43:40] [build-stdout] Extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/web/w3c_webcrypto.js
+[2025-09-22 06:43:40] [build-stdout] Done extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/web/w3c_webcrypto.js (12 ms)
+[2025-09-22 06:43:40] [build-stdout] Extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/web/w3c_css.js
+[2025-09-22 06:43:40] [build-stdout] Done extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/web/w3c_css.js (62 ms)
+[2025-09-22 06:43:40] [build-stdout] Extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/web/w3c_touch_event.js
+[2025-09-22 06:43:40] [build-stdout] Done extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/web/w3c_touch_event.js (7 ms)
+[2025-09-22 06:43:40] [build-stdout] Extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/web/flash.js
+[2025-09-22 06:43:40] [build-stdout] Done extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/web/flash.js (7 ms)
+[2025-09-22 06:43:40] [build-stdout] Extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/web/gecko_xml.js
+[2025-09-22 06:43:40] [build-stdout] Done extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/web/gecko_xml.js (2 ms)
+[2025-09-22 06:43:40] [build-stdout] Extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/web/iphone.js
+[2025-09-22 06:43:40] [build-stdout] Done extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/web/iphone.js (5 ms)
+[2025-09-22 06:43:40] [build-stdout] Extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/web/fetchapi.js
+[2025-09-22 06:43:40] [build-stdout] Done extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/web/fetchapi.js (15 ms)
+[2025-09-22 06:43:40] [build-stdout] Extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/web/ie_event.js
+[2025-09-22 06:43:40] [build-stdout] Done extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/web/ie_event.js (8 ms)
+[2025-09-22 06:43:40] [build-stdout] Extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/web/w3c_event3.js
+[2025-09-22 06:43:40] [build-stdout] Done extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/web/w3c_event3.js (2 ms)
+[2025-09-22 06:43:40] [build-stdout] Extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/web/w3c_dom1.js
+[2025-09-22 06:43:40] [build-stdout] Done extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/web/w3c_dom1.js (29 ms)
+[2025-09-22 06:43:40] [build-stdout] Extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/vm/spidermonkey.js
+[2025-09-22 06:43:40] [build-stdout] Done extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/vm/spidermonkey.js (2 ms)
+[2025-09-22 06:43:40] [build-stdout] Extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/vm/v8.js
+[2025-09-22 06:43:40] [build-stdout] Done extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/vm/v8.js (3 ms)
+[2025-09-22 06:43:40] [build-stdout] Extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/vm/rhino.js
+[2025-09-22 06:43:40] [build-stdout] Done extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/vm/rhino.js (3 ms)
+[2025-09-22 06:43:40] [build-stdout] Extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/vm/jsshell.js
+[2025-09-22 06:43:40] [build-stdout] Done extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/vm/jsshell.js (24 ms)
+[2025-09-22 06:43:40] [build-stdout] Extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/es/es5.js
+[2025-09-22 06:43:40] [build-stdout] Done extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/es/es5.js (11 ms)
+[2025-09-22 06:43:40] [build-stdout] Extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/es/intl.js
+[2025-09-22 06:43:40] [build-stdout] Done extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/es/intl.js (9 ms)
+[2025-09-22 06:43:40] [build-stdout] Extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/es/es3.js
+[2025-09-22 06:43:40] [build-stdout] Done extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/es/es3.js (74 ms)
+[2025-09-22 06:43:40] [build-stdout] Extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/es/es2017.js
+[2025-09-22 06:43:40] [build-stdout] Done extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/es/es2017.js (2 ms)
+[2025-09-22 06:43:40] [build-stdout] Extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/es/proxy.js
+[2025-09-22 06:43:40] [build-stdout] Done extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/es/proxy.js (1 ms)
+[2025-09-22 06:43:40] [build-stdout] Extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/es/es6_collections.js
+[2025-09-22 06:43:40] [build-stdout] Done extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/es/es6_collections.js (6 ms)
+[2025-09-22 06:43:40] [build-stdout] Extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/es/es6.js
+[2025-09-22 06:43:40] [build-stdout] Done extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/es/es6.js (44 ms)
+[2025-09-22 06:43:40] [build-stdout] Extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/es/es2016.js
+[2025-09-22 06:43:40] [build-stdout] Done extracting /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/data/externs/es/es2016.js (1 ms)
+[2025-09-22 06:43:40] Plumbing command codeql database trace-command completed.
+[2025-09-22 06:43:40] [PROGRESS] database create> Finalizing database at /home/guff/LoquiLex/ql-db-js.
+[2025-09-22 06:43:40] Running plumbing command: codeql database finalize --no-db-cluster -- /home/guff/LoquiLex/ql-db-js
+[2025-09-22 06:43:40] [PROGRESS] database finalize> Running TRAP import for CodeQL database at /home/guff/LoquiLex/ql-db-js...
+[2025-09-22 06:43:41] Running plumbing command: codeql dataset import --dbscheme=/home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/semmlecode.javascript.dbscheme -- /home/guff/LoquiLex/ql-db-js/db-javascript /home/guff/LoquiLex/ql-db-js/trap/javascript
+[2025-09-22 06:43:41] Clearing disk cache since the version file /home/guff/LoquiLex/ql-db-js/db-javascript/default/cache/version does not exist
+[2025-09-22 06:43:41] Tuple pool not found. Clearing relations with cached strings
+[2025-09-22 06:43:41] Trimming disk cache at /home/guff/LoquiLex/ql-db-js/db-javascript/default/cache in mode clear.
+[2025-09-22 06:43:41] Sequence stamp origin is -6001008101732935404
+[2025-09-22 06:43:41] Pausing evaluation to hard-clear memory at sequence stamp o+0
+[2025-09-22 06:43:41] Unpausing evaluation
+[2025-09-22 06:43:41] Pausing evaluation to quickly trim disk at sequence stamp o+1
+[2025-09-22 06:43:41] Unpausing evaluation
+[2025-09-22 06:43:41] Pausing evaluation to zealously trim disk at sequence stamp o+2
+[2025-09-22 06:43:41] Unpausing evaluation
+[2025-09-22 06:43:41] Trimming completed (10ms): Purged everything.
+[2025-09-22 06:43:41] Scanning for files in /home/guff/LoquiLex/ql-db-js/trap/javascript
+[2025-09-22 06:43:41] Found 284 TRAP files (27.28 MiB)
+[2025-09-22 06:43:41] [PROGRESS] dataset import> Importing TRAP files
+[2025-09-22 06:43:41] Importing es2016.js.trap.gz (1 of 284)
+[2025-09-22 06:43:41] Importing es2017.js.trap.gz (2 of 284)
+[2025-09-22 06:43:41] Importing es3.js.trap.gz (3 of 284)
+[2025-09-22 06:43:41] Importing es5.js.trap.gz (4 of 284)
+[2025-09-22 06:43:41] Importing es6.js.trap.gz (5 of 284)
+[2025-09-22 06:43:41] Importing es6_collections.js.trap.gz (6 of 284)
+[2025-09-22 06:43:41] Importing intl.js.trap.gz (7 of 284)
+[2025-09-22 06:43:41] Importing proxy.js.trap.gz (8 of 284)
+[2025-09-22 06:43:41] Importing bdd.js.trap.gz (9 of 284)
+[2025-09-22 06:43:41] Importing jquery-3.2.js.trap.gz (10 of 284)
+[2025-09-22 06:43:41] Importing should.js.trap.gz (11 of 284)
+[2025-09-22 06:43:41] Importing vows.js.trap.gz (12 of 284)
+[2025-09-22 06:43:41] Importing assert.js.trap.gz (13 of 284)
+[2025-09-22 06:43:41] Importing assert_legacy.js.trap.gz (14 of 284)
+[2025-09-22 06:43:41] Importing buffer.js.trap.gz (15 of 284)
+[2025-09-22 06:43:41] Importing child_process.js.trap.gz (16 of 284)
+[2025-09-22 06:43:41] Importing cluster.js.trap.gz (17 of 284)
+[2025-09-22 06:43:41] Importing console.js.trap.gz (18 of 284)
+[2025-09-22 06:43:41] Importing constants.js.trap.gz (19 of 284)
+[2025-09-22 06:43:41] Importing crypto.js.trap.gz (20 of 284)
+[2025-09-22 06:43:41] Importing dgram.js.trap.gz (21 of 284)
+[2025-09-22 06:43:41] Importing dns.js.trap.gz (22 of 284)
+[2025-09-22 06:43:41] Importing domain.js.trap.gz (23 of 284)
+[2025-09-22 06:43:41] Importing events.js.trap.gz (24 of 284)
+[2025-09-22 06:43:41] Importing fs.js.trap.gz (25 of 284)
+[2025-09-22 06:43:41] Importing globals.js.trap.gz (26 of 284)
+[2025-09-22 06:43:41] Importing http.js.trap.gz (27 of 284)
+[2025-09-22 06:43:41] Importing https.js.trap.gz (28 of 284)
+[2025-09-22 06:43:41] Importing module.js.trap.gz (29 of 284)
+[2025-09-22 06:43:41] Importing net.js.trap.gz (30 of 284)
+[2025-09-22 06:43:41] Importing os.js.trap.gz (31 of 284)
+[2025-09-22 06:43:41] Importing path.js.trap.gz (32 of 284)
+[2025-09-22 06:43:41] Importing process.js.trap.gz (33 of 284)
+[2025-09-22 06:43:41] Importing punycode.js.trap.gz (34 of 284)
+[2025-09-22 06:43:41] Importing querystring.js.trap.gz (35 of 284)
+[2025-09-22 06:43:41] Importing readline.js.trap.gz (36 of 284)
+[2025-09-22 06:43:41] Importing repl.js.trap.gz (37 of 284)
+[2025-09-22 06:43:41] Importing stream.js.trap.gz (38 of 284)
+[2025-09-22 06:43:42] Importing string_decoder.js.trap.gz (39 of 284)
+[2025-09-22 06:43:42] Importing sys.js.trap.gz (40 of 284)
+[2025-09-22 06:43:42] Importing timers.js.trap.gz (41 of 284)
+[2025-09-22 06:43:42] Importing tls.js.trap.gz (42 of 284)
+[2025-09-22 06:43:42] Importing tty.js.trap.gz (43 of 284)
+[2025-09-22 06:43:42] Importing url.js.trap.gz (44 of 284)
+[2025-09-22 06:43:42] Importing util.js.trap.gz (45 of 284)
+[2025-09-22 06:43:42] Importing v8.js.trap.gz (46 of 284)
+[2025-09-22 06:43:42] Importing vm.js.trap.gz (47 of 284)
+[2025-09-22 06:43:42] Importing zlib.js.trap.gz (48 of 284)
+[2025-09-22 06:43:42] Importing jsshell.js.trap.gz (49 of 284)
+[2025-09-22 06:43:42] Importing rhino.js.trap.gz (50 of 284)
+[2025-09-22 06:43:42] Importing spidermonkey.js.trap.gz (51 of 284)
+[2025-09-22 06:43:42] Importing v8.js.trap.gz (52 of 284)
+[2025-09-22 06:43:42] Importing chrome.js.trap.gz (53 of 284)
+[2025-09-22 06:43:42] Importing fetchapi.js.trap.gz (54 of 284)
+[2025-09-22 06:43:42] Importing fileapi.js.trap.gz (55 of 284)
+[2025-09-22 06:43:42] Importing flash.js.trap.gz (56 of 284)
+[2025-09-22 06:43:42] Importing gecko_css.js.trap.gz (57 of 284)
+[2025-09-22 06:43:42] Importing gecko_dom.js.trap.gz (58 of 284)
+[2025-09-22 06:43:42] Importing gecko_event.js.trap.gz (59 of 284)
+[2025-09-22 06:43:42] Importing gecko_ext.js.trap.gz (60 of 284)
+[2025-09-22 06:43:42] Importing gecko_xml.js.trap.gz (61 of 284)
+[2025-09-22 06:43:42] Importing html5.js.trap.gz (62 of 284)
+[2025-09-22 06:43:42] Importing ie_css.js.trap.gz (63 of 284)
+[2025-09-22 06:43:42] Importing ie_dom.js.trap.gz (64 of 284)
+[2025-09-22 06:43:42] Importing ie_event.js.trap.gz (65 of 284)
+[2025-09-22 06:43:42] Importing ie_vml.js.trap.gz (66 of 284)
+[2025-09-22 06:43:42] Importing intl.js.trap.gz (67 of 284)
+[2025-09-22 06:43:42] Importing iphone.js.trap.gz (68 of 284)
+[2025-09-22 06:43:42] Importing mediasource.js.trap.gz (69 of 284)
+[2025-09-22 06:43:42] Importing page_visibility.js.trap.gz (70 of 284)
+[2025-09-22 06:43:42] Importing streamsapi.js.trap.gz (71 of 284)
+[2025-09-22 06:43:42] Importing url.js.trap.gz (72 of 284)
+[2025-09-22 06:43:42] Importing w3c_anim_timing.js.trap.gz (73 of 284)
+[2025-09-22 06:43:42] Importing w3c_batterystatus.js.trap.gz (74 of 284)
+[2025-09-22 06:43:42] Importing w3c_css.js.trap.gz (75 of 284)
+[2025-09-22 06:43:42] Importing w3c_css3d.js.trap.gz (76 of 284)
+[2025-09-22 06:43:42] Importing w3c_device_sensor_event.js.trap.gz (77 of 284)
+[2025-09-22 06:43:42] Importing w3c_dom1.js.trap.gz (78 of 284)
+[2025-09-22 06:43:42] Importing w3c_dom2.js.trap.gz (79 of 284)
+[2025-09-22 06:43:42] Importing w3c_dom3.js.trap.gz (80 of 284)
+[2025-09-22 06:43:42] Importing w3c_dom4.js.trap.gz (81 of 284)
+[2025-09-22 06:43:42] Importing w3c_elementtraversal.js.trap.gz (82 of 284)
+[2025-09-22 06:43:42] Importing w3c_encoding.js.trap.gz (83 of 284)
+[2025-09-22 06:43:42] Importing w3c_event.js.trap.gz (84 of 284)
+[2025-09-22 06:43:42] Importing w3c_event3.js.trap.gz (85 of 284)
+[2025-09-22 06:43:42] Importing w3c_gamepad.js.trap.gz (86 of 284)
+[2025-09-22 06:43:42] Importing w3c_geolocation.js.trap.gz (87 of 284)
+[2025-09-22 06:43:42] Importing w3c_indexeddb.js.trap.gz (88 of 284)
+[2025-09-22 06:43:42] Importing w3c_midi.js.trap.gz (89 of 284)
+[2025-09-22 06:43:42] Importing w3c_navigation_timing.js.trap.gz (90 of 284)
+[2025-09-22 06:43:42] Importing w3c_permissions.js.trap.gz (91 of 284)
+[2025-09-22 06:43:42] Importing w3c_pointer_events.js.trap.gz (92 of 284)
+[2025-09-22 06:43:42] Importing w3c_range.js.trap.gz (93 of 284)
+[2025-09-22 06:43:42] Importing w3c_requestidlecallback.js.trap.gz (94 of 284)
+[2025-09-22 06:43:42] Importing w3c_rtc.js.trap.gz (95 of 284)
+[2025-09-22 06:43:42] Importing w3c_screen_orientation.js.trap.gz (96 of 284)
+[2025-09-22 06:43:42] Importing w3c_selectors.js.trap.gz (97 of 284)
+[2025-09-22 06:43:42] Importing w3c_serviceworker.js.trap.gz (98 of 284)
+[2025-09-22 06:43:42] Importing w3c_touch_event.js.trap.gz (99 of 284)
+[2025-09-22 06:43:42] Importing w3c_webcrypto.js.trap.gz (100 of 284)
+[2025-09-22 06:43:42] Importing w3c_xml.js.trap.gz (101 of 284)
+[2025-09-22 06:43:42] Importing webgl.js.trap.gz (102 of 284)
+[2025-09-22 06:43:42] Importing webkit_css.js.trap.gz (103 of 284)
+[2025-09-22 06:43:42] Importing webkit_dom.js.trap.gz (104 of 284)
+[2025-09-22 06:43:42] Importing webkit_event.js.trap.gz (105 of 284)
+[2025-09-22 06:43:42] Importing webkit_notifications.js.trap.gz (106 of 284)
+[2025-09-22 06:43:42] Importing webkit_usercontent.js.trap.gz (107 of 284)
+[2025-09-22 06:43:42] Importing webstorage.js.trap.gz (108 of 284)
+[2025-09-22 06:43:42] Importing whatwg_encoding.js.trap.gz (109 of 284)
+[2025-09-22 06:43:42] Importing window.js.trap.gz (110 of 284)
+[2025-09-22 06:43:42] Importing agent-task.yml.trap.gz (111 of 284)
+[2025-09-22 06:43:42] Importing dependabot.yml.trap.gz (112 of 284)
+[2025-09-22 06:43:42] Importing ci.yml.trap.gz (113 of 284)
+[2025-09-22 06:43:42] Importing codeql.yml.trap.gz (114 of 284)
+[2025-09-22 06:43:42] Importing dead-code-analysis.yml.trap.gz (115 of 284)
+[2025-09-22 06:43:42] Importing dependency-review.yml.trap.gz (116 of 284)
+[2025-09-22 06:43:42] Importing gitleaks.yml.trap.gz (117 of 284)
+[2025-09-22 06:43:42] Importing preexec-guard.yml.trap.gz (118 of 284)
+[2025-09-22 06:43:42] Importing scorecards.yml.trap.gz (119 of 284)
+[2025-09-22 06:43:42] Importing .yamllint.yaml.trap.gz (120 of 284)
+[2025-09-22 06:43:42] Importing class_index.html.trap.gz (121 of 284)
+[2025-09-22 06:43:42] Importing coverage_html_cb_6fb7b396.js.trap.gz (122 of 284)
+[2025-09-22 06:43:42] Importing function_index.html.trap.gz (123 of 284)
+[2025-09-22 06:43:42] Importing index.html.trap.gz (124 of 284)
+[2025-09-22 06:43:42] Importing z_14822e21d44ff6d4___init___py.html.trap.gz (125 of 284)
+[2025-09-22 06:43:42] Importing z_14822e21d44ff6d4_protocol_py.html.trap.gz (126 of 284)
+[2025-09-22 06:43:42] Importing z_14822e21d44ff6d4_registry_py.html.trap.gz (127 of 284)
+[2025-09-22 06:43:42] Importing z_14822e21d44ff6d4_types_py.html.trap.gz (128 of 284)
+[2025-09-22 06:43:42] Importing z_14822e21d44ff6d4_util_py.html.trap.gz (129 of 284)
+[2025-09-22 06:43:42] Importing z_217312d27ede12b3___init___py.html.trap.gz (130 of 284)
+[2025-09-22 06:43:42] Importing z_217312d27ede12b3_m2m_py.html.trap.gz (131 of 284)
+[2025-09-22 06:43:42] Importing z_217312d27ede12b3_nllb_py.html.trap.gz (132 of 284)
+[2025-09-22 06:43:42] Importing z_2cf94fac544a7cbe_paths_py.html.trap.gz (133 of 284)
+[2025-09-22 06:43:42] Importing z_2cf94fac544a7cbe_srt_py.html.trap.gz (134 of 284)
+[2025-09-22 06:43:42] Importing z_2cf94fac544a7cbe_text_io_py.html.trap.gz (135 of 284)
+[2025-09-22 06:43:42] Importing z_2cf94fac544a7cbe_vtt_py.html.trap.gz (136 of 284)
+[2025-09-22 06:43:42] Importing z_411cb593cd5466e2___init___py.html.trap.gz (137 of 284)
+[2025-09-22 06:43:42] Importing z_411cb593cd5466e2_ct2_m2m_py.html.trap.gz (138 of 284)
+[2025-09-22 06:43:42] Importing z_411cb593cd5466e2_ct2_nllb_py.html.trap.gz (139 of 284)
+[2025-09-22 06:43:42] Importing z_6150a4d985d8e675_zh_text_py.html.trap.gz (140 of 284)
+[2025-09-22 06:43:42] Importing z_8fbc2c585b28de7f_vtt_to_zh_py.html.trap.gz (141 of 284)
+[2025-09-22 06:43:42] Importing z_8fbc2c585b28de7f_wav_to_vtt_py.html.trap.gz (142 of 284)
+[2025-09-22 06:43:42] Importing z_a61f031d84123d68_defaults_py.html.trap.gz (143 of 284)
+[2025-09-22 06:43:42] Importing z_c3e27a092011cfbf___init___py.html.trap.gz (144 of 284)
+[2025-09-22 06:43:42] Importing z_c3e27a092011cfbf_test_contract_provider_py.html.trap.gz (145 of 284)
+[2025-09-22 06:43:42] Importing z_d393c0bb44b6e987___init___py.html.trap.gz (146 of 284)
+[2025-09-22 06:43:42] Importing z_d393c0bb44b6e987_aggregator_py.html.trap.gz (147 of 284)
+[2025-09-22 06:43:42] Importing z_d393c0bb44b6e987_metrics_py.html.trap.gz (148 of 284)
+[2025-09-22 06:43:42] Importing z_d393c0bb44b6e987_stream_py.html.trap.gz (149 of 284)
+[2025-09-22 06:43:42] Importing z_d393c0bb44b6e987_whisper_engine_py.html.trap.gz (150 of 284)
+[2025-09-22 06:43:42] Importing z_e345eb0c3919bbba___init___py.html.trap.gz (151 of 284)
+[2025-09-22 06:43:42] Importing z_e345eb0c3919bbba_integration_py.html.trap.gz (152 of 284)
+[2025-09-22 06:43:42] Importing z_e345eb0c3919bbba_service_py.html.trap.gz (153 of 284)
+[2025-09-22 06:43:42] Importing z_e345eb0c3919bbba_translator_py.html.trap.gz (154 of 284)
+[2025-09-22 06:43:42] Importing z_e5c654c383fde765_aggregator_py.html.trap.gz (155 of 284)
+[2025-09-22 06:43:42] Importing z_f76430000059ff3f___init___py.html.trap.gz (156 of 284)
+[2025-09-22 06:43:42] Importing z_fdf30875ac134cbe___init___py.html.trap.gz (157 of 284)
+[2025-09-22 06:43:42] Importing z_fdf30875ac134cbe_bounded_queue_py.html.trap.gz (158 of 284)
+[2025-09-22 06:43:42] Importing z_fdf30875ac134cbe_events_py.html.trap.gz (159 of 284)
+[2025-09-22 06:43:42] Importing z_fdf30875ac134cbe_vu_py.html.trap.gz (160 of 284)
+[2025-09-22 06:43:42] Importing z_fdf30875ac134cbe_ws_protocol_py.html.trap.gz (161 of 284)
+[2025-09-22 06:43:43] Importing z_fdf30875ac134cbe_ws_types_py.html.trap.gz (162 of 284)
+[2025-09-22 06:43:43] Importing docker-compose.gpu.yml.trap.gz (163 of 284)
+[2025-09-22 06:43:43] Importing docker-compose.yml.trap.gz (164 of 284)
+[2025-09-22 06:43:43] Importing compatibility.yaml.trap.gz (165 of 284)
+[2025-09-22 06:43:43] Importing class_index.html.trap.gz (166 of 284)
+[2025-09-22 06:43:43] Importing coverage_html_cb_6fb7b396.js.trap.gz (167 of 284)
+[2025-09-22 06:43:43] Importing function_index.html.trap.gz (168 of 284)
+[2025-09-22 06:43:43] Importing index.html.trap.gz (169 of 284)
+[2025-09-22 06:43:43] Importing z_2cf94fac544a7cbe_paths_py.html.trap.gz (170 of 284)
+[2025-09-22 06:43:43] Importing z_2cf94fac544a7cbe_srt_py.html.trap.gz (171 of 284)
+[2025-09-22 06:43:43] Importing z_2cf94fac544a7cbe_text_io_py.html.trap.gz (172 of 284)
+[2025-09-22 06:43:43] Importing z_2cf94fac544a7cbe_vtt_py.html.trap.gz (173 of 284)
+[2025-09-22 06:43:43] Importing z_6150a4d985d8e675_zh_text_py.html.trap.gz (174 of 284)
+[2025-09-22 06:43:43] Importing z_8fbc2c585b28de7f_vtt_to_zh_py.html.trap.gz (175 of 284)
+[2025-09-22 06:43:43] Importing z_8fbc2c585b28de7f_wav_to_vtt_py.html.trap.gz (176 of 284)
+[2025-09-22 06:43:43] Importing z_a61f031d84123d68_defaults_py.html.trap.gz (177 of 284)
+[2025-09-22 06:43:43] Importing z_d393c0bb44b6e987___init___py.html.trap.gz (178 of 284)
+[2025-09-22 06:43:43] Importing z_d393c0bb44b6e987_aggregator_py.html.trap.gz (179 of 284)
+[2025-09-22 06:43:43] Importing z_d393c0bb44b6e987_metrics_py.html.trap.gz (180 of 284)
+[2025-09-22 06:43:43] Importing z_d393c0bb44b6e987_stream_py.html.trap.gz (181 of 284)
+[2025-09-22 06:43:43] Importing z_d393c0bb44b6e987_whisper_engine_py.html.trap.gz (182 of 284)
+[2025-09-22 06:43:43] Importing z_e345eb0c3919bbba_translator_py.html.trap.gz (183 of 284)
+[2025-09-22 06:43:43] Importing z_e5c654c383fde765_aggregator_py.html.trap.gz (184 of 284)
+[2025-09-22 06:43:43] Importing z_f76430000059ff3f___init___py.html.trap.gz (185 of 284)
+[2025-09-22 06:43:43] Importing z_fdf30875ac134cbe___init___py.html.trap.gz (186 of 284)
+[2025-09-22 06:43:43] Importing z_fdf30875ac134cbe_events_py.html.trap.gz (187 of 284)
+[2025-09-22 06:43:43] Importing z_fdf30875ac134cbe_vu_py.html.trap.gz (188 of 284)
+[2025-09-22 06:43:43] Importing index.html.trap.gz (189 of 284)
+[2025-09-22 06:43:43] Importing package.json.trap.gz (190 of 284)
+[2025-09-22 06:43:43] Importing postcss.config.js.trap.gz (191 of 284)
+[2025-09-22 06:43:43] Importing App.tsx.trap.gz (192 of 284)
+[2025-09-22 06:43:43] Importing api.ts.trap.gz (193 of 284)
+[2025-09-22 06:43:43] Importing HardwareInfo.tsx.trap.gz (194 of 284)
+[2025-09-22 06:43:43] Importing LaunchWizard.tsx.trap.gz (195 of 284)
+[2025-09-22 06:43:43] Importing SessionTab.tsx.trap.gz (196 of 284)
+[2025-09-22 06:43:43] Importing SettingsDialog.tsx.trap.gz (197 of 284)
+[2025-09-22 06:43:43] Importing VuMeter.tsx.trap.gz (198 of 284)
+[2025-09-22 06:43:43] Importing hooks.ts.trap.gz (199 of 284)
+[2025-09-22 06:43:43] Importing jsx-fallback.d.ts.trap.gz (200 of 284)
+[2025-09-22 06:43:43] Importing main.tsx.trap.gz (201 of 284)
+[2025-09-22 06:43:43] Importing bounded-queue.test.ts.trap.gz (202 of 284)
+[2025-09-22 06:43:43] Importing cancellation.test.ts.trap.gz (203 of 284)
+[2025-09-22 06:43:43] Importing concurrency.test.ts.trap.gz (204 of 284)
+[2025-09-22 06:43:43] Importing progress-worker.test.ts.trap.gz (205 of 284)
+[2025-09-22 06:43:43] Importing retry.test.ts.trap.gz (206 of 284)
+[2025-09-22 06:43:43] Importing store-helpers.test.ts.trap.gz (207 of 284)
+[2025-09-22 06:43:43] Importing throttle.test.ts.trap.gz (208 of 284)
+[2025-09-22 06:43:43] Importing ws-resilience.test.ts.trap.gz (209 of 284)
+[2025-09-22 06:43:43] Importing ws-client.ts.trap.gz (210 of 284)
+[2025-09-22 06:43:43] Importing downloads-store-fixed.ts.trap.gz (211 of 284)
+[2025-09-22 06:43:43] Importing downloads-store.ts.trap.gz (212 of 284)
+[2025-09-22 06:43:43] Importing progress-demo.tsx.trap.gz (213 of 284)
+[2025-09-22 06:43:43] Importing index.ts.trap.gz (214 of 284)
+[2025-09-22 06:43:43] Importing data-redactor.ts.trap.gz (215 of 284)
+[2025-09-22 06:43:43] Importing index.ts.trap.gz (216 of 284)
+[2025-09-22 06:43:43] Importing performance-metrics.ts.trap.gz (217 of 284)
+[2025-09-22 06:43:43] Importing structured-logger.ts.trap.gz (218 of 284)
+[2025-09-22 06:43:43] Importing helpers.ts.trap.gz (219 of 284)
+[2025-09-22 06:43:43] Importing index.ts.trap.gz (220 of 284)
+[2025-09-22 06:43:43] Importing legacy.ts.trap.gz (221 of 284)
+[2025-09-22 06:43:43] Importing bounded-queue.ts.trap.gz (222 of 284)
+[2025-09-22 06:43:43] Importing cancellation.ts.trap.gz (223 of 284)
+[2025-09-22 06:43:43] Importing concurrency-fixed.ts.trap.gz (224 of 284)
+[2025-09-22 06:43:43] Importing concurrency.ts.trap.gz (225 of 284)
+[2025-09-22 06:43:43] Importing retry.ts.trap.gz (226 of 284)
+[2025-09-22 06:43:43] Importing throttle.ts.trap.gz (227 of 284)
+[2025-09-22 06:43:43] Importing progress-worker-fixed.ts.trap.gz (228 of 284)
+[2025-09-22 06:43:43] Importing progress-worker-implementation.ts.trap.gz (229 of 284)
+[2025-09-22 06:43:43] Importing progress-worker.ts.trap.gz (230 of 284)
+[2025-09-22 06:43:43] Importing progress.worker.ts.trap.gz (231 of 284)
+[2025-09-22 06:43:43] Importing worker-channel-fixed.ts.trap.gz (232 of 284)
+[2025-09-22 06:43:43] Importing worker-channel.ts.trap.gz (233 of 284)
+[2025-09-22 06:43:43] Importing store.ts.trap.gz (234 of 284)
+[2025-09-22 06:43:43] Importing types.ts.trap.gz (235 of 284)
+[2025-09-22 06:43:43] Importing vite-env.d.ts.trap.gz (236 of 284)
+[2025-09-22 06:43:43] Importing ws.ts.trap.gz (237 of 284)
+[2025-09-22 06:43:43] Importing tailwind.config.js.trap.gz (238 of 284)
+[2025-09-22 06:43:43] Importing tsconfig.json.trap.gz (239 of 284)
+[2025-09-22 06:43:43] Importing vite.config.ts.trap.gz (240 of 284)
+[2025-09-22 06:43:43] Importing vitest.config.ts.trap.gz (241 of 284)
+[2025-09-22 06:43:43] Importing package.json.trap.gz (242 of 284)
+[2025-09-22 06:43:43] Importing index-CDurCR1n.js.trap.gz (243 of 284)
+[2025-09-22 06:43:44] Importing index.html.trap.gz (244 of 284)
+[2025-09-22 06:43:44] Importing index.html.trap.gz (245 of 284)
+[2025-09-22 06:43:44] Importing package.json.trap.gz (246 of 284)
+[2025-09-22 06:43:44] Importing playwright.a11y.config.ts.trap.gz (247 of 284)
+[2025-09-22 06:43:44] Importing playwright.config.ts.trap.gz (248 of 284)
+[2025-09-22 06:43:44] Importing App.tsx.trap.gz (249 of 284)
+[2025-09-22 06:43:44] Importing DualPanelsView.tsx.trap.gz (250 of 284)
+[2025-09-22 06:43:44] Importing ModelSelect.tsx.trap.gz (251 of 284)
+[2025-09-22 06:43:44] Importing RestartBadge.tsx.trap.gz (252 of 284)
+[2025-09-22 06:43:44] Importing SchemaSettingsView.tsx.trap.gz (253 of 284)
+[2025-09-22 06:43:44] Importing SettingsView.tsx.trap.gz (254 of 284)
+[2025-09-22 06:43:44] Importing StorageStep.tsx.trap.gz (255 of 284)
+[2025-09-22 06:43:44] Importing Tooltip.tsx.trap.gz (256 of 284)
+[2025-09-22 06:43:44] Importing WithTooltip.tsx.trap.gz (257 of 284)
+[2025-09-22 06:43:44] Importing ModelSelect.test.tsx.trap.gz (258 of 284)
+[2025-09-22 06:43:44] Importing SettingsView.test.tsx.trap.gz (259 of 284)
+[2025-09-22 06:43:44] Importing Tooltip.test.tsx.trap.gz (260 of 284)
+[2025-09-22 06:43:44] Importing WithTooltip.test.tsx.trap.gz (261 of 284)
+[2025-09-22 06:43:44] Importing FieldRenderer.tsx.trap.gz (262 of 284)
+[2025-09-22 06:43:44] Importing FormGroup.tsx.trap.gz (263 of 284)
+[2025-09-22 06:43:44] Importing SchemaForm.tsx.trap.gz (264 of 284)
+[2025-09-22 06:43:44] Importing SchemaForm.test.tsx.trap.gz (265 of 284)
+[2025-09-22 06:43:44] Importing index.ts.trap.gz (266 of 284)
+[2025-09-22 06:43:44] Importing types.ts.trap.gz (267 of 284)
+[2025-09-22 06:43:44] Importing validation.ts.trap.gz (268 of 284)
+[2025-09-22 06:43:44] Importing useSettingsSchema.ts.trap.gz (269 of 284)
+[2025-09-22 06:43:44] Importing main.tsx.trap.gz (270 of 284)
+[2025-09-22 06:43:44] Importing worker-channel.ts.trap.gz (271 of 284)
+[2025-09-22 06:43:44] Importing basic.spec.ts.trap.gz (272 of 284)
+[2025-09-22 06:43:44] Importing settings-a11y.spec.ts.trap.gz (273 of 284)
+[2025-09-22 06:43:44] Importing setup.ts.trap.gz (274 of 284)
+[2025-09-22 06:43:44] Importing index.ts.trap.gz (275 of 284)
+[2025-09-22 06:43:44] Importing settings.test.ts.trap.gz (276 of 284)
+[2025-09-22 06:43:44] Importing settings.ts.trap.gz (277 of 284)
+[2025-09-22 06:43:44] Importing ws.ts.trap.gz (278 of 284)
+[2025-09-22 06:43:44] Importing tsconfig.json.trap.gz (279 of 284)
+[2025-09-22 06:43:44] Importing tsconfig.node.json.trap.gz (280 of 284)
+[2025-09-22 06:43:44] Importing vite.config.ts.trap.gz (281 of 284)
+[2025-09-22 06:43:44] Importing index-BiSE1hUH.js.trap.gz (282 of 284)
+[2025-09-22 06:43:45] Importing index.html.trap.gz (283 of 284)
+[2025-09-22 06:43:45] Importing metadata.trap.gz (284 of 284)
+[2025-09-22 06:43:45] [PROGRESS] dataset import> Merging relations
+[2025-09-22 06:43:45] Merging 1 fragment for 'files'.
+[2025-09-22 06:43:45] Merged 977 bytes for 'files'.
+[2025-09-22 06:43:45] Merging 1 fragment for 'folders'.
+[2025-09-22 06:43:45] Merged 210 bytes for 'folders'.
+[2025-09-22 06:43:45] Merging 1 fragment for 'containerparent'.
+[2025-09-22 06:43:45] Merged 867 bytes for 'containerparent'.
+[2025-09-22 06:43:45] Merging 8 fragments for 'locations_default'.
+[2025-09-22 06:43:45] Merged 2457749 bytes (2.34 MiB) for 'locations_default'.
+[2025-09-22 06:43:45] Merging 7 fragments for 'hasLocation'.
+[2025-09-22 06:43:46] Merged 1458986 bytes (1.39 MiB) for 'hasLocation'.
+[2025-09-22 06:43:46] Merging 1 fragment for 'extraction_data'.
+[2025-09-22 06:43:46] Merged 1236 bytes (1.21 KiB) for 'extraction_data'.
+[2025-09-22 06:43:46] Merging 1 fragment for 'scopes'.
+[2025-09-22 06:43:46] Merged 10291 bytes (10.05 KiB) for 'scopes'.
+[2025-09-22 06:43:46] Merging 1 fragment for 'comments'.
+[2025-09-22 06:43:46] Merged 41297 bytes (40.33 KiB) for 'comments'.
+[2025-09-22 06:43:46] Merging 1 fragment for 'indentation'.
+[2025-09-22 06:43:46] Merged 46682 bytes (45.59 KiB) for 'indentation'.
+[2025-09-22 06:43:46] Merging 1 fragment for 'numlines'.
+[2025-09-22 06:43:46] Merged 2951 bytes (2.88 KiB) for 'numlines'.
+[2025-09-22 06:43:46] Merging 4 fragments for 'tokeninfo'.
+[2025-09-22 06:43:46] Merged 1592765 bytes (1.52 MiB) for 'tokeninfo'.
+[2025-09-22 06:43:46] Merging 1 fragment for 'next_token'.
+[2025-09-22 06:43:46] Merged 22684 bytes (22.15 KiB) for 'next_token'.
+[2025-09-22 06:43:46] Merging 1 fragment for 'jsdoc'.
+[2025-09-22 06:43:46] Merged 20889 bytes (20.40 KiB) for 'jsdoc'.
+[2025-09-22 06:43:46] Merging 1 fragment for 'jsdoc_tags'.
+[2025-09-22 06:43:46] Merged 95492 bytes (93.25 KiB) for 'jsdoc_tags'.
+[2025-09-22 06:43:46] Merging 1 fragment for 'jsdoc_tag_descriptions'.
+[2025-09-22 06:43:46] Merged 7358 bytes (7.19 KiB) for 'jsdoc_tag_descriptions'.
+[2025-09-22 06:43:46] Merging 1 fragment for 'jsdoc_tag_names'.
+[2025-09-22 06:43:46] Merged 14299 bytes (13.96 KiB) for 'jsdoc_tag_names'.
+[2025-09-22 06:43:46] Merging 1 fragment for 'jsdoc_type_exprs'.
+[2025-09-22 06:43:46] Merged 125568 bytes (122.62 KiB) for 'jsdoc_type_exprs'.
+[2025-09-22 06:43:46] Merging 1 fragment for 'toplevels'.
+[2025-09-22 06:43:46] Merged 400 bytes for 'toplevels'.
+[2025-09-22 06:43:46] Merging 1 fragment for 'stmts'.
+[2025-09-22 06:43:46] Merged 225504 bytes (220.22 KiB) for 'stmts'.
+[2025-09-22 06:43:46] Merging 1 fragment for 'stmt_containers'.
+[2025-09-22 06:43:46] Merged 83249 bytes (81.30 KiB) for 'stmt_containers'.
+[2025-09-22 06:43:46] Merging 2 fragments for 'exprs'.
+[2025-09-22 06:43:46] Merged 1373075 bytes (1.31 MiB) for 'exprs'.
+[2025-09-22 06:43:46] Merging 2 fragments for 'enclosing_stmt'.
+[2025-09-22 06:43:46] Merged 246979 bytes (241.19 KiB) for 'enclosing_stmt'.
+[2025-09-22 06:43:46] Merging 2 fragments for 'expr_containers'.
+[2025-09-22 06:43:46] Merged 245878 bytes (240.12 KiB) for 'expr_containers'.
+[2025-09-22 06:43:46] Merging 2 fragments for 'literals'.
+[2025-09-22 06:43:46] Merged 218300 bytes (213.18 KiB) for 'literals'.
+[2025-09-22 06:43:46] Merging 1 fragment for 'variables'.
+[2025-09-22 06:43:46] Merged 80188 bytes (78.31 KiB) for 'variables'.
+[2025-09-22 06:43:46] Merging 1 fragment for 'bind'.
+[2025-09-22 06:43:46] Merged 110322 bytes (107.74 KiB) for 'bind'.
+[2025-09-22 06:43:46] Merging 1 fragment for 'scopenodes'.
+[2025-09-22 06:43:46] Merged 16610 bytes (16.22 KiB) for 'scopenodes'.
+[2025-09-22 06:43:46] Merging 1 fragment for 'scopenesting'.
+[2025-09-22 06:43:46] Merged 13862 bytes (13.54 KiB) for 'scopenesting'.
+[2025-09-22 06:43:46] Merging 1 fragment for 'decl'.
+[2025-09-22 06:43:46] Merged 33381 bytes (32.60 KiB) for 'decl'.
+[2025-09-22 06:43:46] Merging 1 fragment for 'is_arguments_object'.
+[2025-09-22 06:43:46] Merged 5803 bytes (5.67 KiB) for 'is_arguments_object'.
+[2025-09-22 06:43:46] Merging 1 fragment for 'entry_cfg_node'.
+[2025-09-22 06:43:46] Merged 15562 bytes (15.20 KiB) for 'entry_cfg_node'.
+[2025-09-22 06:43:46] Merging 1 fragment for 'exit_cfg_node'.
+[2025-09-22 06:43:46] Merged 15562 bytes (15.20 KiB) for 'exit_cfg_node'.
+[2025-09-22 06:43:46] Merging 3 fragments for 'successor'.
+[2025-09-22 06:43:46] Merged 568616 bytes (555.29 KiB) for 'successor'.
+[2025-09-22 06:43:46] Merging 1 fragment for 'is_externs'.
+[2025-09-22 06:43:46] Merged 222 bytes for 'is_externs'.
+[2025-09-22 06:43:46] Merging 1 fragment for 'filetype'.
+[2025-09-22 06:43:46] Merged 625 bytes for 'filetype'.
+[2025-09-22 06:43:46] Merging 1 fragment for 'extraction_time'.
+[2025-09-22 06:43:46] Merged 30766 bytes (30.04 KiB) for 'extraction_time'.
+[2025-09-22 06:43:46] Merging 1 fragment for 'jsdoc_prefix_qualifier'.
+[2025-09-22 06:43:46] Merged 1894 bytes (1.85 KiB) for 'jsdoc_prefix_qualifier'.
+[2025-09-22 06:43:46] Merging 1 fragment for 'jsdoc_errors'.
+[2025-09-22 06:43:46] Merged 1147 bytes (1.12 KiB) for 'jsdoc_errors'.
+[2025-09-22 06:43:46] Merging 1 fragment for 'jsdoc_record_field_name'.
+[2025-09-22 06:43:46] Merged 1596 bytes (1.56 KiB) for 'jsdoc_record_field_name'.
+[2025-09-22 06:43:46] Merging 1 fragment for 'jsdoc_has_new_parameter'.
+[2025-09-22 06:43:46] Merged 35 bytes for 'jsdoc_has_new_parameter'.
+[2025-09-22 06:43:46] Merging 1 fragment for 'properties'.
+[2025-09-22 06:43:46] Merged 22992 bytes (22.45 KiB) for 'properties'.
+[2025-09-22 06:43:46] Merging 1 fragment for 'regexpterm'.
+[2025-09-22 06:43:46] Merged 42469 bytes (41.47 KiB) for 'regexpterm'.
+[2025-09-22 06:43:46] Merging 1 fragment for 'regexp_const_value'.
+[2025-09-22 06:43:46] Merged 20652 bytes (20.17 KiB) for 'regexp_const_value'.
+[2025-09-22 06:43:46] Merging 1 fragment for 'guard_node'.
+[2025-09-22 06:43:46] Merged 44120 bytes (43.09 KiB) for 'guard_node'.
+[2025-09-22 06:43:46] Merging 1 fragment for 'is_module'.
+[2025-09-22 06:43:46] Merged 244 bytes for 'is_module'.
+[2025-09-22 06:43:46] Merging 1 fragment for 'is_nodejs'.
+[2025-09-22 06:43:46] Merged 86 bytes for 'is_nodejs'.
+[2025-09-22 06:43:46] Merging 1 fragment for 'yaml_scalars'.
+[2025-09-22 06:43:46] Merged 2110 bytes (2.06 KiB) for 'yaml_scalars'.
+[2025-09-22 06:43:46] Merging 1 fragment for 'yaml'.
+[2025-09-22 06:43:46] Merged 5198 bytes (5.08 KiB) for 'yaml'.
+[2025-09-22 06:43:46] Merging 1 fragment for 'yaml_locations'.
+[2025-09-22 06:43:46] Merged 1559 bytes (1.52 KiB) for 'yaml_locations'.
+[2025-09-22 06:43:46] Merging 1 fragment for 'xmlElements'.
+[2025-09-22 06:43:46] Merged 323322 bytes (315.74 KiB) for 'xmlElements'.
+[2025-09-22 06:43:46] Merging 2 fragments for 'xmllocations'.
+[2025-09-22 06:43:46] Merged 319018 bytes (311.54 KiB) for 'xmllocations'.
+[2025-09-22 06:43:46] Merging 1 fragment for 'xmlAttrs'.
+[2025-09-22 06:43:46] Merged 448746 bytes (438.23 KiB) for 'xmlAttrs'.
+[2025-09-22 06:43:46] Merging 1 fragment for 'has_rest_parameter'.
+[2025-09-22 06:43:46] Merged 39 bytes for 'has_rest_parameter'.
+[2025-09-22 06:43:46] Merging 1 fragment for 'array_size'.
+[2025-09-22 06:43:46] Merged 1206 bytes (1.18 KiB) for 'array_size'.
+[2025-09-22 06:43:46] Merging 1 fragment for 'jump_targets'.
+[2025-09-22 06:43:46] Merged 1487 bytes (1.45 KiB) for 'jump_targets'.
+[2025-09-22 06:43:46] Merging 1 fragment for 'is_capture'.
+[2025-09-22 06:43:46] Merged 216 bytes for 'is_capture'.
+[2025-09-22 06:43:46] Merging 1 fragment for 'is_greedy'.
+[2025-09-22 06:43:46] Merged 120 bytes for 'is_greedy'.
+[2025-09-22 06:43:46] Merging 1 fragment for 'isOptionalChaining'.
+[2025-09-22 06:43:46] Merged 136 bytes for 'isOptionalChaining'.
+[2025-09-22 06:43:46] Merging 1 fragment for 'char_class_escape'.
+[2025-09-22 06:43:46] Merged 67 bytes for 'char_class_escape'.
+[2025-09-22 06:43:46] Merging 1 fragment for 'json'.
+[2025-09-22 06:43:46] Merged 724 bytes for 'json'.
+[2025-09-22 06:43:46] Merging 1 fragment for 'json_locations'.
+[2025-09-22 06:43:46] Merged 294 bytes for 'json_locations'.
+[2025-09-22 06:43:46] Merging 1 fragment for 'json_literals'.
+[2025-09-22 06:43:46] Merged 402 bytes for 'json_literals'.
+[2025-09-22 06:43:46] Merging 1 fragment for 'json_properties'.
+[2025-09-22 06:43:46] Merged 386 bytes for 'json_properties'.
+[2025-09-22 06:43:46] Merging 1 fragment for 'is_es2015_module'.
+[2025-09-22 06:43:46] Merged 174 bytes for 'is_es2015_module'.
+[2025-09-22 06:43:46] Merging 1 fragment for 'local_type_names'.
+[2025-09-22 06:43:46] Merged 2163 bytes (2.11 KiB) for 'local_type_names'.
+[2025-09-22 06:43:46] Merging 1 fragment for 'local_namespace_names'.
+[2025-09-22 06:43:46] Merged 1515 bytes (1.48 KiB) for 'local_namespace_names'.
+[2025-09-22 06:43:46] Merging 1 fragment for 'typedecl'.
+[2025-09-22 06:43:46] Merged 1389 bytes (1.36 KiB) for 'typedecl'.
+[2025-09-22 06:43:46] Merging 1 fragment for 'namespacedecl'.
+[2025-09-22 06:43:46] Merged 992 bytes for 'namespacedecl'.
+[2025-09-22 06:43:46] Merging 1 fragment for 'typeexprs'.
+[2025-09-22 06:43:46] Merged 15996 bytes (15.62 KiB) for 'typeexprs'.
+[2025-09-22 06:43:46] Merging 1 fragment for 'is_abstract_member'.
+[2025-09-22 06:43:46] Merged 583 bytes for 'is_abstract_member'.
+[2025-09-22 06:43:46] Merging 1 fragment for 'typebind'.
+[2025-09-22 06:43:46] Merged 1113 bytes (1.09 KiB) for 'typebind'.
+[2025-09-22 06:43:46] Merging 1 fragment for 'is_async'.
+[2025-09-22 06:43:46] Merged 248 bytes for 'is_async'.
+[2025-09-22 06:43:46] Merging 1 fragment for 'is_optional_member'.
+[2025-09-22 06:43:46] Merged 209 bytes for 'is_optional_member'.
+[2025-09-22 06:43:46] Merging 1 fragment for 'namespacebind'.
+[2025-09-22 06:43:46] Merged 103 bytes for 'namespacebind'.
+[2025-09-22 06:43:46] Merging 1 fragment for 'has_declare_keyword'.
+[2025-09-22 06:43:46] Merged 30 bytes for 'has_declare_keyword'.
+[2025-09-22 06:43:46] Merging 1 fragment for 'has_type_keyword'.
+[2025-09-22 06:43:46] Merged 56 bytes for 'has_type_keyword'.
+[2025-09-22 06:43:46] Merging 1 fragment for 'has_public_keyword'.
+[2025-09-22 06:43:46] Merged 36 bytes for 'has_public_keyword'.
+[2025-09-22 06:43:46] Merging 1 fragment for 'is_static'.
+[2025-09-22 06:43:46] Merged 27 bytes for 'is_static'.
+[2025-09-22 06:43:46] Merging 1 fragment for 'has_private_keyword'.
+[2025-09-22 06:43:46] Merged 161 bytes for 'has_private_keyword'.
+[2025-09-22 06:43:46] Merging 1 fragment for 'is_method'.
+[2025-09-22 06:43:46] Merged 247 bytes for 'is_method'.
+[2025-09-22 06:43:46] Merging 1 fragment for 'is_optional_parameter_declaration'.
+[2025-09-22 06:43:46] Merged 71 bytes for 'is_optional_parameter_declaration'.
+[2025-09-22 06:43:46] Merging 1 fragment for 'parameter_fields'.
+[2025-09-22 06:43:46] Merged 54 bytes for 'parameter_fields'.
+[2025-09-22 06:43:46] Merging 1 fragment for 'is_computed'.
+[2025-09-22 06:43:46] Merged 67 bytes for 'is_computed'.
+[2025-09-22 06:43:46] Merging 1 fragment for 'is_inverted'.
+[2025-09-22 06:43:46] Merged 36 bytes for 'is_inverted'.
+[2025-09-22 06:43:46] Merging 1 fragment for 'range_quantifier_lower_bound'.
+[2025-09-22 06:43:46] Merged 30 bytes for 'range_quantifier_lower_bound'.
+[2025-09-22 06:43:46] Merging 1 fragment for 'has_readonly_keyword'.
+[2025-09-22 06:43:46] Merged 47 bytes for 'has_readonly_keyword'.
+[2025-09-22 06:43:46] Merging 1 fragment for 'is_generator'.
+[2025-09-22 06:43:46] Merged 21 bytes for 'is_generator'.
+[2025-09-22 06:43:46] Merging 1 fragment for 'sourceLocationPrefix'.
+[2025-09-22 06:43:46] Merged 19 bytes for 'sourceLocationPrefix'.
+[2025-09-22 06:43:46] Saving string and id pools to disk.
+[2025-09-22 06:43:46] Finished importing TRAP files.
+[2025-09-22 06:43:46] Read 146.52 MiB of uncompressed TRAP data.
+[2025-09-22 06:43:46] Uncompressed relation data size: 44.05 MiB
+[2025-09-22 06:43:46] Relation data size: 9.97 MiB (merge rate: 10.14 MiB/s)
+[2025-09-22 06:43:46] String pool size: 5.53 MiB
+[2025-09-22 06:43:46] ID pool size: 43.00 MiB
+[2025-09-22 06:43:46] [PROGRESS] dataset import> Finished writing database (relations: 9.97 MiB; string pool: 5.53 MiB).
+[2025-09-22 06:43:46] Pausing evaluation to close the cache at sequence stamp o+225
+[2025-09-22 06:43:46] The disk cache is freshly trimmed; leave it be.
+[2025-09-22 06:43:46] Unpausing evaluation
+[2025-09-22 06:43:46] Plumbing command codeql dataset import completed.
+[2025-09-22 06:43:46] [PROGRESS] database finalize> TRAP import complete (5.4s).
+[2025-09-22 06:43:46] Running plumbing command: codeql database cleanup -- /home/guff/LoquiLex/ql-db-js
+[2025-09-22 06:43:46] [PROGRESS] database cleanup> Cleaning up existing TRAP files after import...
+[2025-09-22 06:43:46] [PROGRESS] database cleanup> TRAP files cleaned up (26ms).
+[2025-09-22 06:43:46] [PROGRESS] database cleanup> Cleaning up scratch directory...
+[2025-09-22 06:43:46] [PROGRESS] database cleanup> Scratch directory cleaned up (1ms).
+[2025-09-22 06:43:46] Running plumbing command: codeql dataset cleanup -- /home/guff/LoquiLex/ql-db-js/db-javascript
+[2025-09-22 06:43:46] [PROGRESS] dataset cleanup> Cleaning up dataset in /home/guff/LoquiLex/ql-db-js/db-javascript.
+[2025-09-22 06:43:46] Trimming disk cache at /home/guff/LoquiLex/ql-db-js/db-javascript/default/cache in mode trim.
+[2025-09-22 06:43:46] Sequence stamp origin is -6001008078275282402
+[2025-09-22 06:43:46] Pausing evaluation to quickly trim memory at sequence stamp o+0
+[2025-09-22 06:43:46] Unpausing evaluation
+[2025-09-22 06:43:46] Pausing evaluation to zealously trim disk at sequence stamp o+1
+[2025-09-22 06:43:46] Unpausing evaluation
+[2025-09-22 06:43:46] Trimming completed (1ms): Trimmed disposable data from cache.
+[2025-09-22 06:43:46] Pausing evaluation to close the cache at sequence stamp o+2
+[2025-09-22 06:43:46] The disk cache is freshly trimmed; leave it be.
+[2025-09-22 06:43:46] Unpausing evaluation
+[2025-09-22 06:43:46] [PROGRESS] dataset cleanup> Trimmed disposable data from cache.
+[2025-09-22 06:43:46] [PROGRESS] dataset cleanup> Finalizing dataset in /home/guff/LoquiLex/ql-db-js/db-javascript
+[2025-09-22 06:43:46] [DETAILS] dataset cleanup> Finished deleting ID pool from /home/guff/LoquiLex/ql-db-js/db-javascript (17ms).
+[2025-09-22 06:43:46] Plumbing command codeql dataset cleanup completed.
+[2025-09-22 06:43:46] Plumbing command codeql database cleanup completed with status 0.
+[2025-09-22 06:43:46] [PROGRESS] database finalize> Finished zipping source archive (762.20 KiB).
+[2025-09-22 06:43:46] Plumbing command codeql database finalize completed.
+[2025-09-22 06:43:46] [PROGRESS] database create> Successfully created database at /home/guff/LoquiLex/ql-db-js.
+[2025-09-22 06:43:46] Terminating normally.

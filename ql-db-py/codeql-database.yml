@@ -1,0 +1,13 @@
+---
+sourceLocationPrefix: /home/guff/LoquiLex
+baselineLinesOfCode: 12751
+unicodeNewlines: false
+columnKind: utf32
+primaryLanguage: python
+creationMetadata:
+  sha: 0683e1a755a8f4e0e5d4283b05595eeb7b17ab97
+  cliVersion: 2.23.0
+  creationTime: 2025-09-22T11:43:18.982245273Z
+overlayBaseDatabase: false
+overlayDatabase: false
+finalised: true

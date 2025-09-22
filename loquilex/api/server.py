@@ -12,7 +12,7 @@ from typing import Any, Callable, Dict, List, Optional
 
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, model_validator
 
@@ -56,6 +56,11 @@ DEV_MODE = os.getenv("LX_DEV", "0") == "1"
 _events_alias_warned = False
 
 app = FastAPI(title="LoquiLex API", version="0.1.0")
+# Global safety net: log exceptions, return generic 500 without internals
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception):
+    logger.error("Unhandled exception on %s: %s", getattr(request.url, "path", "?"), exc, exc_info=True)
+    return JSONResponse(status_code=500, content={"detail": "Internal Server Error"})
 
 # Admin token and simple in-process caches (overridable in tests)
 _ADMIN_TOKEN: Optional[str] = os.getenv("LX_ADMIN_TOKEN")
@@ -323,9 +328,9 @@ async def get_storage_info(path: Optional[str] = None) -> StorageInfoResp:
     try:
         target_path = STORAGE_GUARD.ensure_dir(candidate, allow_relative=True, create=True)
     except PathSecurityError as exc:
-        raise HTTPException(status_code=400, detail=f"Cannot access path: {exc}") from exc
+        raise HTTPException(status_code=400, detail="Cannot access path") from exc
     except Exception as exc:
-        raise HTTPException(status_code=400, detail=f"Cannot access path: {exc}") from exc
+        raise HTTPException(status_code=400, detail="Cannot access path") from exc
 
     # Get disk usage statistics
     stat = shutil.disk_usage(target_path)

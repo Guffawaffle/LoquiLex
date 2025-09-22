@@ -1,0 +1,33 @@
+[2025-09-22 06:46:38] This is codeql database analyze ql-db-js codeql/javascript-queries --format=sarifv2.1.0 --output codeql-js.sarif --download
+[2025-09-22 06:46:38] Log file was started late.
+[2025-09-22 06:46:38] [DETAILS] database analyze> Downloading queries...
+[2025-09-22 06:46:38] Running plumbing command: codeql pack download --format json --qlconfig-file=/home/guff/LoquiLex/qlconfig.yml -- codeql/javascript-queries
+[2025-09-22 06:46:38] [PROGRESS] pack download> Package specifications to check for download: codeql/javascript-queries
+[2025-09-22 06:46:38] Calling plumbing command: codeql resolve queries --qlconfig-file=/home/guff/LoquiLex/qlconfig.yml --format installedpacks codeql/javascript-queries
+[2025-09-22 06:46:39] Plumbing command codeql resolve queries completed:
+                      {
+                        "installedPacks" : [
+                          "codeql/javascript-queries@latest"
+                        ]
+                      }
+[2025-09-22 06:46:39] [DETAILS] pack download> Packaging> Requesting package versions of codeql/javascript-queries from https://ghcr.io/v2/codeql/javascript-queries/tags/list?n=100
+[2025-09-22 06:46:39] [DETAILS] pack download> Packaging> GET Anonymous credentials 'https://ghcr.io/token?scope=repository:codeql/javascript-queries:pull'
+[2025-09-22 06:46:39] [DETAILS] pack download> Packaging> RESPONSE 'HTTP/1.1 200 OK'
+[2025-09-22 06:46:39] [DETAILS] pack download> Packaging> Downloading package to '/tmp/codeql-packaging17725122191593532979/.cache/0/codeql/javascript-queries.tgz'
+[2025-09-22 06:46:40] [DETAILS] pack download> Packaging> GET Blob 'https://ghcr.io/v2/codeql/javascript-queries/blobs/sha256:2d5645f870ef41ddad19141d8be55d54452acbf3b2d03ec8a28063cb0a27517e'
+[2025-09-22 06:46:40] [DETAILS] pack download> Packaging> RESPONSE 'HTTP/1.1 200 OK'
+[2025-09-22 06:46:40] [DETAILS] pack download> Packaging> Downloading package to '/tmp/codeql-packaging17725122191593532979/.cache/0/codeql/javascript-queries.tgz'
+[2025-09-22 06:46:40] [DETAILS] pack download> Unzipping package to '/home/guff/.codeql/packages/codeql/javascript-queries/2.0.3'
+[2025-09-22 06:46:41] Plumbing command codeql pack download completed.
+[2025-09-22 06:46:41] [PROGRESS] database analyze> Running queries.
+[2025-09-22 06:46:41] Running plumbing command: codeql database run-queries --evaluator-log-level=5 --warnings=show --qlconfig-file=/home/guff/LoquiLex/qlconfig.yml --dynamic-join-order-mode=none --no-rerun --interpret-passthrough=null,--format=sarifv2.1.0,-o=/home/guff/LoquiLex/codeql-js.sarif,--max-paths=4,--csv-location-format=line-column,--print-diagnostics-summary,--print-metrics-summary,--qlconfig-file=/home/guff/LoquiLex/qlconfig.yml,--,/home/guff/LoquiLex/ql-db-js,codeql/javascript-queries -- /home/guff/LoquiLex/ql-db-js codeql/javascript-queries
+[2025-09-22 06:46:41] Calling plumbing command: codeql resolve ram --dataset=/home/guff/LoquiLex/ql-db-js/db-javascript --format=json
+[2025-09-22 06:46:41] [PROGRESS] resolve ram> Stringpool size measured as 5800362
+[2025-09-22 06:46:41] Plumbing command codeql resolve ram completed:
+                      [
+                        "-J-Xmx1800M",
+                        "--off-heap-ram=1457"
+                      ]
+[2025-09-22 06:46:41] Chaining via /tmp/codeql.Lt8KB4Cf to plumbing: execute queries -J-Xmx1800M --off-heap-ram=1457 --verbosity=progress --logdir=/home/guff/LoquiLex/ql-db-js/log --evaluator-log-level=5 --warnings=show --qlconfig-file=/home/guff/LoquiLex/qlconfig.yml --dynamic-join-order-mode=none --no-rerun --interpret-passthrough=null,--format=sarifv2.1.0,-o=/home/guff/LoquiLex/codeql-js.sarif,--max-paths=4,--csv-location-format=line-column,--print-diagnostics-summary,--print-metrics-summary,--qlconfig-file=/home/guff/LoquiLex/qlconfig.yml,--,/home/guff/LoquiLex/ql-db-js,codeql/javascript-queries --output=/home/guff/LoquiLex/ql-db-js/results -- /home/guff/LoquiLex/ql-db-js/db-javascript codeql/javascript-queries
+[2025-09-22 06:46:41] Plumbing command codeql database run-queries completed with status 70.
+[2025-09-22 06:46:41] Exiting with code 70

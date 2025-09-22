@@ -60,3 +60,7 @@ ui/app/test-results/
 
 # Ephemeral agent log
 docs/deliverables/.live.md
+
+# Local CodeQL databases (do not commit)
+ql-db-js/
+ql-db-py/

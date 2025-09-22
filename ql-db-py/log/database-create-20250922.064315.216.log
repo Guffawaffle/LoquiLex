@@ -1,0 +1,1112 @@
+[2025-09-22 06:43:15] This is codeql database create ql-db-py --language=python --source-root . --overwrite
+[2025-09-22 06:43:15] Log file was started late.
+[2025-09-22 06:43:15] [PROGRESS] database create> Initializing database at /home/guff/LoquiLex/ql-db-py.
+[2025-09-22 06:43:15] Running plumbing command: codeql database init --overwrite --language=python --extractor-options-verbosity=1 --qlconfig-file=/home/guff/LoquiLex/qlconfig.yml --source-root=/home/guff/LoquiLex --allow-missing-source-root=false --allow-already-existing -- /home/guff/LoquiLex/ql-db-py
+[2025-09-22 06:43:15] Calling plumbing command: codeql resolve languages --extractor-options-verbosity=1 --format=betterjson
+[2025-09-22 06:43:15] [DETAILS] resolve languages> Scanning for [codeql-extractor.yml] from /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/.codeqlmanifest.json
+[2025-09-22 06:43:15] [DETAILS] resolve languages> Parsing /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/python/codeql-extractor.yml.
+[2025-09-22 06:43:15] [DETAILS] resolve languages> Parsing /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/cpp/codeql-extractor.yml.
+[2025-09-22 06:43:15] [DETAILS] resolve languages> Parsing /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/html/codeql-extractor.yml.
+[2025-09-22 06:43:15] [DETAILS] resolve languages> Parsing /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/swift/codeql-extractor.yml.
+[2025-09-22 06:43:15] [DETAILS] resolve languages> Parsing /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/java/codeql-extractor.yml.
+[2025-09-22 06:43:15] [DETAILS] resolve languages> Parsing /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/rust/codeql-extractor.yml.
+[2025-09-22 06:43:15] [DETAILS] resolve languages> Parsing /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/go/codeql-extractor.yml.
+[2025-09-22 06:43:15] [DETAILS] resolve languages> Parsing /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/xml/codeql-extractor.yml.
+[2025-09-22 06:43:15] [DETAILS] resolve languages> Parsing /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/codeql-extractor.yml.
+[2025-09-22 06:43:15] [DETAILS] resolve languages> Parsing /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/csv/codeql-extractor.yml.
+[2025-09-22 06:43:15] [DETAILS] resolve languages> Parsing /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/yaml/codeql-extractor.yml.
+[2025-09-22 06:43:15] [DETAILS] resolve languages> Parsing /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/actions/codeql-extractor.yml.
+[2025-09-22 06:43:15] [DETAILS] resolve languages> Parsing /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/csharp/codeql-extractor.yml.
+[2025-09-22 06:43:15] [DETAILS] resolve languages> Parsing /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/ruby/codeql-extractor.yml.
+[2025-09-22 06:43:15] [DETAILS] resolve languages> Parsing /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/properties/codeql-extractor.yml.
+[2025-09-22 06:43:15] Plumbing command codeql resolve languages completed:
+                      {
+                        "aliases" : {
+                          "c" : "cpp",
+                          "c++" : "cpp",
+                          "c-c++" : "cpp",
+                          "c-cpp" : "cpp",
+                          "c#" : "csharp",
+                          "java-kotlin" : "java",
+                          "kotlin" : "java",
+                          "javascript-typescript" : "javascript",
+                          "typescript" : "javascript"
+                        },
+                        "extractors" : {
+                          "python" : [
+                            {
+                              "extractor_root" : "/home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/python",
+                              "extractor_options" : {
+                                "logging" : {
+                                  "title" : "Options pertaining to logging.",
+                                  "description" : "Options pertaining to logging.",
+                                  "type" : "object",
+                                  "properties" : {
+                                    "verbosity" : {
+                                      "title" : "Python extractor logging verbosity level.",
+                                      "description" : "Controls the level of verbosity of the CodeQL Python extractor.\nThe supported levels are (in order of increasing verbosity):\n\n  - off\n  - errors\n  - warnings\n  - info or progress\n  - debug or progress+\n  - trace or progress++\n  - progress+++\n",
+                                      "type" : "string",
+                                      "pattern" : "^(off|errors|warnings|(info|progress)|(debug|progress\\+)|(trace|progress\\+\\+)|progress\\+\\+\\+)$"
+                                    }
+                                  }
+                                },
+                                "python_executable_name" : {
+                                  "title" : "Controls the name of the Python executable used by the Python extractor.",
+                                  "description" : "The Python extractor uses platform-dependent heuristics to determine the name of the Python executable to use. Specifying a value for this option overrides the name of the Python executable used by the extractor. Accepted values are py, python and python3. Use this setting with caution, the Python extractor requires Python 3 to run.\n",
+                                  "type" : "string",
+                                  "pattern" : "^(py|python|python3)$"
+                                }
+                              }
+                            }
+                          ],
+                          "cpp" : [
+                            {
+                              "extractor_root" : "/home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/cpp",
+                              "extractor_options" : {
+                                "scale_timeouts" : {
+                                  "title" : "Value to scale compiler introspection timeouts with",
+                                  "description" : "The extractor attempts to determine what compiler the source code being extracted is compiled with. To this end the extractor makes additional calls to the compiler, some of which are expected to return within a certain fixed time (either 10s or 15s). On some systems that are under high load this time might be too short, and can be scaled up using this option.\n",
+                                  "type" : "string",
+                                  "pattern" : "[0-9]+"
+                                },
+                                "log_verbosity" : {
+                                  "title" : "Verbosity of the extractor logging",
+                                  "description" : "Set the verbosity of the extractor logging to 'quiet' (0), 'normal' (1), 'chatty' (2), or 'noisy' (3). The default is 'normal'.\n",
+                                  "type" : "string",
+                                  "pattern" : "[0-3]"
+                                }
+                              }
+                            }
+                          ],
+                          "html" : [
+                            {
+                              "extractor_root" : "/home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/html"
+                            }
+                          ],
+                          "swift" : [
+                            {
+                              "extractor_root" : "/home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/swift"
+                            }
+                          ],
+                          "java" : [
+                            {
+                              "extractor_root" : "/home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/java",
+                              "extractor_options" : {
+                                "exclude" : {
+                                  "title" : "A glob excluding files from analysis.",
+                                  "description" : "A glob indicating what files to exclude from the analysis. This accepts glob patterns that are supported by Java's 'getPathMatcher' implementation.\n",
+                                  "type" : "string"
+                                },
+                                "add_prefer_source" : {
+                                  "title" : "Whether to always prefer source files over class files.",
+                                  "description" : "A value indicating whether source files should be preferred over class files. If set to 'true', the extraction adds '-Xprefer:source' to the javac command line. If set to 'false', the extraction uses the default javac behavior ('-Xprefer:newer'). The default is 'true'.\n",
+                                  "type" : "string",
+                                  "pattern" : "^(false|true)$"
+                                },
+                                "buildless" : {
+                                  "title" : "Whether to use buildless (standalone) extraction (experimental).",
+                                  "description" : "A value indicating, which type of extraction the autobuilder should perform. If 'true', then the standalone extractor will be used, otherwise tracing extraction will be performed. The default is 'false'. Note that buildless extraction will generally yield less accurate analysis results, and should only be used in cases where it is not possible to build the code (for example if it uses inaccessible dependencies).\n",
+                                  "type" : "string",
+                                  "pattern" : "^(false|true)$"
+                                },
+                                "buildless_dependency_dir" : {
+                                  "title" : "The path where buildless (standalone) extraction should keep dependencies.",
+                                  "description" : "If set, the buildless (standalone) extractor will store dependencies in this directory.\n",
+                                  "type" : "string"
+                                },
+                                "minimize_dependency_jars" : {
+                                  "title" : "Whether to rewrite and minimize downloaded JAR dependencies (experimental).",
+                                  "description" : "If 'true', JAR dependencies downloaded during extraction will be rewritten to remove unneeded data, such as method bodies. The default is 'false'.\n",
+                                  "type" : "string",
+                                  "pattern" : "^(false|true)$"
+                                }
+                              }
+                            }
+                          ],
+                          "rust" : [
+                            {
+                              "extractor_root" : "/home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/rust",
+                              "extractor_options" : {
+                                "trap" : {
+                                  "title" : "Options pertaining to TRAP.",
+                                  "description" : "Options pertaining to TRAP.",
+                                  "type" : "object",
+                                  "properties" : {
+                                    "compression" : {
+                                      "title" : "Controls compression for the TRAP files written by the extractor.",
+                                      "description" : "This option is only intended for use in debugging the extractor. Accepted values are 'gzip' (to write gzip-compressed TRAP) 'zstd' (to write Zstandard-compressed TRAP) and 'none' (the default, to write uncompressed TRAP).\n",
+                                      "type" : "string",
+                                      "pattern" : "^(none|gzip|zstd)$"
+                                    }
+                                  }
+                                },
+                                "cargo_target_dir" : {
+                                  "title" : "Directory to use for cargo output files.",
+                                  "description" : "This value is an optional path to use as `CARGO_TARGET_DIR` for the internal cargo commands the extractor uses. Pointing it to a persistent directory may reduce execution time of consecutive extractor runs. By default, a new scratch directory is used for each run.\n",
+                                  "type" : "string"
+                                },
+                                "cargo_target" : {
+                                  "title" : "Target architecture",
+                                  "description" : "Target architecture to use for analysis, analogous to `cargo --target`. By default the host architecture is used.\n",
+                                  "type" : "string"
+                                },
+                                "cargo_features" : {
+                                  "title" : "Cargo features to turn on",
+                                  "description" : "Comma-separated list of features to turn on. By default all features are enabled. If any features are specified, then only those features are enabled. The `default` feature must be explicitly specified if only default features are desired. Can be repeated.\n",
+                                  "type" : "array"
+                                },
+                                "cargo_cfg_overrides" : {
+                                  "title" : "Cargo cfg overrides",
+                                  "description" : "Comma-separated list of cfg settings to enable, or disable if prefixed with `-`. Can be repeated.\n",
+                                  "type" : "array"
+                                },
+                                "logging" : {
+                                  "title" : "Options pertaining to logging.",
+                                  "description" : "Options pertaining to logging.",
+                                  "type" : "object",
+                                  "properties" : {
+                                    "verbosity" : {
+                                      "title" : "Extractor logging verbosity level.",
+                                      "description" : "Controls the level of verbosity of the extractor. The supported levels are (in order of increasing verbosity):\n  - off\n  - errors\n  - warnings\n  - info or progress\n  - debug or progress+\n  - trace or progress++\n  - progress+++\n",
+                                      "type" : "string",
+                                      "pattern" : "^(off|errors|warnings|(info|progress)|(debug|progress\\+)|(trace|progress\\+\\+)|progress\\+\\+\\+)$"
+                                    },
+                                    "flamegraph" : {
+                                      "title" : "[Experimental] File path for write flame graph log",
+                                      "description" : "Collect flame graph data using the `tracing-flame` crate. To render a flame graph or chart, run the `inferno-flamegraph` command. See also: https://crates.io/crates/tracing-flame\n",
+                                      "type" : "string"
+                                    }
+                                  }
+                                },
+                                "extract_dependencies_as_source" : {
+                                  "title" : "Extract dependencies as source code",
+                                  "description" : "Extract the full source code of dependencies instead of only extracting signatures.\n",
+                                  "type" : "string",
+                                  "pattern" : "^(false|true)$"
+                                }
+                              }
+                            }
+                          ],
+                          "go" : [
+                            {
+                              "extractor_root" : "/home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/go",
+                              "extractor_options" : {
+                                "extract_tests" : {
+                                  "title" : "Whether to include Go test files in the CodeQL database.",
+                                  "description" : "A value indicating whether Go test files should be included in the CodeQL database. The default is 'false'.\n",
+                                  "type" : "string",
+                                  "pattern" : "^(false|true)$"
+                                },
+                                "extract_vendor_dirs" : {
+                                  "title" : "Whether to include Go vendor directories in the CodeQL database.",
+                                  "description" : "A value indicating whether Go vendor directories should be included in the CodeQL database. The default is 'false'.\n",
+                                  "type" : "string",
+                                  "pattern" : "^(false|true)$"
+                                }
+                              }
+                            }
+                          ],
+                          "xml" : [
+                            {
+                              "extractor_root" : "/home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/xml"
+                            }
+                          ],
+                          "javascript" : [
+                            {
+                              "extractor_root" : "/home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript",
+                              "extractor_options" : {
+                                "skip_types" : {
+                                  "title" : "Skip type extraction for TypeScript",
+                                  "description" : "Whether to skip the extraction of types in a TypeScript application",
+                                  "type" : "string",
+                                  "pattern" : "^(false|true)$"
+                                }
+                              }
+                            }
+                          ],
+                          "csv" : [
+                            {
+                              "extractor_root" : "/home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/csv"
+                            }
+                          ],
+                          "yaml" : [
+                            {
+                              "extractor_root" : "/home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/yaml"
+                            }
+                          ],
+                          "actions" : [
+                            {
+                              "extractor_root" : "/home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/actions",
+                              "extractor_options" : { }
+                            }
+                          ],
+                          "csharp" : [
+                            {
+                              "extractor_root" : "/home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/csharp",
+                              "extractor_options" : {
+                                "trap" : {
+                                  "title" : "Options pertaining to TRAP.",
+                                  "description" : "Options pertaining to TRAP.",
+                                  "type" : "object",
+                                  "properties" : {
+                                    "compression" : {
+                                      "title" : "Controls compression for the TRAP files written by the extractor.",
+                                      "description" : "This option is only intended for use in debugging the extractor. Accepted values are 'brotli' (the default, to write brotli-compressed TRAP), 'gzip', and 'none' (to write uncompressed TRAP).\n",
+                                      "type" : "string",
+                                      "pattern" : "^(none|gzip|brotli)$"
+                                    }
+                                  }
+                                },
+                                "buildless" : {
+                                  "title" : "DEPRECATED - Whether to use buildless (standalone) extraction.",
+                                  "description" : "DEPRECATED: Use `--build-mode none` instead.\nA value indicating, which type of extraction the autobuilder should perform. If 'true', then the standalone extractor will be used, otherwise tracing extraction will be performed. The default is 'false'. Note that buildless extraction will generally yield less accurate analysis results, and should only be used in cases where it is not possible to build the code (for example if it uses inaccessible dependencies).\n",
+                                  "type" : "string",
+                                  "pattern" : "^(false|true)$"
+                                },
+                                "logging" : {
+                                  "title" : "Options pertaining to logging.",
+                                  "description" : "Options pertaining to logging.",
+                                  "type" : "object",
+                                  "properties" : {
+                                    "verbosity" : {
+                                      "title" : "Extractor logging verbosity level.",
+                                      "description" : "Controls the level of verbosity of the extractor. The supported levels are (in order of increasing verbosity):\n  - off\n  - errors\n  - warnings\n  - info or progress\n  - debug or progress+\n  - trace or progress++\n  - progress+++\n",
+                                      "type" : "string",
+                                      "pattern" : "^(off|errors|warnings|(info|progress)|(debug|progress\\+)|(trace|progress\\+\\+)|progress\\+\\+\\+)$"
+                                    }
+                                  }
+                                },
+                                "binlog" : {
+                                  "title" : "Binlog",
+                                  "description" : "[EXPERIMENTAL] The value is a path to the MsBuild binary log file that should be extracted. This option only works when `--build-mode none` is also specified.\n",
+                                  "type" : "array"
+                                }
+                              }
+                            }
+                          ],
+                          "ruby" : [
+                            {
+                              "extractor_root" : "/home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/ruby",
+                              "extractor_options" : {
+                                "trap" : {
+                                  "title" : "Options pertaining to TRAP.",
+                                  "description" : "Options pertaining to TRAP.",
+                                  "type" : "object",
+                                  "properties" : {
+                                    "compression" : {
+                                      "title" : "Controls compression for the TRAP files written by the extractor.",
+                                      "description" : "This option is only intended for use in debugging the extractor. Accepted values are 'gzip' (the default, to write gzip-compressed TRAP) 'zstd' (to write Zstandard-compressed TRAP) and 'none' (to write uncompressed TRAP).\n",
+                                      "type" : "string",
+                                      "pattern" : "^(none|gzip|zstd)$"
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          ],
+                          "properties" : [
+                            {
+                              "extractor_root" : "/home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/properties"
+                            }
+                          ]
+                        }
+                      }
+[2025-09-22 06:43:15] [PROGRESS] database init> Calculating baseline information in /home/guff/LoquiLex
+[2025-09-22 06:43:15] [SPAMMY] database init> Ignoring the following directories when processing baseline information: .git, .hg, .svn.
+[2025-09-22 06:43:15] [DETAILS] database init> Running command in /home/guff/LoquiLex: /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/tools/linux64/scc --by-file --exclude-dir .git,.hg,.svn --format json --no-large --no-min .
+[2025-09-22 06:43:15] Using configure-baseline script /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/configure-baseline.sh.
+[2025-09-22 06:43:15] [PROGRESS] database init> Running command in /home/guff/LoquiLex: [/home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/javascript/tools/configure-baseline.sh]
+[2025-09-22 06:43:15] [SPAMMY] database init> Found 118 baseline files for python.
+[2025-09-22 06:43:15] [SPAMMY] database init> Found 83 baseline files for javascript.
+[2025-09-22 06:43:15] [PROGRESS] database init> Calculated baseline information for languages: javascript, python (75ms).
+[2025-09-22 06:43:18] [PROGRESS] database init> Resolving extractor python.
+[2025-09-22 06:43:18] [DETAILS] database init> Found candidate extractor root for python: /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/python.
+[2025-09-22 06:43:18] [PROGRESS] database init> Successfully loaded extractor Python (python) from /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/python.
+[2025-09-22 06:43:19] [PROGRESS] database init> Created skeleton CodeQL database at /home/guff/LoquiLex/ql-db-py. This in-progress database is ready to be populated by an extractor.
+[2025-09-22 06:43:19] Plumbing command codeql database init completed.
+[2025-09-22 06:43:19] [PROGRESS] database create> Running build command: []
+[2025-09-22 06:43:19] Running plumbing command: codeql database trace-command --working-dir=/home/guff/LoquiLex --index-traceless-dbs --no-db-cluster -- /home/guff/LoquiLex/ql-db-py
+[2025-09-22 06:43:19] Using autobuild script /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/python/tools/autobuild.sh.
+[2025-09-22 06:43:19] [PROGRESS] database trace-command> Running command in /home/guff/LoquiLex: [/home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/python/tools/autobuild.sh]
+[2025-09-22 06:43:19] [build-stderr] /bin/sh: 1: python2: Permission denied
+[2025-09-22 06:43:20] [build-stdout] Source root appears to be the real root.
+[2025-09-22 06:43:20] [build-stdout] Will try to guess Python version, as it was not specified in `lgtm.yml`
+[2025-09-22 06:43:20] [build-stdout] Trying to guess Python version based on Trove classifiers in setup.py
+[2025-09-22 06:43:20] [build-stdout] Did not find setup.py (expected it to be at /home/guff/LoquiLex/setup.py)
+[2025-09-22 06:43:20] [build-stdout] Trying to guess Python version based on travis file
+[2025-09-22 06:43:20] [build-stdout] Did not find any travis files (expected them at either ['/home/guff/LoquiLex/.travis.yml', '/home/guff/LoquiLex/travis.yml'])
+[2025-09-22 06:43:20] [build-stdout] Trying to guess Python version based on installed versions
+[2025-09-22 06:43:20] [build-stdout] Wanted to run Python 2, but it is not available. Using Python 3 instead
+[2025-09-22 06:43:20] [build-stdout] This script is running Python 3, but Python 2 is also available (as 'python3')
+[2025-09-22 06:43:20] [build-stdout] Could not guess Python version, will use default: Python 3
+[2025-09-22 06:43:20] [build-stdout] Excluding the following directories from extraction, since they look like virtual environments: ['/home/guff/LoquiLex/.direnv/python-3.12.3', '/home/guff/LoquiLex/.venv', '/home/guff/LoquiLex/ui/.venv']
+[2025-09-22 06:43:20] [build-stdout] You can disable this behavior by setting the environment variable CODEQL_EXTRACTOR_PYTHON_DISABLE_AUTOMATIC_VENV_EXCLUDE=1
+[2025-09-22 06:43:20] [build-stdout] Calling python3 -S /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/python/tools/python_tracer.py --verbosity 3 -z all -c /home/guff/LoquiLex/ql-db-py/working/trap_cache -R /home/guff/LoquiLex -Y /home/guff/LoquiLex/.direnv/python-3.12.3 -Y /home/guff/LoquiLex/.venv -Y /home/guff/LoquiLex/ui/.venv
+[2025-09-22 06:43:20] [build-stdout] INFO: The Python extractor has recently stopped extracting the standard library by default. If you encounter problems, please let us know by submitting an issue to https://github.com/github/codeql. It is possible to re-enable extraction of the standard library by setting the environment variable CODEQL_EXTRACTOR_PYTHON_EXTRACT_STDLIB.
+[2025-09-22 06:43:20] [build-stdout] [INFO] Extraction will use the Python 3 standard library.
+[2025-09-22 06:43:20] [build-stdout] [INFO] sys_path is: ['/home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/python/tools', '/usr/lib/python312.zip', '/usr/lib/python3.12', '/usr/lib/python3.12/lib-dynload']
+[2025-09-22 06:43:20] [build-stdout] [INFO] Python version 3.12.3
+[2025-09-22 06:43:20] [build-stdout] [INFO] Python extractor version 7.1.3
+[2025-09-22 06:43:20] [build-stdout] [INFO] [5] Extracted folder /home/guff/LoquiLex/tests/fakes in 2ms
+[2025-09-22 06:43:20] [build-stdout] [INFO] [24] Extracted folder /home/guff/LoquiLex/tests/api in 2ms
+[2025-09-22 06:43:20] [build-stdout] [INFO] [8] Extracted file /home/guff/LoquiLex/tests/fakes/__init__.py in 7ms
+[2025-09-22 06:43:20] [build-stdout] [INFO] [2] Extracted file /home/guff/LoquiLex/tests/fakes/fake_mt.py in 23ms
+[2025-09-22 06:43:20] [build-stdout] [INFO] [5] Extracted file /home/guff/LoquiLex/tests/__init__.py in 14ms
+[2025-09-22 06:43:20] [build-stdout] [INFO] [6] Extracted file /home/guff/LoquiLex/tests/test_offline_env.py in 28ms
+[2025-09-22 06:43:20] [build-stdout] [INFO] [9] Extracted file /home/guff/LoquiLex/tests/fakes/fake_whisper.py in 31ms
+[2025-09-22 06:43:20] [build-stdout] [INFO] [23] Extracted file /home/guff/LoquiLex/tests/api/test_path_traversal_rejection.py in 37ms
+[2025-09-22 06:43:20] [build-stdout] [INFO] [15] Extracted file /home/guff/LoquiLex/tests/test_safe_broadcast.py in 27ms
+[2025-09-22 06:43:20] [build-stdout] [INFO] [11] Extracted file /home/guff/LoquiLex/tests/test_admin_cache.py in 49ms
+[2025-09-22 06:43:20] [build-stdout] [INFO] [9] Extracted file /home/guff/LoquiLex/tests/test_compat_versions.py in 18ms
+[2025-09-22 06:43:20] [build-stdout] [INFO] [3] Extracted file /home/guff/LoquiLex/tests/fakes/fake_audio.py in 50ms
+[2025-09-22 06:43:20] [build-stdout] [INFO] [24] Extracted file /home/guff/LoquiLex/tests/test_path_guard.py in 53ms
+[2025-09-22 06:43:20] [build-stdout] [INFO] [20] Extracted file /home/guff/LoquiLex/tests/test_aggregator.py in 82ms
+[2025-09-22 06:43:20] [build-stdout] [INFO] [9] Extracted file /home/guff/LoquiLex/tests/test_config_env.py in 25ms
+[2025-09-22 06:43:20] [build-stdout] [INFO] [23] Extracted file /home/guff/LoquiLex/tests/test_api_modules_import.py in 43ms
+[2025-09-22 06:43:20] [build-stdout] [INFO] [21] Extracted file /home/guff/LoquiLex/tests/test_mt_registry.py in 84ms
+[2025-09-22 06:43:20] [build-stdout] [INFO] [14] Extracted file /home/guff/LoquiLex/tests/test_live_outputs.py in 98ms
+[2025-09-22 06:43:20] [build-stdout] [INFO] [11] Extracted file /home/guff/LoquiLex/tests/test_text_io.py in 60ms
+[2025-09-22 06:43:20] [build-stdout] [INFO] [9] Extracted file /home/guff/LoquiLex/tests/test_offline_isolation.py in 34ms
+[2025-09-22 06:43:20] [build-stdout] [INFO] [14] Extracted folder /home/guff/LoquiLex/tests/security in 1ms
+[2025-09-22 06:43:20] [build-stdout] [INFO] [20] Extracted file /home/guff/LoquiLex/tests/test_api_minimal_http.py in 33ms
+[2025-09-22 06:43:20] [build-stdout] [INFO] [12] Extracted file /home/guff/LoquiLex/tests/test_api_model_endpoints.py in 124ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [21] Extracted file /home/guff/LoquiLex/tests/security/test_path_guard.py in 59ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [13] Extracted file /home/guff/LoquiLex/tests/conftest.py in 144ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [4] Extracted file /home/guff/LoquiLex/tests/test_api_hardware.py in 157ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [18] Extracted file /home/guff/LoquiLex/tests/test_model_defaults.py in 152ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [18] Extracted file /home/guff/LoquiLex/tests/util/__init__.py in 3ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [18] Extracted folder /home/guff/LoquiLex/tests/util in 1ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [24] Extracted file /home/guff/LoquiLex/tests/test_cli_smoke.py in 125ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [21] Extracted file /home/guff/LoquiLex/tests/test_vtt_and_mt.py in 32ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [13] Extracted file /home/guff/LoquiLex/tests/util/monotonic.py in 16ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [1] Extracted file /home/guff/LoquiLex/tests/fakes/fake_streaming_asr.py in 187ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [4] Extracted file /home/guff/LoquiLex/tests/util/audio.py in 32ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [5] Extracted file /home/guff/LoquiLex/tests/test_e2e_websocket_api.py in 185ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [23] Extracted file /home/guff/LoquiLex/tests/test_mt_integration.py in 123ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [3] Extracted file /home/guff/LoquiLex/tests/test_session_state_integration.py in 165ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [24] Extracted file /home/guff/LoquiLex/tests/test_api_minimal_session.py in 28ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [23] Extracted folder /home/guff/LoquiLex/tests in 1ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [13] Extracted file /home/guff/LoquiLex/tests/test_timed_outputs.py in 43ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [21] Extracted file /home/guff/LoquiLex/tests/test_text_io_concurrency.py in 39ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [9] Extracted file /home/guff/LoquiLex/tests/test_config_parsing.py in 106ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [20] Extracted file /home/guff/LoquiLex/tests/test_model_indexing.py in 106ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [4] Extracted file /home/guff/LoquiLex/tests/test_units_extra.py in 38ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [6] Extracted file /home/guff/LoquiLex/tests/test_snapshot_rehydrate.py in 210ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [5] Extracted file /home/guff/LoquiLex/tests/test_cli_integration_offline.py in 60ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [17] Extracted file /home/guff/LoquiLex/tests/test_bounded_queue.py in 265ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [1] Extracted file /home/guff/LoquiLex/tests/test_storage_api.py in 77ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [15] Extracted file /home/guff/LoquiLex/tests/test_ws_integration.py in 245ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [2] Extracted file /home/guff/LoquiLex/tests/test_e2e_resume_flow.py in 258ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [19] Extracted file /home/guff/LoquiLex/tests/test_streaming_integration.py in 307ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [10] Extracted file /home/guff/LoquiLex/tests/test_resource_management.py in 310ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [8] Extracted file /home/guff/LoquiLex/tests/test_ws_types.py in 307ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [18] Extracted file /home/guff/LoquiLex/tests/test_hardware_detection.py in 150ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [21] Extracted folder /home/guff/LoquiLex/scripts in 1ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [5] Skipped built-in file /usr/lib/python3.12/dataclasses.py
+[2025-09-22 06:43:21] [build-stdout] [INFO] [15] Skipped built-in file /usr/lib/python3.12/os.py
+[2025-09-22 06:43:21] [build-stdout] [INFO] [15] Extracted folder /home/guff/LoquiLex/ql-db-py/src/home/guff/LoquiLex/tests/fakes in 1ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [21] Skipped built-in file /usr/lib/python3.12/typing.py
+[2025-09-22 06:43:21] [build-stdout] [INFO] [6] Skipped built-in file /usr/lib/python3.12/__future__.py
+[2025-09-22 06:43:21] [build-stdout] [INFO] [16] Extracted file /home/guff/LoquiLex/tests/test_structured_logging.py in 342ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [2] Extracted file /home/guff/LoquiLex/ql-db-py/src/home/guff/LoquiLex/tests/test_offline_env.py in 11ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [23] Extracted file /home/guff/LoquiLex/demo_structured_logging.py in 153ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [4] Extracted file /home/guff/LoquiLex/ql-db-py/src/home/guff/LoquiLex/tests/fakes/__init__.py in 22ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [13] Extracted file /home/guff/LoquiLex/scripts/dev_fetch_models.py in 24ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [23] Extracted folder /home/guff/LoquiLex/ql-db-py/src/home/guff/LoquiLex/tests/api in 1ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [1] Extracted file /home/guff/LoquiLex/ql-db-py/src/home/guff/LoquiLex/tests/fakes/fake_mt.py in 20ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [16] Extracted file /home/guff/LoquiLex/ql-db-py/src/home/guff/LoquiLex/tests/test_safe_broadcast.py in 19ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [6] Extracted file /home/guff/LoquiLex/ql-db-py/src/home/guff/LoquiLex/tests/fakes/fake_whisper.py in 31ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [3] Extracted file /home/guff/LoquiLex/scripts/clear_cache.py in 31ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [5] Extracted file /home/guff/LoquiLex/ql-db-py/src/home/guff/LoquiLex/tests/fakes/fake_audio.py in 31ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [12] Extracted file /home/guff/LoquiLex/tests/test_resilient_comms.py in 241ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [1] Extracted file /home/guff/LoquiLex/ql-db-py/src/home/guff/LoquiLex/tests/__init__.py in 3ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [1] Skipped built-in file /usr/lib/python3.12/threading.py
+[2025-09-22 06:43:21] [build-stdout] [INFO] [24] Extracted file /home/guff/LoquiLex/scripts/parse_junit_failures.py in 61ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [9] Extracted file /home/guff/LoquiLex/scripts/vtt_smoke_test.py in 75ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [1] Extracted file /home/guff/LoquiLex/ql-db-py/src/home/guff/LoquiLex/tests/test_compat_versions.py in 13ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [17] Extracted file /home/guff/LoquiLex/ql-db-py/src/home/guff/LoquiLex/tests/test_admin_cache.py in 28ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [7] Extracted file /home/guff/LoquiLex/tests/test_streaming_asr.py in 398ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [7] Extracted file /home/guff/LoquiLex/ql-db-py/src/home/guff/LoquiLex/tests/api/test_path_traversal_rejection.py in 17ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [7] Extracted folder /usr/lib/python3.12/importlib in 1ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [24] Extracted module time in 8ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [23] Extracted file /home/guff/LoquiLex/ql-db-py/src/home/guff/LoquiLex/tests/test_aggregator.py in 64ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [12] Extracted file /home/guff/LoquiLex/ql-db-py/src/home/guff/LoquiLex/tests/test_text_io.py in 48ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [22] Extracted file /home/guff/LoquiLex/tests/test_ws_protocol.py in 402ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [6] Extracted file /home/guff/LoquiLex/ql-db-py/src/home/guff/LoquiLex/tests/test_path_guard.py in 44ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [11] Extracted file /home/guff/LoquiLex/tests/test_session_storage.py in 328ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [12] Extracted file /home/guff/LoquiLex/ql-db-py/src/home/guff/LoquiLex/tests/util/__init__.py in 4ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [7] Extracted file /home/guff/LoquiLex/ql-db-py/src/home/guff/LoquiLex/tests/test_config_env.py in 15ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [10] Extracted file /home/guff/LoquiLex/ql-db-py/src/home/guff/LoquiLex/tests/test_live_outputs.py in 83ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [22] Extracted file /home/guff/LoquiLex/ql-db-py/src/home/guff/LoquiLex/tests/test_offline_isolation.py in 31ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [18] Extracted file /home/guff/LoquiLex/ql-db-py/src/home/guff/LoquiLex/tests/test_api_hardware.py in 97ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [10] Skipped built-in file /usr/lib/python3.12/importlib/__init__.py
+[2025-09-22 06:43:21] [build-stdout] [INFO] [22] Extracted folder /home/guff/LoquiLex/ql-db-py/src/home/guff/LoquiLex/tests/util in 1ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [15] Extracted file /home/guff/LoquiLex/ql-db-py/src/home/guff/LoquiLex/tests/conftest.py in 112ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [18] Extracted folder /home/guff/LoquiLex/ql-db-py/src/home/guff/LoquiLex/tests in 1ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [4] Extracted file /home/guff/LoquiLex/ql-db-py/src/home/guff/LoquiLex/tests/test_mt_registry.py in 94ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [13] Extracted file /home/guff/LoquiLex/ql-db-py/src/home/guff/LoquiLex/tests/test_model_defaults.py in 101ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [6] Extracted file /home/guff/LoquiLex/ql-db-py/src/home/guff/LoquiLex/tests/test_api_modules_import.py in 44ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [20] Extracted file /home/guff/LoquiLex/ql-db-py/src/home/guff/LoquiLex/tests/fakes/fake_streaming_asr.py in 130ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [23] Extracted file /home/guff/LoquiLex/ql-db-py/src/home/guff/LoquiLex/tests/test_vtt_and_mt.py in 46ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [9] Extracted file /home/guff/LoquiLex/ql-db-py/src/home/guff/LoquiLex/tests/test_cli_smoke.py in 63ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [21] Extracted file /home/guff/LoquiLex/ql-db-py/src/home/guff/LoquiLex/tests/test_api_model_endpoints.py in 131ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [7] Extracted file /home/guff/LoquiLex/ql-db-py/src/home/guff/LoquiLex/tests/test_timed_outputs.py in 37ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [10] Extracted file /home/guff/LoquiLex/ql-db-py/src/home/guff/LoquiLex/tests/security/test_path_guard.py in 52ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [22] Skipped built-in file /usr/lib/python3.12/socket.py
+[2025-09-22 06:43:21] [build-stdout] [INFO] [11] Extracted file /home/guff/LoquiLex/ql-db-py/src/home/guff/LoquiLex/tests/test_units_extra.py in 41ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [15] Extracted folder /home/guff/LoquiLex/ql-db-py in 0ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [18] Extracted file /home/guff/LoquiLex/ql-db-py/src/home/guff/LoquiLex/tests/util/audio.py in 29ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [4] Extracted folder /home/guff/LoquiLex/ql-db-py/src/home/guff/LoquiLex in 1ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [13] Extracted file /home/guff/LoquiLex/loquilex/api/vu.py in 34ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [6] Extracted folder /home/guff/LoquiLex/ql-db-py/src/home/guff/LoquiLex/tests/security in 2ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [22] Extracted folder /home/guff/LoquiLex/loquilex/segmentation in 0ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [5] Extracted file /home/guff/LoquiLex/ql-db-py/src/home/guff/LoquiLex/tests/test_snapshot_rehydrate.py in 168ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [23] Extracted file /home/guff/LoquiLex/ql-db-py/src/home/guff/LoquiLex/tests/test_text_io_concurrency.py in 36ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [16] Extracted file /home/guff/LoquiLex/ql-db-py/src/home/guff/LoquiLex/tests/test_e2e_websocket_api.py in 158ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [4] Extracted folder /home/guff/LoquiLex/loquilex/asr in 1ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [4] Extracted folder /home/guff/LoquiLex/ql-db-py/src/home in 6ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [24] Extracted file /home/guff/LoquiLex/ql-db-py/src/home/guff/LoquiLex/tests/test_session_state_integration.py in 131ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [17] Extracted file /home/guff/LoquiLex/ql-db-py/src/home/guff/LoquiLex/tests/test_ws_integration.py in 174ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [22] Extracted file /home/guff/LoquiLex/loquilex/asr/__init__.py in 9ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [22] Extracted file /home/guff/LoquiLex/ql-db-py/src/home/guff/LoquiLex/tests/test_cli_integration_offline.py in 55ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [20] Extracted file /home/guff/LoquiLex/ql-db-py/src/home/guff/LoquiLex/tests/test_config_parsing.py in 79ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [18] Skipped built-in file /usr/lib/python3.12/types.py
+[2025-09-22 06:43:21] [build-stdout] [INFO] [21] Extracted folder /home/guff/LoquiLex/ql-db-py/src in 0ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [16] Skipped built-in file /usr/lib/python3.12/pathlib.py
+[2025-09-22 06:43:21] [build-stdout] [INFO] [4] Extracted file /home/guff/LoquiLex/ql-db-py/src/home/guff/LoquiLex/tests/test_mt_integration.py in 88ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [10] Extracted module gc in 5ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [20] Skipped built-in file /usr/lib/python3.12/asyncio/__init__.py
+[2025-09-22 06:43:21] [build-stdout] [INFO] [24] Skipped built-in file /usr/lib/python3.12/tracemalloc.py
+[2025-09-22 06:43:21] [build-stdout] [INFO] [23] Extracted file /home/guff/LoquiLex/ql-db-py/src/home/guff/LoquiLex/tests/util/monotonic.py in 10ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [10] Extracted folder /home/guff/LoquiLex/loquilex/security in 1ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [19] Extracted file /home/guff/LoquiLex/ql-db-py/src/home/guff/LoquiLex/tests/test_resource_management.py in 225ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [3] Extracted file /home/guff/LoquiLex/ql-db-py/src/home/guff/LoquiLex/tests/test_e2e_resume_flow.py in 203ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [12] Extracted file /home/guff/LoquiLex/ql-db-py/src/home/guff/LoquiLex/tests/test_hardware_detection.py in 136ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [3] Extracted folder /home/guff/LoquiLex/loquilex/api in 1ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [12] Extracted folder /home/guff/LoquiLex/loquilex/mt/tokenizers in 1ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [19] Extracted file /home/guff/LoquiLex/loquilex/hardware/__init__.py in 5ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [24] Extracted file /home/guff/LoquiLex/loquilex/mt/core/types.py in 11ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [24] Extracted folder /home/guff/LoquiLex/loquilex/output in 0ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [10] Extracted file /home/guff/LoquiLex/loquilex/indexing/__init__.py in 11ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [5] Extracted file /home/guff/LoquiLex/loquilex/output/paths.py in 19ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [19] Extracted folder /home/guff/LoquiLex/loquilex/audio in 3ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [5] Extracted file /home/guff/LoquiLex/loquilex/security/__init__.py in 5ms
+[2025-09-22 06:43:21] [build-stdout] [WARN] [17] Failed to find ..config, Package at /home/guff/LoquiLex/loquilex has no module config
+[2025-09-22 06:43:21] [build-stdout] [INFO] [8] Extracted file /home/guff/LoquiLex/ql-db-py/src/home/guff/LoquiLex/tests/test_streaming_integration.py in 268ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [1] Extracted file /home/guff/LoquiLex/ql-db-py/src/home/guff/LoquiLex/tests/test_ws_types.py in 254ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [7] Extracted file /home/guff/LoquiLex/loquilex/config/defaults.py in 106ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [23] Extracted file /home/guff/LoquiLex/loquilex/output/text_io.py in 62ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [3] Extracted file /home/guff/LoquiLex/loquilex/config/paths.py in 12ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [21] Extracted file /home/guff/LoquiLex/loquilex/segmentation/aggregator.py in 45ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [12] Extracted file /home/guff/LoquiLex/loquilex/mt/tokenizers/nllb.py in 35ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [2] Extracted file /home/guff/LoquiLex/ql-db-py/src/home/guff/LoquiLex/tests/test_bounded_queue.py in 225ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [11] Extracted file /home/guff/LoquiLex/ql-db-py/src/home/guff/LoquiLex/tests/test_model_indexing.py in 74ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [6] Extracted file /home/guff/LoquiLex/loquilex/api/session_storage.py in 144ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [15] Extracted file /home/guff/LoquiLex/loquilex/asr/aggregator.py in 160ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [24] Extracted folder /home/guff/LoquiLex/loquilex/tests in 0ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [2] Extracted folder /home/guff/LoquiLex/loquilex/mt/providers in 1ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [12] Extracted folder /usr/lib/python3.12/unittest in 1ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [24] Extracted folder /home/guff/LoquiLex/loquilex in 0ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [2] Extracted folder /home/guff/LoquiLex/loquilex/hardware in 1ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [19] Skipped built-in file /usr/lib/python3.12/shutil.py
+[2025-09-22 06:43:21] [build-stdout] [INFO] [19] Skipped built-in file /usr/lib/python3.12/queue.py
+[2025-09-22 06:43:21] [build-stdout] [INFO] [19] Extracted folder /home/guff/LoquiLex/loquilex/mt in 1ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [19] Extracted folder /home/guff/LoquiLex/loquilex/cli in 0ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [6] Extracted folder /usr/lib/python3.12/json in 0ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [6] Extracted folder /home/guff/LoquiLex/loquilex/logging in 1ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [13] Extracted file /home/guff/LoquiLex/loquilex/mt/tokenizers/m2m.py in 33ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [8] Extracted file /home/guff/LoquiLex/loquilex/mt/__init__.py in 22ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [21] Extracted folder /home/guff/LoquiLex/loquilex/indexing in 0ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [8] Extracted folder /home/guff/LoquiLex/loquilex/config in 2ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [8] Skipped built-in file /usr/lib/python3.12/unittest/__init__.py
+[2025-09-22 06:43:21] [build-stdout] [INFO] [23] Extracted file /home/guff/LoquiLex/loquilex/api/__init__.py in 3ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [8] Extracted file /home/guff/LoquiLex/loquilex/mt/providers/__init__.py in 10ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [8] Extracted folder /home/guff/LoquiLex/ql-db-py/src/home/guff in 1ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [13] Extracted file /home/guff/LoquiLex/loquilex/logging/__init__.py in 49ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [12] Extracted file /home/guff/LoquiLex/loquilex/mt/core/registry.py in 50ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [9] Extracted file /home/guff/LoquiLex/loquilex/logging/structured.py in 169ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [17] Extracted file /home/guff/LoquiLex/loquilex/indexing/worker.py in 107ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [21] Extracted file /home/guff/LoquiLex/loquilex/post/zh_text.py in 59ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [21] Skipped built-in file /usr/lib/python3.12/wave.py
+[2025-09-22 06:43:21] [build-stdout] [INFO] [21] Extracted folder /home/guff/LoquiLex/loquilex/mt/core in 1ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [21] Extracted module sys in 0ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [6] Extracted file /home/guff/LoquiLex/loquilex/audio/resample.py in 59ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [10] Extracted file /home/guff/LoquiLex/ql-db-py/src/home/guff/LoquiLex/tests/test_api_minimal_http.py in 56ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [8] Extracted file /home/guff/LoquiLex/loquilex/tests/test_env_prefix.py in 34ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [8] Skipped built-in file /usr/lib/python3.12/warnings.py
+[2025-09-22 06:43:21] [build-stdout] [INFO] [8] Skipped built-in file /usr/lib/python3.12/json/__init__.py
+[2025-09-22 06:43:21] [build-stdout] [WARN] [17] Failed to find .paths, no parent package of Python module at /home/guff/LoquiLex/loquilex/config/model_defaults.py
+[2025-09-22 06:43:21] [build-stdout] [INFO] [6] Extracted file /home/guff/LoquiLex/loquilex/api/events.py in 21ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [4] Extracted file /home/guff/LoquiLex/loquilex/logging/metrics.py in 202ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [4] Skipped built-in file /usr/lib/python3.12/tempfile.py
+[2025-09-22 06:43:21] [build-stdout] [INFO] [21] Extracted file /home/guff/LoquiLex/loquilex/mt/core/protocol.py in 40ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [11] Extracted file /home/guff/LoquiLex/loquilex/cli/vtt_to_zh.py in 108ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [21] Extracted file /home/guff/LoquiLex/loquilex/mt/core/__init__.py in 9ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [21] Skipped built-in file /usr/lib/python3.12/unittest/mock.py
+[2025-09-22 06:43:21] [build-stdout] [INFO] [11] Extracted file /home/guff/LoquiLex/loquilex/mt/tokenizers/__init__.py in 5ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [21] Extracted file /home/guff/LoquiLex/loquilex/mt/tests/__init__.py in 3ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [21] Extracted folder /home/guff/LoquiLex/loquilex/post in 1ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [21] Extracted folder /home/guff/LoquiLex/loquilex/mt/tests in 0ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [2] Extracted file /home/guff/LoquiLex/loquilex/output/srt.py in 132ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [15] Extracted file /home/guff/LoquiLex/loquilex/output/vtt.py in 128ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [9] Extracted file /home/guff/LoquiLex/loquilex/logging/redaction.py in 94ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [6] Extracted file /home/guff/LoquiLex/loquilex/cli/wav_to_vtt.py in 62ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [19] Extracted file /home/guff/LoquiLex/loquilex/mt/providers/ct2_nllb.py in 141ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [6] Extracted folder /usr/lib/python3.12/asyncio in 0ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [19] Skipped built-in file /usr/lib/python3.12/uuid.py
+[2025-09-22 06:43:21] [build-stdout] [INFO] [6] Extracted file /home/guff/LoquiLex/loquilex/__init__.py in 6ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [19] Skipped built-in file /usr/lib/python3.12/datetime.py
+[2025-09-22 06:43:21] [build-stdout] [INFO] [19] Skipped built-in file /usr/lib/python3.12/argparse.py
+[2025-09-22 06:43:21] [build-stdout] [INFO] [19] Extracted folder /usr/lib/python3.12/xml/etree in 1ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [19] Skipped built-in file /usr/lib/python3.12/xml/__init__.py
+[2025-09-22 06:43:21] [build-stdout] [INFO] [19] Skipped built-in file /usr/lib/python3.12/xml/etree/ElementTree.py
+[2025-09-22 06:43:21] [build-stdout] [INFO] [19] Extracted folder /usr/lib/python3.12/re in 0ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [19] Extracted folder /usr/lib/python3.12/xml in 0ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [19] Skipped built-in file /usr/lib/python3.12/re/__init__.py
+[2025-09-22 06:43:21] [build-stdout] [INFO] [19] Skipped built-in file /usr/lib/python3.12/xml/etree/__init__.py
+[2025-09-22 06:43:21] [build-stdout] [INFO] [22] Extracted file /home/guff/LoquiLex/loquilex/hardware/detection.py in 286ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [10] Extracted file /home/guff/LoquiLex/ql-db-py/src/home/guff/LoquiLex/tests/test_storage_api.py in 91ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [15] Extracted file /home/guff/LoquiLex/loquilex/mt/core/util.py in 26ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [18] Extracted file /home/guff/LoquiLex/loquilex/mt/translator.py in 288ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [4] Extracted file /home/guff/LoquiLex/loquilex/mt/providers/ct2_m2m.py in 90ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [23] Extracted file /home/guff/LoquiLex/loquilex/mt/tests/test_contract_provider.py in 163ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [13] Extracted file /home/guff/LoquiLex/loquilex/security/path_guard.py in 133ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [17] Extracted file /home/guff/LoquiLex/loquilex/config/model_defaults.py in 190ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [2] Extracted file /home/guff/LoquiLex/ql-db-py/src/home/guff/LoquiLex/tests/test_api_minimal_session.py in 73ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [24] Extracted file /home/guff/LoquiLex/loquilex/api/bounded_queue.py in 205ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [12] Extracted file /home/guff/LoquiLex/loquilex/mt/integration.py in 156ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [21] Extracted file /home/guff/LoquiLex/loquilex/audio/capture.py in 100ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [9] Extracted file /home/guff/LoquiLex/loquilex/mt/service.py in 102ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [11] Extracted file /home/guff/LoquiLex/loquilex/api/model_discovery.py in 128ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [20] Extracted file /home/guff/LoquiLex/loquilex/asr/stream.py in 374ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [7] Extracted file /home/guff/LoquiLex/loquilex/asr/metrics.py in 241ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [10] Extracted file /home/guff/LoquiLex/loquilex/asr/whisper_engine.py in 181ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [19] Skipped built-in file /usr/lib/python3.12/contextlib.py
+[2025-09-22 06:43:21] [build-stdout] [INFO] [3] Extracted file /home/guff/LoquiLex/loquilex/api/ws_types.py in 337ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [6] Skipped built-in file /usr/lib/python3.12/enum.py
+[2025-09-22 06:43:21] [build-stdout] [INFO] [15] Extracted folder /usr/lib/python3.12/collections in 1ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [22] Skipped built-in file /usr/lib/python3.12/collections/__init__.py
+[2025-09-22 06:43:21] [build-stdout] [INFO] [1] Extracted file /home/guff/LoquiLex/loquilex/cli/live_en_to_zh.py in 401ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [6] Extracted folder /usr/lib/python3.12/logging in 0ms
+[2025-09-22 06:43:21] [build-stdout] [INFO] [23] Skipped built-in file /usr/lib/python3.12/logging/__init__.py
+[2025-09-22 06:43:21] [build-stdout] [INFO] [4] Skipped built-in file /usr/lib/python3.12/platform.py
+[2025-09-22 06:43:21] [build-stdout] [INFO] [13] Skipped built-in file /usr/lib/python3.12/subprocess.py
+[2025-09-22 06:43:21] [build-stdout] [INFO] [17] Skipped built-in file /usr/lib/python3.12/signal.py
+[2025-09-22 06:43:21] [build-stdout] [INFO] [5] Extracted file /home/guff/LoquiLex/loquilex/api/ws_protocol.py in 483ms
+[2025-09-22 06:43:22] [build-stdout] [INFO] [14] Extracted file /home/guff/LoquiLex/tests/test_asr_metrics.py in 1080ms
+[2025-09-22 06:43:22] [build-stdout] [INFO] [16] Extracted file /home/guff/LoquiLex/loquilex/api/supervisor.py in 662ms
+[2025-09-22 06:43:22] [build-stdout] [INFO] [2] Skipped built-in file /usr/lib/python3.12/weakref.py
+[2025-09-22 06:43:22] [build-stdout] [INFO] [8] Extracted file /home/guff/LoquiLex/loquilex/api/server.py in 480ms
+[2025-09-22 06:43:22] [build-stdout] [INFO] [24] Skipped built-in file /usr/lib/python3.12/urllib/__init__.py
+[2025-09-22 06:43:22] [build-stdout] [INFO] [21] Skipped built-in file /usr/lib/python3.12/urllib/parse.py
+[2025-09-22 06:43:22] [build-stdout] [INFO] [12] Extracted folder /usr/lib/python3.12/urllib in 0ms
+[2025-09-22 06:43:22] [build-stdout] [INFO] Processed 251 modules in 1.79s
+[2025-09-22 06:43:22] Plumbing command codeql database trace-command completed.
+[2025-09-22 06:43:22] [PROGRESS] database create> Finalizing database at /home/guff/LoquiLex/ql-db-py.
+[2025-09-22 06:43:22] Running plumbing command: codeql database finalize --no-db-cluster -- /home/guff/LoquiLex/ql-db-py
+[2025-09-22 06:43:22] Using pre-finalize script /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/python/tools/pre-finalize.sh.
+[2025-09-22 06:43:22] [PROGRESS] database finalize> Running pre-finalize script /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/python/tools/pre-finalize.sh in /home/guff/LoquiLex.
+[2025-09-22 06:43:22] Running plumbing command: codeql database trace-command --working-dir=/home/guff/LoquiLex --no-tracing -- /home/guff/LoquiLex/ql-db-py /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/python/tools/pre-finalize.sh
+[2025-09-22 06:43:22] [PROGRESS] database trace-command> Running command in /home/guff/LoquiLex: [/home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/python/tools/pre-finalize.sh]
+[2025-09-22 06:43:22] [build-stderr] Scanning for files in /home/guff/LoquiLex...
+[2025-09-22 06:43:24] [build-stderr] /home/guff/LoquiLex/ql-db-py: Indexing files in in /home/guff/LoquiLex...
+[2025-09-22 06:43:24] [build-stderr] Running command in /home/guff/LoquiLex: [/home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/yaml/tools/index-files.sh, /home/guff/LoquiLex/ql-db-py/working/files-to-index1487300196490429761.list]
+[2025-09-22 06:43:24] Plumbing command codeql database trace-command completed.
+[2025-09-22 06:43:24] [PROGRESS] database finalize> Pre-finalize script /home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/python/tools/pre-finalize.sh completed in 2650 ms.
+[2025-09-22 06:43:24] [PROGRESS] database finalize> Running TRAP import for CodeQL database at /home/guff/LoquiLex/ql-db-py...
+[2025-09-22 06:43:24] Running plumbing command: codeql dataset import --dbscheme=/home/guff/.local/share/gh/extensions/gh-codeql/dist/release/v2.23.0/python/semmlecode.python.dbscheme -- /home/guff/LoquiLex/ql-db-py/db-python /home/guff/LoquiLex/ql-db-py/trap/python
+[2025-09-22 06:43:24] Clearing disk cache since the version file /home/guff/LoquiLex/ql-db-py/db-python/default/cache/version does not exist
+[2025-09-22 06:43:24] Tuple pool not found. Clearing relations with cached strings
+[2025-09-22 06:43:24] Trimming disk cache at /home/guff/LoquiLex/ql-db-py/db-python/default/cache in mode clear.
+[2025-09-22 06:43:24] Sequence stamp origin is -6001008171248897938
+[2025-09-22 06:43:24] Pausing evaluation to hard-clear memory at sequence stamp o+0
+[2025-09-22 06:43:24] Unpausing evaluation
+[2025-09-22 06:43:24] Pausing evaluation to quickly trim disk at sequence stamp o+1
+[2025-09-22 06:43:24] Unpausing evaluation
+[2025-09-22 06:43:24] Pausing evaluation to zealously trim disk at sequence stamp o+2
+[2025-09-22 06:43:24] Unpausing evaluation
+[2025-09-22 06:43:24] Trimming completed (11ms): Purged everything.
+[2025-09-22 06:43:24] Scanning for files in /home/guff/LoquiLex/ql-db-py/trap/python
+[2025-09-22 06:43:24] Found 297 TRAP files (6.32 MiB)
+[2025-09-22 06:43:24] [PROGRESS] dataset import> Importing TRAP files
+[2025-09-22 06:43:25] Importing $files.1kz7KHjvh3OGv79IJ9eyJkohQB0=.trap.gz (1 of 297)
+[2025-09-22 06:43:25] Importing $files.4SJ60we7wJU7zULI17trFf0Z_dY=.trap.gz (2 of 297)
+[2025-09-22 06:43:25] Importing $files.6BikoQ0p3AxB8KjcDJnl5RazfUc=.trap.gz (3 of 297)
+[2025-09-22 06:43:25] Importing $files.7XBa0tfcqu6uIOYyxNGDjnF3WjI=.trap.gz (4 of 297)
+[2025-09-22 06:43:25] Importing $files.8jHm8gfWo1JjKsmD7P3nd314dTs=.trap.gz (5 of 297)
+[2025-09-22 06:43:25] Importing $files.9aLwB4NCIQosk1W30v8n1_Nyuwc=.trap.gz (6 of 297)
+[2025-09-22 06:43:25] Importing $files.BVjUIXMoYGzo91EXPqrnkjb9soI=.trap.gz (7 of 297)
+[2025-09-22 06:43:25] Importing $files.DAfbCrab6jGZ-XVqUt4-ukwsxR4=.trap.gz (8 of 297)
+[2025-09-22 06:43:25] Importing $files.HQKkWsnCBkxJZb9tmHA71_jp0w0=.trap.gz (9 of 297)
+[2025-09-22 06:43:25] Importing $files.JzQfo5Pz74Wgp8HUFS5pTlKHQR0=.trap.gz (10 of 297)
+[2025-09-22 06:43:25] Importing $files.N8yllY97IHV39_le3wOeAHTamAk=.trap.gz (11 of 297)
+[2025-09-22 06:43:25] Importing $files.PBwCXEDAqSXfivjANoiIOTT7R-c=.trap.gz (12 of 297)
+[2025-09-22 06:43:25] Importing $files.PhsCiOgdqdgusfQxwzqnLlx8z24=.trap.gz (13 of 297)
+[2025-09-22 06:43:25] Importing $files.PkORs9cPVbMIiXmR9CRl48HZjps=.trap.gz (14 of 297)
+[2025-09-22 06:43:25] Importing $files.PpfcPPL7E9f1FFZZgkHQyaXvfl8=.trap.gz (15 of 297)
+[2025-09-22 06:43:25] Importing $files.QSeaBCDoKGxanGpteNnFov6R9IY=.trap.gz (16 of 297)
+[2025-09-22 06:43:25] Importing $files.VKtr5DFlhdn8uUnkFEr5nbBt1zg=.trap.gz (17 of 297)
+[2025-09-22 06:43:25] Importing $files.XKfI7qxgFsZHaSqM55CJWj5ifGo=.trap.gz (18 of 297)
+[2025-09-22 06:43:25] Importing $files.cb2Dc9nYP7-R8o0eLMh36m1qd68=.trap.gz (19 of 297)
+[2025-09-22 06:43:25] Importing $files.iT6mtp1kojZRvEF1ISNH63-7YpE=.trap.gz (20 of 297)
+[2025-09-22 06:43:25] Importing $files.otqyBJb1IJEKU1RTSFvrObrRyoE=.trap.gz (21 of 297)
+[2025-09-22 06:43:25] Importing $files.qgQWbF80WqOQCqt3J8dp57x-gn8=.trap.gz (22 of 297)
+[2025-09-22 06:43:25] Importing $files.qoADv2bxFOT2L7n3U8ie3h9_QVM=.trap.gz (23 of 297)
+[2025-09-22 06:43:25] Importing $files.tW7mOq7m4ifAOlFgVR3v9ez1tNM=.trap.gz (24 of 297)
+[2025-09-22 06:43:25] Importing $flags.bhIykGj4hfFAiJ7P2zwRUWDMMLc=.trap.gz (25 of 297)
+[2025-09-22 06:43:25] Importing $interpreter3.bWFihu6del5o-V1adSDO47vxPJY=.trap.gz (26 of 297)
+[2025-09-22 06:43:25] Importing $stdlib_33.TXgJIkwulQIl1xL8BFH1PzeVJd4=.trap (27 of 297)
+[2025-09-22 06:43:25] Importing LoquiLex.BilGoVXaXMRdMqVp5pRvzsnY8sE=.trap.gz (28 of 297)
+[2025-09-22 06:43:25] Importing __init__.py.-IY9gpPpIxT5rAbd2kbRjjKCvRk=.trap.gz (29 of 297)
+[2025-09-22 06:43:25] Importing __init__.py.2A5c2yFT3VL_znO3URv_blbknrc=.trap.gz (30 of 297)
+[2025-09-22 06:43:25] Importing __init__.py.6IFUyClY3mnTbbtt33M-a-j2sYA=.trap.gz (31 of 297)
+[2025-09-22 06:43:25] Importing __init__.py.G3gJuLK7pbyx5-RoFyf5M5AGDj0=.trap.gz (32 of 297)
+[2025-09-22 06:43:25] Importing __init__.py.Ju8L9PvQXLTgNa3j1smQymTtPEQ=.trap.gz (33 of 297)
+[2025-09-22 06:43:25] Importing __init__.py.K3w4XzQkeqIB8bIk4GCOlg28HIY=.trap.gz (34 of 297)
+[2025-09-22 06:43:25] Importing __init__.py.OEEHI3572Kl5YBVbpcW91ixx7zY=.trap.gz (35 of 297)
+[2025-09-22 06:43:25] Importing __init__.py.QhLS7Pa5dKlyzW0mXwJ-7TyDxdM=.trap.gz (36 of 297)
+[2025-09-22 06:43:25] Importing __init__.py.UW6cuB6f773QsdcgMxz_tS0eUzU=.trap.gz (37 of 297)
+[2025-09-22 06:43:25] Importing __init__.py.WTDcB9KYAlxluKPDMpBXqrC8yZw=.trap.gz (38 of 297)
+[2025-09-22 06:43:25] Importing __init__.py.Yhb8RNcEXXoXOOm3cUBp5jvzRLc=.trap.gz (39 of 297)
+[2025-09-22 06:43:25] Importing __init__.py._k0X1RQa5X86ibCdd-nEdtKeMQ8=.trap.gz (40 of 297)
+[2025-09-22 06:43:25] Importing __init__.py.aYa87DeAbyexZOJBE941VJgxeDY=.trap.gz (41 of 297)
+[2025-09-22 06:43:25] Importing __init__.py.eR-VUWHNsQO7RsFHwXZLOpoCya4=.trap.gz (42 of 297)
+[2025-09-22 06:43:25] Importing __init__.py.hhDFk5Zzn9z6epphmwjRWQAq9ow=.trap.gz (43 of 297)
+[2025-09-22 06:43:25] Importing __init__.py.qX5Ml4HATV-Snb9_QYKMQvvqDRE=.trap.gz (44 of 297)
+[2025-09-22 06:43:25] Importing __init__.py.v57aGJXlkuj2hXLN0FLfhD5Gvqk=.trap.gz (45 of 297)
+[2025-09-22 06:43:25] Importing __init__.py.zVFNV_kSK1bIwNAR2cY_T788MSg=.trap.gz (46 of 297)
+[2025-09-22 06:43:25] Importing aggregator.py.pAkyXNzSDlb5_SKKW7-ZMvyIU4Q=.trap.gz (47 of 297)
+[2025-09-22 06:43:25] Importing aggregator.py.xjTXCOjobMgidCRw7_0a5s4LATY=.trap.gz (48 of 297)
+[2025-09-22 06:43:25] Importing api.WQ4qoCyFK00UK6yZwxAdLsoi8GY=.trap.gz (49 of 297)
+[2025-09-22 06:43:25] Importing api.aeJWoWxJNcQ-4E8k9lgaPBDzz-w=.trap.gz (50 of 297)
+[2025-09-22 06:43:25] Importing api.m6WNysDPcsqdikOrJN3jILMJLvw=.trap.gz (51 of 297)
+[2025-09-22 06:43:25] Importing asr.S4hNPj3ePR1oNgSKKApRxj9tHt0=.trap.gz (52 of 297)
+[2025-09-22 06:43:25] Importing asyncio.xehSHtdFJIIoMbb9q1Iun35YYHo=.trap.gz (53 of 297)
+[2025-09-22 06:43:25] Importing audio.nJiPgvLdRHUE0xaJzyF9kYRm5Is=.trap.gz (54 of 297)
+[2025-09-22 06:43:25] Importing audio.py.4V3hQh2AUe4B_FcKty1Pqr_6yJ4=.trap.gz (55 of 297)
+[2025-09-22 06:43:25] Importing audio.py.UCDdja1JzXvleucnwmrpFcdWe4k=.trap.gz (56 of 297)
+[2025-09-22 06:43:25] Importing bounded_queue.py.Lzqhsb7skDaU0m3KHSX2FN3JOhk=.trap.gz (57 of 297)
+[2025-09-22 06:43:25] Importing capture.py.wXpYtgv2iI0AbzJmsiOvJ3PVB6w=.trap.gz (58 of 297)
+[2025-09-22 06:43:25] Importing clear_cache.py.bbcCR6MvOdGOLGWuWCyQdEwTwIQ=.trap.gz (59 of 297)
+[2025-09-22 06:43:25] Importing cli.9MmEXAQ_zJK1PXemHDEOTQCdnz0=.trap.gz (60 of 297)
+[2025-09-22 06:43:25] Importing collections.G4wnSHm5V7F1_wtVJ40OvhoYylI=.trap.gz (61 of 297)
+[2025-09-22 06:43:25] Importing config.jgPBFdHg2y7X7xnNDjtYrQAVSmw=.trap.gz (62 of 297)
+[2025-09-22 06:43:25] Importing conftest.py.Ezin4Qsa1QrZJq1dKt0NQ6e5Gc8=.trap.gz (63 of 297)
+[2025-09-22 06:43:25] Importing conftest.py.rDHQtK7b_qGs099YPYHfIgrLWb4=.trap.gz (64 of 297)
+[2025-09-22 06:43:25] Importing core.RPR0HZSuoC7OjjczSmghjMG33GQ=.trap.gz (65 of 297)
+[2025-09-22 06:43:25] Importing ct2_m2m.py.RIyts5Ai49n9fPagrvb19QEHhcg=.trap.gz (66 of 297)
+[2025-09-22 06:43:25] Importing ct2_nllb.py.LWFU1uW3-b_YHHHQTYgeDN5P2D4=.trap.gz (67 of 297)
+[2025-09-22 06:43:25] Importing defaults.py.M-fI38FEqWoE7Km_hEy5XU9pVKw=.trap.gz (68 of 297)
+[2025-09-22 06:43:25] Importing demo_structured_logging.py.vhr78xULWR96306OG0G0HRw7yqc=.trap.gz (69 of 297)
+[2025-09-22 06:43:25] Importing detection.py.1lyb2YTfTRL9JWK1uc0Y6yQScdM=.trap.gz (70 of 297)
+[2025-09-22 06:43:25] Importing dev_fetch_models.py.1FRhVILUXBZjm8vzbq--phhHK5k=.trap.gz (71 of 297)
+[2025-09-22 06:43:25] Importing etree.JJAUh3InDCIWLYFtTLo1Pk4rOtY=.trap.gz (72 of 297)
+[2025-09-22 06:43:25] Importing events.py.0YCXnrFN-sjhxxZaxFebH-HvLrY=.trap.gz (73 of 297)
+[2025-09-22 06:43:25] Importing fake_audio.py.YW8FG3WzIgvjLkKESDoPdUNpmQI=.trap.gz (74 of 297)
+[2025-09-22 06:43:25] Importing fake_audio.py.sqhUegyv7TsJr8KSQHFaD5-06Gw=.trap.gz (75 of 297)
+[2025-09-22 06:43:25] Importing fake_mt.py.Qt27FunVDMPc968LWaVHAPmn4lk=.trap.gz (76 of 297)
+[2025-09-22 06:43:25] Importing fake_mt.py.o6Kq3jzYYR7NGWwCmBwWsEN9cIE=.trap.gz (77 of 297)
+[2025-09-22 06:43:25] Importing fake_streaming_asr.py.QXndC7EMt9-SansLcxwtBbFNQcQ=.trap.gz (78 of 297)
+[2025-09-22 06:43:25] Importing fake_streaming_asr.py.kZGULVh6WkLlE3tFVcDBItqN6j8=.trap.gz (79 of 297)
+[2025-09-22 06:43:25] Importing fake_whisper.py.nH4KyFy3keaqOgOPvxcCpGWcozw=.trap.gz (80 of 297)
+[2025-09-22 06:43:25] Importing fake_whisper.py.tUTY_VtrxGNX60iuIytyBLpgzd4=.trap.gz (81 of 297)
+[2025-09-22 06:43:25] Importing fakes.kKyanLh4Wj4EvvB_nXoW9VL8H8I=.trap.gz (82 of 297)
+[2025-09-22 06:43:25] Importing fakes.qD3TuE-jsrnFK7dvvLlSvjwwwNo=.trap.gz (83 of 297)
+[2025-09-22 06:43:25] Importing gc.Siv16zbPp_BOyXhEDpQON2KPmjw=.trap.gz (84 of 297)
+[2025-09-22 06:43:25] Importing guff.5W8uyDq_fouKWJcXaVPx_ILgmQ8=.trap.gz (85 of 297)
+[2025-09-22 06:43:25] Importing hardware._i1X6K6GjwfvvREdncwG3llpoNg=.trap.gz (86 of 297)
+[2025-09-22 06:43:25] Importing default.yaml.trap.gz (87 of 297)
+[2025-09-22 06:43:25] Importing relaxed.yaml.trap.gz (88 of 297)
+[2025-09-22 06:43:25] Importing agent-task.yml.trap.gz (89 of 297)
+[2025-09-22 06:43:25] Importing dependabot.yml.trap.gz (90 of 297)
+[2025-09-22 06:43:25] Importing ci.yml.trap.gz (91 of 297)
+[2025-09-22 06:43:25] Importing codeql.yml.trap.gz (92 of 297)
+[2025-09-22 06:43:25] Importing dead-code-analysis.yml.trap.gz (93 of 297)
+[2025-09-22 06:43:25] Importing dependency-review.yml.trap.gz (94 of 297)
+[2025-09-22 06:43:25] Importing gitleaks.yml.trap.gz (95 of 297)
+[2025-09-22 06:43:25] Importing preexec-guard.yml.trap.gz (96 of 297)
+[2025-09-22 06:43:25] Importing scorecards.yml.trap.gz (97 of 297)
+[2025-09-22 06:43:25] Importing port.yaml.trap.gz (98 of 297)
+[2025-09-22 06:43:25] Importing .yamllint.yaml.trap.gz (99 of 297)
+[2025-09-22 06:43:25] Importing docker-compose.gpu.yml.trap.gz (100 of 297)
+[2025-09-22 06:43:25] Importing docker-compose.yml.trap.gz (101 of 297)
+[2025-09-22 06:43:25] Importing compatibility.yaml.trap.gz (102 of 297)
+[2025-09-22 06:43:25] Importing FUNDING.yml.trap.gz (103 of 297)
+[2025-09-22 06:43:25] Importing FUNDING.yml.trap.gz (104 of 297)
+[2025-09-22 06:43:25] Importing dependabot.yml.trap.gz (105 of 297)
+[2025-09-22 06:43:25] Importing ci.yml.trap.gz (106 of 297)
+[2025-09-22 06:43:25] Importing FUNDING.yml.trap.gz (107 of 297)
+[2025-09-22 06:43:25] Importing FUNDING.yml.trap.gz (108 of 297)
+[2025-09-22 06:43:25] Importing FUNDING.yml.trap.gz (109 of 297)
+[2025-09-22 06:43:25] Importing dependabot.yml.trap.gz (110 of 297)
+[2025-09-22 06:43:25] Importing ci.yml.trap.gz (111 of 297)
+[2025-09-22 06:43:25] Importing FUNDING.yml.trap.gz (112 of 297)
+[2025-09-22 06:43:25] Importing dependabot.yml.trap.gz (113 of 297)
+[2025-09-22 06:43:25] Importing main.yml.trap.gz (114 of 297)
+[2025-09-22 06:43:25] Importing dependabot.yml.trap.gz (115 of 297)
+[2025-09-22 06:43:25] Importing ci.yml.trap.gz (116 of 297)
+[2025-09-22 06:43:25] Importing nodejs.yml.trap.gz (117 of 297)
+[2025-09-22 06:43:25] Importing FUNDING.yml.trap.gz (118 of 297)
+[2025-09-22 06:43:25] Importing nodejs-ci..yml.trap.gz (119 of 297)
+[2025-09-22 06:43:25] Importing .travis.yml.trap.gz (120 of 297)
+[2025-09-22 06:43:25] Importing .prettierrc.yaml.trap.gz (121 of 297)
+[2025-09-22 06:43:25] Importing .travis.yml.trap.gz (122 of 297)
+[2025-09-22 06:43:25] Importing .prettierrc.yaml.trap.gz (123 of 297)
+[2025-09-22 06:43:25] Importing codeql-database.yml.trap.gz (124 of 297)
+[2025-09-22 06:43:25] Importing FUNDING.yml.trap.gz (125 of 297)
+[2025-09-22 06:43:25] Importing FUNDING.yml.trap.gz (126 of 297)
+[2025-09-22 06:43:25] Importing FUNDING.yml.trap.gz (127 of 297)
+[2025-09-22 06:43:25] Importing FUNDING.yml.trap.gz (128 of 297)
+[2025-09-22 06:43:25] Importing FUNDING.yml.trap.gz (129 of 297)
+[2025-09-22 06:43:25] Importing FUNDING.yml.trap.gz (130 of 297)
+[2025-09-22 06:43:25] Importing FUNDING.yml.trap.gz (131 of 297)
+[2025-09-22 06:43:25] Importing FUNDING.yml.trap.gz (132 of 297)
+[2025-09-22 06:43:25] Importing FUNDING.yml.trap.gz (133 of 297)
+[2025-09-22 06:43:25] Importing FUNDING.yml.trap.gz (134 of 297)
+[2025-09-22 06:43:25] Importing FUNDING.yml.trap.gz (135 of 297)
+[2025-09-22 06:43:25] Importing FUNDING.yml.trap.gz (136 of 297)
+[2025-09-22 06:43:25] Importing dependabot.yml.trap.gz (137 of 297)
+[2025-09-22 06:43:25] Importing FUNDING.yml.trap.gz (138 of 297)
+[2025-09-22 06:43:25] Importing .travis.yml.trap.gz (139 of 297)
+[2025-09-22 06:43:25] Importing .travis.yml.trap.gz (140 of 297)
+[2025-09-22 06:43:25] Importing FUNDING.yml.trap.gz (141 of 297)
+[2025-09-22 06:43:25] Importing home.FHkg49voSqhTOs1nMGZFQOAZm4E=.trap.gz (142 of 297)
+[2025-09-22 06:43:25] Importing importlib.dhd-aACEdhCLere2qZl8eC3DKB0=.trap.gz (143 of 297)
+[2025-09-22 06:43:25] Importing indexing.HpXn5TN5Pdilrm3hBW6rOdUw9QQ=.trap.gz (144 of 297)
+[2025-09-22 06:43:25] Importing integration.py.qJCVa6lHkKP3Xia2vQVKNUqiqdI=.trap.gz (145 of 297)
+[2025-09-22 06:43:25] Importing json._eyrnD0F41RSKn4udjv-sH5gSNE=.trap.gz (146 of 297)
+[2025-09-22 06:43:25] Importing live_en_to_zh.py.5JqZqb_ZlOK0-nk-JplwPdjJXu4=.trap.gz (147 of 297)
+[2025-09-22 06:43:25] Importing logging.Cf4IHCKDRwIvwUPbS25NxUw7o68=.trap.gz (148 of 297)
+[2025-09-22 06:43:25] Importing logging.S1_52p2IuywMgz6eowxhdIlXyB0=.trap.gz (149 of 297)
+[2025-09-22 06:43:25] Importing loquilex.wxSSmphWs2lT3ij4BIcx02kmgN0=.trap.gz (150 of 297)
+[2025-09-22 06:43:25] Importing m2m.py.J8OrwEnPvjQsjwxEGTJ9MaCdbqQ=.trap.gz (151 of 297)
+[2025-09-22 06:43:25] Importing metadata.trap.gz (152 of 297)
+[2025-09-22 06:43:25] Importing metrics.py.pX9fVCw3ivaoQtEPbIgXIcYJnb4=.trap.gz (153 of 297)
+[2025-09-22 06:43:25] Importing metrics.py.ql6oku1uPoVi9u4eMZRlaLulnds=.trap.gz (154 of 297)
+[2025-09-22 06:43:25] Importing model_defaults.py.pI9-44su2CaMgX3tv1sl5oIzs5U=.trap.gz (155 of 297)
+[2025-09-22 06:43:25] Importing model_discovery.py.sQni5TSxVQQIQXwpgl_cwgetiNs=.trap.gz (156 of 297)
+[2025-09-22 06:43:25] Importing monotonic.py.LAAcAtlC44PoA_AL769jNbJbqNw=.trap.gz (157 of 297)
+[2025-09-22 06:43:25] Importing monotonic.py.qwxvTw3LnPszL7xZFipbaOjDBMo=.trap.gz (158 of 297)
+[2025-09-22 06:43:25] Importing mt.-1DZgpUdOF8Sxby1erxciO9yPdM=.trap.gz (159 of 297)
+[2025-09-22 06:43:25] Importing nllb.py.NpsCiLuIiaZ5HdbkWvTvEeacHEE=.trap.gz (160 of 297)
+[2025-09-22 06:43:25] Importing output.XMSr-Zk87YomkhQtJsmOhS5JKFE=.trap.gz (161 of 297)
+[2025-09-22 06:43:25] Importing parse_junit_failures.py.INCXMstIMZvOWkA2NIkZFukSA70=.trap.gz (162 of 297)
+[2025-09-22 06:43:25] Importing path_guard.py.4fiqUgkbWbBNHeJrkAlLUr7yurM=.trap.gz (163 of 297)
+[2025-09-22 06:43:25] Importing paths.py.oiywKiZ4lSA6Ekdv6fsXoh3kCTM=.trap.gz (164 of 297)
+[2025-09-22 06:43:25] Importing paths.py.tUhIRj9rxYs213f9hcTibIHpHXU=.trap.gz (165 of 297)
+[2025-09-22 06:43:25] Importing post.rJm-zmCUj2v58XCY8E0_mQJZGSg=.trap.gz (166 of 297)
+[2025-09-22 06:43:25] Importing protocol.py.ATZpIl1x0lyC65nYAFQag9CDNB4=.trap.gz (167 of 297)
+[2025-09-22 06:43:25] Importing providers.0aMxAdhANZpveNhPhU3CI0VGfAc=.trap.gz (168 of 297)
+[2025-09-22 06:43:25] Importing re.qkoimtbTAqzKb70pn8P4VYGd1WI=.trap.gz (169 of 297)
+[2025-09-22 06:43:25] Importing redaction.py.LhEdgeotInLbJjoaESad-4RYBf0=.trap.gz (170 of 297)
+[2025-09-22 06:43:25] Importing registry.py.BXiX5TwygpQDIpnuBmcy62RPJFk=.trap.gz (171 of 297)
+[2025-09-22 06:43:25] Importing resample.py.NtCncwyrpI2wXCW8ZTTy2lTHrBI=.trap.gz (172 of 297)
+[2025-09-22 06:43:25] Importing scripts.-XbQCGLcimjwyQCOIygku6PgvH4=.trap.gz (173 of 297)
+[2025-09-22 06:43:25] Importing security.SnFs6RSF4SNXJfWxxmRg8O4izc4=.trap.gz (174 of 297)
+[2025-09-22 06:43:25] Importing security.gr6cw0HoMVFMyTISFC7odzHfphA=.trap.gz (175 of 297)
+[2025-09-22 06:43:25] Importing security.zZubX3VhMpr_llZceQ3CM6EfFtY=.trap.gz (176 of 297)
+[2025-09-22 06:43:25] Importing segmentation.uAMKqGQkPYLj8NpYdXnJMIRvMgU=.trap.gz (177 of 297)
+[2025-09-22 06:43:25] Importing server.py.y98b5YttbGKREwtmf6QElZDf8dA=.trap.gz (178 of 297)
+[2025-09-22 06:43:25] Importing service.py.3igtz35L8zZMwzsp01bjUMiOVA0=.trap.gz (179 of 297)
+[2025-09-22 06:43:25] Importing session_storage.py.OewqeQ_RJ6lQRKoKwGF5w5Az_SI=.trap.gz (180 of 297)
+[2025-09-22 06:43:25] Importing src.DPfYeKh9cndzyNyb00SJnzVaxXk=.trap.gz (181 of 297)
+[2025-09-22 06:43:25] Importing srt.py.2zXO1XeQ_2viQz6laVf7CI5qT-w=.trap.gz (182 of 297)
+[2025-09-22 06:43:25] Importing stream.py.-EH4ROxM02tUVVWKvJWVW5REg6M=.trap.gz (183 of 297)
+[2025-09-22 06:43:25] Importing structured.py.imXrtA0XWM8kcn2mfv0gLzwHl-k=.trap.gz (184 of 297)
+[2025-09-22 06:43:25] Importing supervisor.py.S62-41KKfGYR_0FvGYQOvNEycEM=.trap.gz (185 of 297)
+[2025-09-22 06:43:25] Importing sys.YLKjdsEvX5Vsk096fX9_tQivyU8=.trap.gz (186 of 297)
+[2025-09-22 06:43:25] Importing test_admin_cache.py.U_lsfvl1ycOGQqBiQj_A1UameNc=.trap.gz (187 of 297)
+[2025-09-22 06:43:25] Importing test_admin_cache.py.Xf8sEr4CC_H_QoHwq5LpkWrRT74=.trap.gz (188 of 297)
+[2025-09-22 06:43:25] Importing test_aggregator.py.06bRgMYyKO5Quf60hXC7QVJvBzY=.trap.gz (189 of 297)
+[2025-09-22 06:43:25] Importing test_aggregator.py.8ZuFNI_sM63TM8j3a-RWOrNJqL4=.trap.gz (190 of 297)
+[2025-09-22 06:43:25] Importing test_api_hardware.py.F-Vw1Zzco_NXeXEi8CsYH1Eo7-E=.trap.gz (191 of 297)
+[2025-09-22 06:43:25] Importing test_api_hardware.py.RwfWAqxQZPrRAVbDXCysmGvBwjI=.trap.gz (192 of 297)
+[2025-09-22 06:43:25] Importing test_api_minimal_http.py._xG0wZQWBqy9zSupm7nUk68ZnqI=.trap.gz (193 of 297)
+[2025-09-22 06:43:25] Importing test_api_minimal_http.py.fKL7-RQFljfOrl-cFvrUHAc7blU=.trap.gz (194 of 297)
+[2025-09-22 06:43:25] Importing test_api_minimal_session.py.2AOgRGol3MEY3xM3qXsgTApRkLE=.trap.gz (195 of 297)
+[2025-09-22 06:43:25] Importing test_api_minimal_session.py.xbPuqXjvIz2nDH8CXclTdj6kidc=.trap.gz (196 of 297)
+[2025-09-22 06:43:25] Importing test_api_model_endpoints.py.BTv5_qt1Hlf8EFC-7oJmCxRyQYA=.trap.gz (197 of 297)
+[2025-09-22 06:43:25] Importing test_api_model_endpoints.py.CKi3adwvZdWb4EcmQfOAPSQMjkA=.trap.gz (198 of 297)
+[2025-09-22 06:43:25] Importing test_api_modules_import.py.YApf3N1oWp6RypLHnp-2rPzJm4M=.trap.gz (199 of 297)
+[2025-09-22 06:43:25] Importing test_api_modules_import.py.q_9hbAhHpIle_CAUlgnePsR9qMk=.trap.gz (200 of 297)
+[2025-09-22 06:43:25] Importing test_asr_metrics.py.DKHphu9uhGbb1yDA5IsiLUfPeqM=.trap.gz (201 of 297)
+[2025-09-22 06:43:25] Importing test_bounded_queue.py.6fsbIfdHQw8eufcz5OOPJ_X3Pzg=.trap.gz (202 of 297)
+[2025-09-22 06:43:25] Importing test_bounded_queue.py.sIH_SZrysLiYcW7b6mPPXEjQ4YE=.trap.gz (203 of 297)
+[2025-09-22 06:43:25] Importing test_cli_integration_offline.py.7Jm-kRpEqq-uefD7uWQk3A8IeZs=.trap.gz (204 of 297)
+[2025-09-22 06:43:25] Importing test_cli_integration_offline.py.Bl91l9kMpRhaZ_cRbhWKkA6lYpI=.trap.gz (205 of 297)
+[2025-09-22 06:43:25] Importing test_cli_smoke.py.Gy0TJuqeXqX6DYcFSGVmMswORCs=.trap.gz (206 of 297)
+[2025-09-22 06:43:25] Importing test_cli_smoke.py.gbNYaBK17tUuUDKRXv8rXnh7EyY=.trap.gz (207 of 297)
+[2025-09-22 06:43:25] Importing test_compat_versions.py.I7QjOJvjLTjK0kHuScJCWunEINE=.trap.gz (208 of 297)
+[2025-09-22 06:43:25] Importing test_compat_versions.py.M8nmha6gjrTeUpDnJ4QT5AyEQXg=.trap.gz (209 of 297)
+[2025-09-22 06:43:25] Importing test_config_env.py.PoyYgLVPNeMx9f6T-r3C7TtkGeQ=.trap.gz (210 of 297)
+[2025-09-22 06:43:25] Importing test_config_env.py.ZDrpdbKYuhtMglAKl_e0Y4trork=.trap.gz (211 of 297)
+[2025-09-22 06:43:25] Importing test_config_parsing.py.t3FWRtVP5Hs9kkovz-mzmSbKT4Q=.trap.gz (212 of 297)
+[2025-09-22 06:43:25] Importing test_config_parsing.py.tQpt_Jsvs7DCxpK2MxXbpkzdqwc=.trap.gz (213 of 297)
+[2025-09-22 06:43:25] Importing test_contract_provider.py.gsLE2-nS2QISTTIlWgctcjhyGYU=.trap.gz (214 of 297)
+[2025-09-22 06:43:25] Importing test_e2e_resume_flow.py.4M4gnyM4Dy_fZHpLFTYWBRl457Y=.trap.gz (215 of 297)
+[2025-09-22 06:43:25] Importing test_e2e_resume_flow.py.ePMqfXja0XxSkPH_DgQm59QpWig=.trap.gz (216 of 297)
+[2025-09-22 06:43:25] Importing test_e2e_websocket_api.py.29WTXnlIGr1g504ytNYo7j15iG4=.trap.gz (217 of 297)
+[2025-09-22 06:43:25] Importing test_e2e_websocket_api.py.rnlVUdVWltY5Y31R62hUpgH-npg=.trap.gz (218 of 297)
+[2025-09-22 06:43:25] Importing test_env_prefix.py.WJWmeK82aHvGPChdQC4iX3SmYpg=.trap.gz (219 of 297)
+[2025-09-22 06:43:25] Importing test_hardware_detection.py.C9U0esQcQ3e0Nsvyq3o4ddI7B0U=.trap.gz (220 of 297)
+[2025-09-22 06:43:25] Importing test_hardware_detection.py.qMC9GfSQps1H86jvPrLJyWZ4x7g=.trap.gz (221 of 297)
+[2025-09-22 06:43:25] Importing test_live_outputs.py.1rfhPsSzagO5sEV4nX7m4ZIJ4G0=.trap.gz (222 of 297)
+[2025-09-22 06:43:25] Importing test_live_outputs.py.465iJ2Brp-XY-N1c1mdrsOJPY38=.trap.gz (223 of 297)
+[2025-09-22 06:43:25] Importing test_model_defaults.py.5yk0uevFf5wpEAktLdNuwhqEqao=.trap.gz (224 of 297)
+[2025-09-22 06:43:25] Importing test_model_defaults.py.tvUdSG05IRGSiA3PN-pyp_EADmc=.trap.gz (225 of 297)
+[2025-09-22 06:43:25] Importing test_model_indexing.py.BPz6X4sCo4w8P4RKWEkm1UTFX3M=.trap.gz (226 of 297)
+[2025-09-22 06:43:25] Importing test_model_indexing.py.eOLM8hK4FJ836p6cXq1ye0v5PFk=.trap.gz (227 of 297)
+[2025-09-22 06:43:25] Importing test_mt_integration.py.EycYkMo_9OjGlkQMbtdhWyOVTVE=.trap.gz (228 of 297)
+[2025-09-22 06:43:25] Importing test_mt_integration.py.scS5gqjkSntn-HaxoHbVDZPqp4U=.trap.gz (229 of 297)
+[2025-09-22 06:43:25] Importing test_mt_registry.py.1Y2iuPjBy4OfdVvuoVeymUBwEHA=.trap.gz (230 of 297)
+[2025-09-22 06:43:25] Importing test_mt_registry.py.T0MWr0MOt3dWJ07aFrbxh7jzkbE=.trap.gz (231 of 297)
+[2025-09-22 06:43:25] Importing test_offline_env.py.9jilGtwTwksA9BpnUK7O7awKfgo=.trap.gz (232 of 297)
+[2025-09-22 06:43:25] Importing test_offline_env.py.i9HIC66tl52CsjbaUYRbSVma3xU=.trap.gz (233 of 297)
+[2025-09-22 06:43:25] Importing test_offline_isolation.py.0h8LIWJZixhvj_xwKQF2Gv-UbX4=.trap.gz (234 of 297)
+[2025-09-22 06:43:25] Importing test_offline_isolation.py.ym1iBK-PG2K4jfVzh7dgQOJN4GU=.trap.gz (235 of 297)
+[2025-09-22 06:43:25] Importing test_path_guard.py.5QqFMcbxPv8Oj3waNBPXqMyt3KQ=.trap.gz (236 of 297)
+[2025-09-22 06:43:25] Importing test_path_guard.py.E9f0sCllspTutgxEDbrDkJLuw68=.trap.gz (237 of 297)
+[2025-09-22 06:43:25] Importing test_path_guard.py.NPVgNGqa0mgJTzG_rG96dl_vT24=.trap.gz (238 of 297)
+[2025-09-22 06:43:25] Importing test_path_guard.py.tuepw-GGdWSHtzmp-wpGD2YIGMU=.trap.gz (239 of 297)
+[2025-09-22 06:43:25] Importing test_path_traversal_rejection.py.BwjVNqmaEw06j0d86iGFC_3EubQ=.trap.gz (240 of 297)
+[2025-09-22 06:43:25] Importing test_path_traversal_rejection.py.Vv-6OVZJgx2iw5SmYE9CYtxVRk0=.trap.gz (241 of 297)
+[2025-09-22 06:43:25] Importing test_resilient_comms.py.39gspdCyBp8449oDX6efofY8Emk=.trap.gz (242 of 297)
+[2025-09-22 06:43:25] Importing test_resource_management.py.-_DphoA-u_d0BzCJ0wIHi2NTAGs=.trap.gz (243 of 297)
+[2025-09-22 06:43:25] Importing test_resource_management.py.cLwccelVNx8kCAxXHERteQwARtI=.trap.gz (244 of 297)
+[2025-09-22 06:43:25] Importing test_safe_broadcast.py.Iu9tRIs_cIC52bf_PFWBGnLQbdI=.trap.gz (245 of 297)
+[2025-09-22 06:43:25] Importing test_safe_broadcast.py.LS6C-135WX7MMmniDcLBkFHJdw8=.trap.gz (246 of 297)
+[2025-09-22 06:43:25] Importing test_session_state_integration.py.VPzJR_S0PoD2UHG5NStPZP70t7M=.trap.gz (247 of 297)
+[2025-09-22 06:43:25] Importing test_session_state_integration.py.r_Y-KRW6CJTdCt9lY0nzJQvNCRo=.trap.gz (248 of 297)
+[2025-09-22 06:43:25] Importing test_session_storage.py.PFozQVBPtwjrXDFCOfaLgb49eBA=.trap.gz (249 of 297)
+[2025-09-22 06:43:25] Importing test_snapshot_rehydrate.py.1VjxSOpwOzMHz8iu8Bsvosut2gs=.trap.gz (250 of 297)
+[2025-09-22 06:43:25] Importing test_snapshot_rehydrate.py.Wbq4FRh-JCU2jDi6DXV9-ruDs2E=.trap.gz (251 of 297)
+[2025-09-22 06:43:25] Importing test_storage_api.py.685ap0HkZJwol_-j0FWJXLQNDmk=.trap.gz (252 of 297)
+[2025-09-22 06:43:25] Importing test_storage_api.py.kglnt9JeWfXyP2gXuM9UnX8a2e0=.trap.gz (253 of 297)
+[2025-09-22 06:43:25] Importing test_streaming_asr.py.JRscLQ3Cw5h16zWEkDZg4B0FAgY=.trap.gz (254 of 297)
+[2025-09-22 06:43:25] Importing test_streaming_integration.py.2qQKOos-LvuHpfARVW8sP-1O-Ag=.trap.gz (255 of 297)
+[2025-09-22 06:43:25] Importing test_streaming_integration.py.HIstw5n5IIJSewTUZc0ROKLW9jI=.trap.gz (256 of 297)
+[2025-09-22 06:43:25] Importing test_structured_logging.py.rXhuOvUG2mKVkU3QThyR_KrR5Lk=.trap.gz (257 of 297)
+[2025-09-22 06:43:25] Importing test_text_io.py.YfNJsbzScy94_6XZHmDjfXsxqQQ=.trap.gz (258 of 297)
+[2025-09-22 06:43:25] Importing test_text_io.py.hdmPa_mSU8aezsWhvYX9oJiGeY8=.trap.gz (259 of 297)
+[2025-09-22 06:43:25] Importing test_text_io_concurrency.py.9SNbeuI2xknsBh4ETpmOormGV2E=.trap.gz (260 of 297)
+[2025-09-22 06:43:25] Importing test_text_io_concurrency.py.tGoc2XP_yFv5VA9QJmcGE0A3sek=.trap.gz (261 of 297)
+[2025-09-22 06:43:25] Importing test_timed_outputs.py.8KCCiBAQh-Oneiy50vNo9JenVmk=.trap.gz (262 of 297)
+[2025-09-22 06:43:25] Importing test_timed_outputs.py.MFt6P4uLAvGRDlhjkgziXE9TNoc=.trap.gz (263 of 297)
+[2025-09-22 06:43:25] Importing test_units_extra.py.GQROUFMNAdfFafV-HRA5VaaGCgs=.trap.gz (264 of 297)
+[2025-09-22 06:43:25] Importing test_units_extra.py.l7LCl_ZlYavyBGl3mKh3YHgDEZg=.trap.gz (265 of 297)
+[2025-09-22 06:43:25] Importing test_vtt_and_mt.py.TCoRBWneezOLcM-2R6TaG22zePE=.trap.gz (266 of 297)
+[2025-09-22 06:43:25] Importing test_vtt_and_mt.py.aL8mKaIAKf9NjBbMrAB7T_o-Hjs=.trap.gz (267 of 297)
+[2025-09-22 06:43:25] Importing test_ws_integration.py.3V6PPeK_9_9Nm2NsQkePzUnTitM=.trap.gz (268 of 297)
+[2025-09-22 06:43:25] Importing test_ws_integration.py.fuFEA4p2g87RtjZhmXs0lUUxYHI=.trap.gz (269 of 297)
+[2025-09-22 06:43:25] Importing test_ws_protocol.py.yPMYBckJzDmPpXqMNE4PU5Kn9w0=.trap.gz (270 of 297)
+[2025-09-22 06:43:25] Importing test_ws_types.py.HVQRSNqTx5Q56Rbrs3NEy4ykFYY=.trap.gz (271 of 297)
+[2025-09-22 06:43:25] Importing test_ws_types.py.zv1szH_RrAaTknl0DYy8HwCFCNE=.trap.gz (272 of 297)
+[2025-09-22 06:43:25] Importing tests.1AA5LNU5MrbaUVqvPI5Mdt3EuYk=.trap.gz (273 of 297)
+[2025-09-22 06:43:25] Importing tests.2RERPesSDlYpDiiAFPISSYE7MeY=.trap.gz (274 of 297)
+[2025-09-22 06:43:25] Importing tests.hUUW4oBrf8TfFReeG1qvlHd98xY=.trap.gz (275 of 297)
+[2025-09-22 06:43:25] Importing tests.rxZRURngMr_AiPzTSAbyuCbpnpY=.trap.gz (276 of 297)
+[2025-09-22 06:43:25] Importing text_io.py.dj13uNm3AwgJVpDBW557lPOluhQ=.trap.gz (277 of 297)
+[2025-09-22 06:43:25] Importing time.K8SWMiZ6O3S5WP0yhb6BNjnJBOY=.trap.gz (278 of 297)
+[2025-09-22 06:43:25] Importing tokenizers.DBvLVmF359AbUxZfryKG8fsYQW0=.trap.gz (279 of 297)
+[2025-09-22 06:43:25] Importing translator.py.DbCwLj-SrZQYQUs4c7ellNN1dIU=.trap.gz (280 of 297)
+[2025-09-22 06:43:25] Importing types.py.aSCtPrvMg1o-Q-aV9hfu6kPjJuE=.trap.gz (281 of 297)
+[2025-09-22 06:43:25] Importing unittest.YXZCFN-KUYREkcG5g7GeaJRHU-c=.trap.gz (282 of 297)
+[2025-09-22 06:43:25] Importing urllib.Qx30OrAjj4XbNHtAL0IeW1HhuSc=.trap.gz (283 of 297)
+[2025-09-22 06:43:25] Importing util.Dwei86DxmCyyVaGOMo_mFtitdEE=.trap.gz (284 of 297)
+[2025-09-22 06:43:25] Importing util.GvwJOWBgeRHbmB3S0BHokco1Y0Q=.trap.gz (285 of 297)
+[2025-09-22 06:43:25] Importing util.py.jzoSEOZvIJ3CcJ-B4Y2Ng6MDi20=.trap.gz (286 of 297)
+[2025-09-22 06:43:25] Importing vtt.py.oV1B0B7X084j9Ge99kmlvuSQcRI=.trap.gz (287 of 297)
+[2025-09-22 06:43:25] Importing vtt_smoke_test.py.6SQKqnEOC14uBUO7E_Exp8EPUdU=.trap.gz (288 of 297)
+[2025-09-22 06:43:25] Importing vtt_to_zh.py.k5fJHYpKIwjMZVDY2z5EG7rXLAE=.trap.gz (289 of 297)
+[2025-09-22 06:43:25] Importing vu.py.64BciuX9o_LldbEDHwboKY_lcHA=.trap.gz (290 of 297)
+[2025-09-22 06:43:25] Importing wav_to_vtt.py.nmL8KvHLTwx5lFNwaYqFCoSjuIU=.trap.gz (291 of 297)
+[2025-09-22 06:43:25] Importing whisper_engine.py.WMNqD4jbzXkJiwTSRloVQ7Ns7IE=.trap.gz (292 of 297)
+[2025-09-22 06:43:25] Importing worker.py.DXx3IEabQm5GRQCsV3txlGc0nAs=.trap.gz (293 of 297)
+[2025-09-22 06:43:25] Importing ws_protocol.py.YMo26KjJ2wQPaLr5S01DSXxMc0k=.trap.gz (294 of 297)
+[2025-09-22 06:43:25] Importing ws_types.py.O37pDeYiF32Pvf0tYENQn63C9xg=.trap.gz (295 of 297)
+[2025-09-22 06:43:25] Importing xml.V_2m-DJavjCbt55okLitx7w3Eyo=.trap.gz (296 of 297)
+[2025-09-22 06:43:25] Importing zh_text.py.oQoEBBZQLLfurS-idYq6PTj1fDs=.trap.gz (297 of 297)
+[2025-09-22 06:43:25] [PROGRESS] dataset import> Merging relations
+[2025-09-22 06:43:26] Merging 1 fragment for 'files'.
+[2025-09-22 06:43:26] Merged 475 bytes for 'files'.
+[2025-09-22 06:43:26] Merging 1 fragment for 'folders'.
+[2025-09-22 06:43:26] Merged 332 bytes for 'folders'.
+[2025-09-22 06:43:26] Merging 1 fragment for 'containerparent'.
+[2025-09-22 06:43:26] Merged 669 bytes for 'containerparent'.
+[2025-09-22 06:43:26] Merging 1 fragment for 'py_flags_versioned'.
+[2025-09-22 06:43:26] Merged 185 bytes for 'py_flags_versioned'.
+[2025-09-22 06:43:26] Merging 1 fragment for 'py_cobjects'.
+[2025-09-22 06:43:26] Merged 9979 bytes (9.75 KiB) for 'py_cobjects'.
+[2025-09-22 06:43:26] Merging 1 fragment for 'py_cobjecttypes'.
+[2025-09-22 06:43:26] Merged 20032 bytes (19.56 KiB) for 'py_cobjecttypes'.
+[2025-09-22 06:43:26] Merging 1 fragment for 'py_cobject_sources'.
+[2025-09-22 06:43:26] Merged 12153 bytes (11.87 KiB) for 'py_cobject_sources'.
+[2025-09-22 06:43:26] Merging 1 fragment for 'py_cobjectnames'.
+[2025-09-22 06:43:26] Merged 16999 bytes (16.60 KiB) for 'py_cobjectnames'.
+[2025-09-22 06:43:26] Merging 1 fragment for 'py_cmembers_versioned'.
+[2025-09-22 06:43:26] Merged 6897 bytes (6.74 KiB) for 'py_cmembers_versioned'.
+[2025-09-22 06:43:26] Merging 1 fragment for 'py_special_objects'.
+[2025-09-22 06:43:26] Merged 136 bytes for 'py_special_objects'.
+[2025-09-22 06:43:26] Merging 1 fragment for 'py_citems'.
+[2025-09-22 06:43:26] Merged 557 bytes for 'py_citems'.
+[2025-09-22 06:43:26] Merging 1 fragment for 'ext_rettype'.
+[2025-09-22 06:43:26] Merged 4039 bytes (3.94 KiB) for 'ext_rettype'.
+[2025-09-22 06:43:26] Merging 1 fragment for 'ext_argtype'.
+[2025-09-22 06:43:26] Merged 6821 bytes (6.66 KiB) for 'ext_argtype'.
+[2025-09-22 06:43:26] Merging 1 fragment for 'ext_argreturn'.
+[2025-09-22 06:43:26] Merged 41 bytes for 'ext_argreturn'.
+[2025-09-22 06:43:26] Merging 1 fragment for 'ext_proptype'.
+[2025-09-22 06:43:26] Merged 345 bytes for 'ext_proptype'.
+[2025-09-22 06:43:26] Merging 1 fragment for 'py_Modules'.
+[2025-09-22 06:43:26] Merged 237 bytes for 'py_Modules'.
+[2025-09-22 06:43:26] Merging 1 fragment for 'py_module_path'.
+[2025-09-22 06:43:26] Merged 569 bytes for 'py_module_path'.
+[2025-09-22 06:43:26] Merging 1 fragment for 'py_flow_bb_node'.
+[2025-09-22 06:43:26] Merged 256420 bytes (250.41 KiB) for 'py_flow_bb_node'.
+[2025-09-22 06:43:26] Merging 1 fragment for 'py_scope_flow'.
+[2025-09-22 06:43:26] Merged 31015 bytes (30.29 KiB) for 'py_scope_flow'.
+[2025-09-22 06:43:26] Merging 1 fragment for 'locations_ast'.
+[2025-09-22 06:43:26] Merged 361831 bytes (353.35 KiB) for 'locations_ast'.
+[2025-09-22 06:43:26] Merging 1 fragment for 'variable'.
+[2025-09-22 06:43:26] Merged 39559 bytes (38.63 KiB) for 'variable'.
+[2025-09-22 06:43:26] Merging 1 fragment for 'py_extracted_version'.
+[2025-09-22 06:43:26] Merged 206 bytes for 'py_extracted_version'.
+[2025-09-22 06:43:26] Merging 1 fragment for 'py_successors'.
+[2025-09-22 06:43:26] Merged 159038 bytes (155.31 KiB) for 'py_successors'.
+[2025-09-22 06:43:26] Merging 1 fragment for 'py_idoms'.
+[2025-09-22 06:43:26] Merged 145542 bytes (142.13 KiB) for 'py_idoms'.
+[2025-09-22 06:43:26] Merging 1 fragment for 'py_scope_location'.
+[2025-09-22 06:43:26] Merged 5038 bytes (4.92 KiB) for 'py_scope_location'.
+[2025-09-22 06:43:26] Merging 1 fragment for 'py_stmt_lists'.
+[2025-09-22 06:43:26] Merged 14093 bytes (13.76 KiB) for 'py_stmt_lists'.
+[2025-09-22 06:43:26] Merging 1 fragment for 'py_stmts'.
+[2025-09-22 06:43:26] Merged 52274 bytes (51.05 KiB) for 'py_stmts'.
+[2025-09-22 06:43:26] Merging 1 fragment for 'py_scopes'.
+[2025-09-22 06:43:26] Merged 85811 bytes (83.80 KiB) for 'py_scopes'.
+[2025-09-22 06:43:26] Merging 1 fragment for 'py_exprs'.
+[2025-09-22 06:43:26] Merged 254803 bytes (248.83 KiB) for 'py_exprs'.
+[2025-09-22 06:43:26] Merging 1 fragment for 'py_strs'.
+[2025-09-22 06:43:26] Merged 70872 bytes (69.21 KiB) for 'py_strs'.
+[2025-09-22 06:43:26] Merging 1 fragment for 'py_codelines'.
+[2025-09-22 06:43:26] Merged 3927 bytes (3.83 KiB) for 'py_codelines'.
+[2025-09-22 06:43:26] Merging 1 fragment for 'py_commentlines'.
+[2025-09-22 06:43:26] Merged 3613 bytes (3.53 KiB) for 'py_commentlines'.
+[2025-09-22 06:43:26] Merging 1 fragment for 'py_docstringlines'.
+[2025-09-22 06:43:26] Merged 2969 bytes (2.90 KiB) for 'py_docstringlines'.
+[2025-09-22 06:43:26] Merging 1 fragment for 'py_alllines'.
+[2025-09-22 06:43:26] Merged 3981 bytes (3.89 KiB) for 'py_alllines'.
+[2025-09-22 06:43:26] Merging 1 fragment for 'numlines'.
+[2025-09-22 06:43:26] Merged 945 bytes for 'numlines'.
+[2025-09-22 06:43:26] Merging 1 fragment for 'py_locations'.
+[2025-09-22 06:43:26] Merged 153364 bytes (149.77 KiB) for 'py_locations'.
+[2025-09-22 06:43:26] Merging 1 fragment for 'py_alias_lists'.
+[2025-09-22 06:43:26] Merged 2340 bytes (2.29 KiB) for 'py_alias_lists'.
+[2025-09-22 06:43:26] Merging 1 fragment for 'py_aliases'.
+[2025-09-22 06:43:26] Merged 3812 bytes (3.72 KiB) for 'py_aliases'.
+[2025-09-22 06:43:26] Merging 1 fragment for 'py_ints'.
+[2025-09-22 06:43:26] Merged 1597 bytes (1.56 KiB) for 'py_ints'.
+[2025-09-22 06:43:26] Merging 1 fragment for 'py_variables'.
+[2025-09-22 06:43:26] Merged 52505 bytes (51.27 KiB) for 'py_variables'.
+[2025-09-22 06:43:26] Merging 1 fragment for 'py_expr_contexts'.
+[2025-09-22 06:43:26] Merged 92979 bytes (90.80 KiB) for 'py_expr_contexts'.
+[2025-09-22 06:43:26] Merging 1 fragment for 'py_expr_lists'.
+[2025-09-22 06:43:26] Merged 43874 bytes (42.85 KiB) for 'py_expr_lists'.
+[2025-09-22 06:43:26] Merging 1 fragment for 'py_exports'.
+[2025-09-22 06:43:26] Merged 1110 bytes (1.08 KiB) for 'py_exports'.
+[2025-09-22 06:43:26] Merging 1 fragment for 'py_ssa_var'.
+[2025-09-22 06:43:26] Merged 17511 bytes (17.10 KiB) for 'py_ssa_var'.
+[2025-09-22 06:43:26] Merging 1 fragment for 'py_ssa_defn'.
+[2025-09-22 06:43:26] Merged 15373 bytes (15.01 KiB) for 'py_ssa_defn'.
+[2025-09-22 06:43:26] Merging 1 fragment for 'py_ssa_use'.
+[2025-09-22 06:43:26] Merged 25876 bytes (25.27 KiB) for 'py_ssa_use'.
+[2025-09-22 06:43:26] Merging 1 fragment for 'py_comments'.
+[2025-09-22 06:43:26] Merged 7054 bytes (6.89 KiB) for 'py_comments'.
+[2025-09-22 06:43:26] Merging 1 fragment for 'py_arguments'.
+[2025-09-22 06:43:26] Merged 3450 bytes (3.37 KiB) for 'py_arguments'.
+[2025-09-22 06:43:26] Merging 1 fragment for 'py_numbers'.
+[2025-09-22 06:43:26] Merged 16067 bytes (15.69 KiB) for 'py_numbers'.
+[2025-09-22 06:43:26] Merging 1 fragment for 'py_Functions'.
+[2025-09-22 06:43:26] Merged 3724 bytes (3.64 KiB) for 'py_Functions'.
+[2025-09-22 06:43:26] Merging 1 fragment for 'py_parameter_lists'.
+[2025-09-22 06:43:26] Merged 3110 bytes (3.04 KiB) for 'py_parameter_lists'.
+[2025-09-22 06:43:26] Merging 1 fragment for 'py_bools'.
+[2025-09-22 06:43:26] Merged 1703 bytes (1.66 KiB) for 'py_bools'.
+[2025-09-22 06:43:26] Merging 1 fragment for 'py_unaryops'.
+[2025-09-22 06:43:26] Merged 880 bytes for 'py_unaryops'.
+[2025-09-22 06:43:26] Merging 1 fragment for 'py_operators'.
+[2025-09-22 06:43:26] Merged 1986 bytes (1.94 KiB) for 'py_operators'.
+[2025-09-22 06:43:26] Merging 1 fragment for 'py_cmpop_lists'.
+[2025-09-22 06:43:26] Merged 5015 bytes (4.90 KiB) for 'py_cmpop_lists'.
+[2025-09-22 06:43:26] Merging 1 fragment for 'py_cmpops'.
+[2025-09-22 06:43:26] Merged 6757 bytes (6.60 KiB) for 'py_cmpops'.
+[2025-09-22 06:43:26] Merging 1 fragment for 'py_true_successors'.
+[2025-09-22 06:43:26] Merged 6406 bytes (6.26 KiB) for 'py_true_successors'.
+[2025-09-22 06:43:26] Merging 1 fragment for 'py_false_successors'.
+[2025-09-22 06:43:26] Merged 6534 bytes (6.38 KiB) for 'py_false_successors'.
+[2025-09-22 06:43:26] Merging 1 fragment for 'py_exception_successors'.
+[2025-09-22 06:43:26] Merged 5896 bytes (5.76 KiB) for 'py_exception_successors'.
+[2025-09-22 06:43:26] Merging 1 fragment for 'py_ssa_phi'.
+[2025-09-22 06:43:26] Merged 1295 bytes (1.26 KiB) for 'py_ssa_phi'.
+[2025-09-22 06:43:26] Merging 1 fragment for 'py_Classes'.
+[2025-09-22 06:43:26] Merged 797 bytes for 'py_Classes'.
+[2025-09-22 06:43:26] Merging 1 fragment for 'py_dict_item_lists'.
+[2025-09-22 06:43:26] Merged 4243 bytes (4.14 KiB) for 'py_dict_item_lists'.
+[2025-09-22 06:43:26] Merging 1 fragment for 'py_dict_items'.
+[2025-09-22 06:43:26] Merged 12777 bytes (12.48 KiB) for 'py_dict_items'.
+[2025-09-22 06:43:26] Merging 1 fragment for 'py_boolops'.
+[2025-09-22 06:43:26] Merged 1005 bytes for 'py_boolops'.
+[2025-09-22 06:43:26] Merging 1 fragment for 'py_StringPart_lists'.
+[2025-09-22 06:43:26] Merged 57 bytes for 'py_StringPart_lists'.
+[2025-09-22 06:43:26] Merging 1 fragment for 'py_StringParts'.
+[2025-09-22 06:43:26] Merged 124 bytes for 'py_StringParts'.
+[2025-09-22 06:43:26] Merging 1 fragment for 'yaml_scalars'.
+[2025-09-22 06:43:26] Merged 4662 bytes (4.55 KiB) for 'yaml_scalars'.
+[2025-09-22 06:43:26] Merging 1 fragment for 'yaml'.
+[2025-09-22 06:43:26] Merged 12932 bytes (12.63 KiB) for 'yaml'.
+[2025-09-22 06:43:26] Merging 1 fragment for 'locations_default'.
+[2025-09-22 06:43:26] Merged 11272 bytes (11.01 KiB) for 'locations_default'.
+[2025-09-22 06:43:26] Merging 1 fragment for 'yaml_locations'.
+[2025-09-22 06:43:26] Merged 4130 bytes (4.03 KiB) for 'yaml_locations'.
+[2025-09-22 06:43:26] Merging 1 fragment for 'py_str_lists'.
+[2025-09-22 06:43:26] Merged 82 bytes for 'py_str_lists'.
+[2025-09-22 06:43:26] Merging 1 fragment for 'sourceLocationPrefix'.
+[2025-09-22 06:43:26] Merged 17 bytes for 'sourceLocationPrefix'.
+[2025-09-22 06:43:26] Saving string and id pools to disk.
+[2025-09-22 06:43:26] Finished importing TRAP files.
+[2025-09-22 06:43:26] Read 31.75 MiB of uncompressed TRAP data.
+[2025-09-22 06:43:26] Uncompressed relation data size: 8.86 MiB
+[2025-09-22 06:43:26] Relation data size: 2.01 MiB (merge rate: 16.66 MiB/s)
+[2025-09-22 06:43:26] String pool size: 2.41 MiB
+[2025-09-22 06:43:26] ID pool size: 1.38 MiB
+[2025-09-22 06:43:26] [PROGRESS] dataset import> Finished writing database (relations: 2.01 MiB; string pool: 2.41 MiB).
+[2025-09-22 06:43:26] Pausing evaluation to close the cache at sequence stamp o+147
+[2025-09-22 06:43:26] The disk cache is freshly trimmed; leave it be.
+[2025-09-22 06:43:26] Unpausing evaluation
+[2025-09-22 06:43:26] Plumbing command codeql dataset import completed.
+[2025-09-22 06:43:26] [PROGRESS] database finalize> TRAP import complete (1.5s).
+[2025-09-22 06:43:26] Running plumbing command: codeql database cleanup -- /home/guff/LoquiLex/ql-db-py
+[2025-09-22 06:43:26] [PROGRESS] database cleanup> Cleaning up existing TRAP files after import...
+[2025-09-22 06:43:26] [PROGRESS] database cleanup> TRAP files cleaned up (23ms).
+[2025-09-22 06:43:26] [PROGRESS] database cleanup> Cleaning up scratch directory...
+[2025-09-22 06:43:26] [PROGRESS] database cleanup> Scratch directory cleaned up (13ms).
+[2025-09-22 06:43:26] Running plumbing command: codeql dataset cleanup -- /home/guff/LoquiLex/ql-db-py/db-python
+[2025-09-22 06:43:26] [PROGRESS] dataset cleanup> Cleaning up dataset in /home/guff/LoquiLex/ql-db-py/db-python.
+[2025-09-22 06:43:26] Trimming disk cache at /home/guff/LoquiLex/ql-db-py/db-python/default/cache in mode trim.
+[2025-09-22 06:43:26] Sequence stamp origin is -6001008164424935992
+[2025-09-22 06:43:26] Pausing evaluation to quickly trim memory at sequence stamp o+0
+[2025-09-22 06:43:26] Unpausing evaluation
+[2025-09-22 06:43:26] Pausing evaluation to zealously trim disk at sequence stamp o+1
+[2025-09-22 06:43:26] Unpausing evaluation
+[2025-09-22 06:43:26] Trimming completed (2ms): Trimmed disposable data from cache.
+[2025-09-22 06:43:26] Pausing evaluation to close the cache at sequence stamp o+2
+[2025-09-22 06:43:26] The disk cache is freshly trimmed; leave it be.
+[2025-09-22 06:43:26] Unpausing evaluation
+[2025-09-22 06:43:26] [PROGRESS] dataset cleanup> Trimmed disposable data from cache.
+[2025-09-22 06:43:26] [PROGRESS] dataset cleanup> Finalizing dataset in /home/guff/LoquiLex/ql-db-py/db-python
+[2025-09-22 06:43:26] [DETAILS] dataset cleanup> Finished deleting ID pool from /home/guff/LoquiLex/ql-db-py/db-python (1ms).
+[2025-09-22 06:43:26] Plumbing command codeql dataset cleanup completed.
+[2025-09-22 06:43:26] Plumbing command codeql database cleanup completed with status 0.
+[2025-09-22 06:43:26] [PROGRESS] database finalize> Finished zipping source archive (273.18 KiB).
+[2025-09-22 06:43:26] Plumbing command codeql database finalize completed.
+[2025-09-22 06:43:26] [PROGRESS] database create> Successfully created database at /home/guff/LoquiLex/ql-db-py.
+[2025-09-22 06:43:26] Terminating normally.
