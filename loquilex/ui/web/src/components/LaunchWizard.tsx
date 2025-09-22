@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { api } from '../api'
 import { AsrModel, MtModel, SessionCfg } from '../types'
 import { useSessionStore } from '../store'
+import HardwareInfo from './HardwareInfo'
 
 type Props = { onStarted?: (sid: string) => void }
 
@@ -52,7 +53,9 @@ export default function LaunchWizard({ onStarted }: Props) {
   }
 
   return (
-    <div className="max-w-3xl space-y-4">
+    <div className="max-w-3xl space-y-6">
+      <HardwareInfo />
+      
       <section className="space-y-2">
         <label className="block text-sm font-medium">ASR Model</label>
         <div className="flex gap-2">
