@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+import os.path
 import re
 import shutil
 import time
@@ -280,13 +281,21 @@ def _resolve_storage_dir(candidate: Optional[str]) -> Path:
     # Absolute: normalize and only allow if inside one of our roots (using resolved/canonical form)
     resolved = p.resolve(strict=False)
     for base in _root_map.values():
-        # Ensure the resolved path is contained within base
+        # Ensure the resolved path is contained within base using commonpath
         base_resolved = base.resolve(strict=False)
-        try:
-            resolved.relative_to(base_resolved)
+        # Use os.path.commonpath for strict containment, and ensure both are string,
+        # plus double-check that we're not allowing symlink escapes.
+        if os.path.commonpath([str(resolved), str(base_resolved)]) == str(base_resolved):
+            # If the path is a symlink, reject it
+            try:
+                resolved_relative = resolved.relative_to(base_resolved)
+            except ValueError:
+                continue
+            if any(part in resolved_relative.parts for part in ['..']):
+                continue
+            if resolved.is_symlink():
+                continue
             return resolved
-        except ValueError:
-            continue
     raise PathSecurityError("path not permitted")
 
 
