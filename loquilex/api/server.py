@@ -17,6 +17,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, model_validator
 
 from .model_discovery import list_asr_models, list_mt_models, mt_supported_languages
+from loquilex.hardware.detection import get_hardware_snapshot
 from .supervisor import SessionConfig, SessionManager, StreamingSession
 
 logger = logging.getLogger(__name__)
@@ -53,6 +54,11 @@ DEV_MODE = os.getenv("LX_DEV", "0") == "1"
 _events_alias_warned = False
 
 app = FastAPI(title="LoquiLex API", version="0.1.0")
+
+# Admin token and simple in-process caches (overridable in tests)
+_ADMIN_TOKEN: Optional[str] = os.getenv("LX_ADMIN_TOKEN")
+_hw_snapshot_cache: Optional[Dict[str, Any]] = None
+_hw_snapshot_cache_ts: Optional[float] = None
 
 
 # CSP and security headers
@@ -123,6 +129,31 @@ app.mount("/out", StaticFiles(directory=str(OUT_ROOT), html=False), name="out")
 
 # Global manager instance
 MANAGER = SessionManager()
+
+
+# Allowed storage roots for path-based operations
+_EXTRA_ALLOWED_ROOTS = [p for p in os.getenv("LX_ALLOWED_STORAGE_ROOTS", "/tmp").split(":") if p]
+ALLOWED_STORAGE_ROOTS: List[Path] = [OUT_ROOT] + [Path(p).resolve() for p in _EXTRA_ALLOWED_ROOTS]
+
+
+def _is_within(child: Path, base: Path) -> bool:
+    try:
+        child_r = child.resolve()
+        base_r = base.resolve()
+    except Exception:
+        return False
+    # Ensure base is a parent of child or equal
+    try:
+        child_r.relative_to(base_r)
+        return True
+    except Exception:
+        return child_r == base_r
+
+
+def _ensure_allowed_path(p: Path) -> None:
+    if not any(_is_within(p, root) for root in ALLOWED_STORAGE_ROOTS):
+        allowed = ", ".join(str(r) for r in ALLOWED_STORAGE_ROOTS)
+        raise HTTPException(status_code=400, detail=f"path not allowed; must be under: {allowed}")
 
 
 class CreateSessionReq(BaseModel):
@@ -280,13 +311,14 @@ async def get_session_commits(
 
 
 @app.get("/storage/info")
-async def get_storage_info(path: str = None) -> StorageInfoResp:
+async def get_storage_info(path: Optional[str] = None) -> StorageInfoResp:
     """Get storage information for a given path or current output directory."""
     target_path = Path(path) if path else OUT_ROOT
 
     try:
         # Ensure path exists and is accessible
         target_path = target_path.resolve()
+        _ensure_allowed_path(target_path)
         if not target_path.exists():
             target_path.mkdir(parents=True, exist_ok=True)
 
@@ -312,17 +344,98 @@ async def get_storage_info(path: str = None) -> StorageInfoResp:
         raise HTTPException(status_code=400, detail=f"Cannot access path: {str(e)}")
 
 
+@app.get("/hardware/snapshot")
+def hardware_snapshot() -> Dict[str, Any]:
+    """Return a cached hardware snapshot or compute a new one."""
+    global _hw_snapshot_cache, _hw_snapshot_cache_ts
+    now = time.time()
+    try:
+        if (
+            _hw_snapshot_cache is not None
+            and _hw_snapshot_cache_ts
+            and (now - _hw_snapshot_cache_ts) < 10
+        ):
+            return _hw_snapshot_cache
+        snap = get_hardware_snapshot()
+        data = snap.to_dict()
+        _hw_snapshot_cache = data
+        _hw_snapshot_cache_ts = now
+        return data
+    except Exception as e:
+        logger.exception("hardware snapshot failed: %s", e)
+        return {
+            "cpu": {
+                "name": f"error: {e}",
+                "cores_physical": 0,
+                "cores_logical": 0,
+                "frequency_mhz": 0.0,
+                "usage_percent": 0.0,
+                "meets_threshold": False,
+                "warnings": ["snapshot failed"],
+            },
+            "gpus": [
+                {
+                    "name": "unknown",
+                    "memory_total_mb": 0,
+                    "memory_free_mb": 0,
+                    "memory_used_mb": 0,
+                    "temperature_c": None,
+                    "utilization_percent": None,
+                    "cuda_available": False,
+                    "meets_threshold": False,
+                    "warnings": ["snapshot failed"],
+                }
+            ],
+            "audio_devices": [],
+            "memory_total_gb": 0.0,
+            "memory_available_gb": 0.0,
+            "platform_info": {},
+            "overall_status": "unusable",
+            "overall_score": 0,
+            "warnings": ["snapshot failed"],
+        }
+
+
+@app.post("/admin/cache/clear")
+async def admin_cache_clear(request: Request) -> Dict[str, Any]:
+    """Clear in-process caches (hardware snapshot for now).
+
+    Requires Authorization: Bearer <token> matching LX_ADMIN_TOKEN or _ADMIN_TOKEN.
+    """
+    global _hw_snapshot_cache, _hw_snapshot_cache_ts
+    token = _ADMIN_TOKEN
+    auth = request.headers.get("authorization", "")
+    provided = None
+    if auth.startswith("Bearer "):
+        provided = auth[len("Bearer ") :].strip()
+    if not token or provided != token:
+        raise HTTPException(status_code=403, detail="forbidden")
+
+    prior_present = _hw_snapshot_cache is not None
+    _hw_snapshot_cache = None
+    _hw_snapshot_cache_ts = None
+    return {"ok": True, "cleared": True, "prior_cache_present": prior_present}
+
+
 @app.post("/storage/base-directory")
 async def set_base_directory(req: BaseDirectoryReq) -> BaseDirectoryResp:
     """Set and validate a new base directory for storage."""
     try:
         original_path = Path(req.path)
 
-        # Validate path is absolute before resolving
+        # Validate path is absolute before resolving and contains no traversal
         if not original_path.is_absolute():
             return BaseDirectoryResp(path=req.path, valid=False, message="Path must be absolute")
 
         target_path = original_path.resolve()
+        try:
+            _ensure_allowed_path(target_path)
+        except HTTPException as he:
+            return BaseDirectoryResp(
+                path=str(target_path),
+                valid=False,
+                message=f"Invalid path: {he.detail}",
+            )  # type: ignore[arg-type]
 
         # Try to create directory if it doesn't exist
         if not target_path.exists():
