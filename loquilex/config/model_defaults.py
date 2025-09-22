@@ -35,9 +35,9 @@ class ModelDefaults:
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> ModelDefaults:
-        # Filter to only known fields to handle future extensions gracefully
+        # Filter to only known fields and drop None values so dataclass defaults apply
         known_fields = {f.name for f in cls.__dataclass_fields__.values()}
-        filtered_data = {k: v for k, v in data.items() if k in known_fields}
+        filtered_data = {k: v for k, v in data.items() if k in known_fields and v is not None}
         return cls(**filtered_data)
 
 
@@ -48,9 +48,18 @@ class ModelDefaultsManager:
         """Initialize defaults manager.
 
         Args:
-            storage_path: Path to defaults storage file. Defaults to loquilex/out/model_defaults.json
+            storage_path: Path to defaults storage file. Defaults to
+                `<OUT_DIR>/model_defaults.json`, where `OUT_DIR` comes from
+                `LX_OUT_DIR` (or legacy `LLX_OUT_DIR`) and falls back to
+                `loquilex/out`.
         """
-        self.storage_path = storage_path or Path("loquilex/out/model_defaults.json")
+        if storage_path is None:
+            out_dir_env = os.getenv("LX_OUT_DIR")
+            if not out_dir_env:
+                out_dir_env = os.getenv("LLX_OUT_DIR") or "loquilex/out"
+            self.storage_path = Path(out_dir_env) / "model_defaults.json"
+        else:
+            self.storage_path = storage_path
         self._defaults: Optional[ModelDefaults] = None
 
         # Ensure storage directory exists
@@ -115,8 +124,10 @@ class ModelDefaultsManager:
         """
         current = self.get_defaults()
 
-        # Update only provided fields
+        # Update only provided fields; ignore None to avoid nulling values
         for key, value in kwargs.items():
+            if value is None:
+                continue
             if hasattr(current, key):
                 setattr(current, key, value)
             else:
