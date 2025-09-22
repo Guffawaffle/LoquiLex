@@ -275,10 +275,20 @@ def _resolve_storage_dir(candidate: Optional[str]) -> Path:
     """
     if candidate is None:
         return OUT_ROOT
-    p = Path(candidate)
-    if not p.is_absolute():
-        return PATH_GUARD.resolve("sessions", candidate)
-    # Absolute: normalize and only allow if inside one of our roots (using resolved/canonical form)
+    # Defensive: normalize the received candidate string before using as a Path or joining
+    candidate_norm = os.path.normpath(candidate)
+    # Do not allow null bytes
+    if ("\x00" in candidate_norm) or ("\0" in candidate_norm):
+        raise PathSecurityError("path contains null byte")
+    # Disallow path components referring to parent directory
+    if candidate_norm.startswith("..") or os.path.isabs(candidate_norm):
+        # treat as absolute, will check in next block
+        pass
+    else:
+        # Treat as relative, join safely
+        return PATH_GUARD.resolve("sessions", candidate_norm)
+    # Absolute (or "unsafe" relative referencing root above), check if within allowed bases
+    p = Path(candidate_norm)
     resolved = p.resolve(strict=False)
     for base in _root_map.values():
         # Ensure the resolved path is contained within base using commonpath
@@ -286,7 +296,6 @@ def _resolve_storage_dir(candidate: Optional[str]) -> Path:
         # Use os.path.commonpath for strict containment, and ensure both are string,
         # plus double-check that we're not allowing symlink escapes.
         if os.path.commonpath([str(resolved), str(base_resolved)]) == str(base_resolved):
-            # If the path is a symlink, reject it
             try:
                 resolved_relative = resolved.relative_to(base_resolved)
             except ValueError:
