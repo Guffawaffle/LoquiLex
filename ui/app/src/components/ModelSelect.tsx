@@ -73,7 +73,7 @@ export function ModelSelect() {
   };
 
   // Helper function to save settings when user preferences change
-  const updatePersistentSetting = (key: keyof AppSettings, value: any) => {
+  const updatePersistentSetting = <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => {
     const currentSettings = loadSettings();
     const updatedSettings = { ...currentSettings, [key]: value };
     saveSettings(updatedSettings);
