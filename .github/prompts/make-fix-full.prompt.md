@@ -1,3 +1,9 @@
+---
+mode: 'agent'
+model: GPT-5
+description: 'Run the full Makefile test suite in offline/online modes and fix failures until all checks pass.'
+---
+
 #instruction
 Run the full repository test suite via Makefile targets (CI-equivalent), diagnose failures, and fix them iteratively with minimal diffs until all checks pass.
 

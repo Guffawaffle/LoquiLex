@@ -177,4 +177,28 @@ Why allowlist is preferable
 - Allows the agent to execute apt operations that may legitimately query ESM on Ubuntu runners.
 
 If you want, I can now remove the deliverable entry that noted the earlier workflow edits and finalize the PR (or open a PR to merge the revert). What would you like next?
-.
+
+## 2025-09-22 — Refresh agent instructions for Codex integration
+
+### Executive Summary
+- Consolidated agent onboarding docs (root `AGENTS.md`, `.github/copilot-instructions.md`, prompt files) for the Codex workflow and removed the deprecated `.github/AGENTS.md` duplicate.
+
+### Steps Taken
+- Rewrote `AGENTS.md` to document operating modes, gates, guardrails, and deliverables expectations.
+- Updated `.github/copilot-instructions.md` to match the new conventions and clarify prompt locations.
+- Moved VS Code prompt files into `.github/prompts/` with front matter and cleaned up the legacy `.github/copilot/*.prompt.md` copies.
+- Removed the unused `.github/AGENTS.md` stub (`rm .github/AGENTS.md`).
+
+### Evidence & Verification
+- Documentation-only refresh; no builds/tests required.
+
+### Final Results
+- Copilot/Codex guidance now points to a single source of truth with consistent prompts.
+
+### Files Changed
+- `AGENTS.md`
+- `.github/copilot-instructions.md`
+- `.github/prompts/main.prompt.md`
+- `.github/prompts/make-fix.prompt.md`
+- `.github/prompts/make-fix-full.prompt.md`
+- `.github/AGENTS.md` (removed)
