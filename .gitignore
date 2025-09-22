@@ -62,9 +62,9 @@ ui/app/test-results/
 docs/deliverables/.live.md
 
 # Local CodeQL databases (do not commit)
-ql-db-js/
-ql-db-py/
+/ql-db-js/
+/ql-db-py/
 
 # CodeQL outputs
-codeql-out/
+/codeql-out/
 *.sarif
