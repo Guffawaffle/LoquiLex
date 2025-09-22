@@ -16,22 +16,22 @@ from loquilex.hardware.detection import (
 
 class TestCPUInfo:
     """Test CPU information detection."""
-    
+
     def test_get_cpu_info_basic(self):
         """Test basic CPU information retrieval."""
         cpu = _get_cpu_info()
-        
+
         assert isinstance(cpu, CPUInfo)
         assert cpu.cores_logical >= 1
         assert cpu.cores_physical >= 1
         assert isinstance(cpu.warnings, list)
         assert isinstance(cpu.meets_threshold, bool)
-    
+
     @patch.dict("os.environ", {"LX_MIN_CPU_CORES": "8"})
     def test_cpu_threshold_warning(self):
         """Test CPU threshold warnings."""
         cpu = _get_cpu_info()
-        
+
         # Should warn if we have fewer than 8 cores (most systems do)
         if cpu.cores_logical < 8:
             assert not cpu.meets_threshold
@@ -40,41 +40,41 @@ class TestCPUInfo:
 
 class TestGPUInfo:
     """Test GPU information detection."""
-    
+
     def test_get_gpu_info_no_torch(self):
         """Test GPU detection when PyTorch is not available."""
         with patch.dict("sys.modules", {"torch": None}):
             gpus = _get_gpu_info()
-        
+
         assert len(gpus) == 1
         assert gpus[0].name == "No GPU detected"
         assert not gpus[0].cuda_available
         assert not gpus[0].meets_threshold
-    
+
     def test_get_gpu_info_with_mock_torch(self):
         """Test GPU detection with mocked PyTorch."""
         mock_torch = Mock()
         mock_torch.cuda.is_available.return_value = False
-        
+
         with patch.dict("sys.modules", {"torch": mock_torch}):
             gpus = _get_gpu_info()
-        
+
         assert len(gpus) == 1
         assert not gpus[0].cuda_available
 
 
 class TestAudioDevices:
     """Test audio device detection."""
-    
+
     def test_get_audio_devices_no_sounddevice(self):
         """Test audio device detection when sounddevice is not available."""
         with patch.dict("sys.modules", {"sounddevice": None}):
             devices = _get_audio_devices()
-        
+
         assert len(devices) >= 1
         assert devices[0].name == "Default Input (sounddevice not available)"
         assert not devices[0].is_available
-    
+
     def test_get_audio_devices_with_mock_sounddevice(self):
         """Test audio device detection with mocked sounddevice."""
         mock_sd = Mock()
@@ -86,10 +86,10 @@ class TestAudioDevices:
         mock_sd.query_devices.return_value = [mock_device]
         mock_sd.default.device = [0]
         mock_sd.check_input_settings.return_value = None  # No exception = available
-        
+
         with patch.dict("sys.modules", {"sounddevice": mock_sd}):
             devices = _get_audio_devices()
-        
+
         assert len(devices) >= 1
         assert devices[0].name == "Test Microphone"
         assert devices[0].channels == 2
@@ -99,7 +99,7 @@ class TestAudioDevices:
 
 class TestOverallScore:
     """Test overall system scoring."""
-    
+
     def test_calculate_overall_score_excellent(self):
         """Test excellent system score calculation."""
         cpu = CPUInfo(
@@ -111,7 +111,7 @@ class TestOverallScore:
             meets_threshold=True,
             warnings=[],
         )
-        
+
         gpu = GPUInfo(
             name="Test GPU",
             memory_total_mb=8192,  # 8GB
@@ -123,7 +123,7 @@ class TestOverallScore:
             meets_threshold=True,
             warnings=[],
         )
-        
+
         audio = AudioDeviceInfo(
             name="Test Mic",
             device_id=0,
@@ -133,12 +133,12 @@ class TestOverallScore:
             is_available=True,
             warnings=[],
         )
-        
+
         score, status = _calculate_overall_score(cpu, [gpu], [audio])
-        
+
         assert score >= 90
         assert status == "excellent"
-    
+
     def test_calculate_overall_score_poor(self):
         """Test poor system score calculation."""
         cpu = CPUInfo(
@@ -150,7 +150,7 @@ class TestOverallScore:
             meets_threshold=False,
             warnings=["CPU below threshold"],
         )
-        
+
         gpu = GPUInfo(
             name="No GPU",
             memory_total_mb=0,
@@ -162,7 +162,7 @@ class TestOverallScore:
             meets_threshold=False,
             warnings=["No GPU detected"],
         )
-        
+
         audio = AudioDeviceInfo(
             name="No Audio",
             device_id=0,
@@ -172,20 +172,20 @@ class TestOverallScore:
             is_available=False,
             warnings=["No audio device"],
         )
-        
+
         score, status = _calculate_overall_score(cpu, [gpu], [audio])
-        
+
         assert score < 45
         assert status == "unusable"
 
 
 class TestHardwareSnapshot:
     """Test complete hardware snapshot."""
-    
+
     def test_get_hardware_snapshot(self):
         """Test getting complete hardware snapshot."""
         snapshot = get_hardware_snapshot()
-        
+
         # Basic structure validation
         assert snapshot.cpu is not None
         assert isinstance(snapshot.gpus, list)
@@ -198,23 +198,23 @@ class TestHardwareSnapshot:
         assert snapshot.overall_status in ["excellent", "good", "fair", "poor", "unusable"]
         assert 0 <= snapshot.overall_score <= 100
         assert isinstance(snapshot.warnings, list)
-        
+
         # Platform info validation
         assert "system" in snapshot.platform_info
         assert "python_version" in snapshot.platform_info
-    
+
     def test_hardware_snapshot_to_dict(self):
         """Test hardware snapshot serialization."""
         snapshot = get_hardware_snapshot()
         data = snapshot.to_dict()
-        
+
         assert isinstance(data, dict)
         assert "cpu" in data
         assert "gpus" in data
         assert "audio_devices" in data
         assert "overall_score" in data
         assert "overall_status" in data
-        
+
         # Ensure all nested objects are also dictionaries
         assert isinstance(data["cpu"], dict)
         assert isinstance(data["gpus"], list)
