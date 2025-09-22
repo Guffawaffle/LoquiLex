@@ -379,7 +379,6 @@ def update_model_defaults(req: UpdateDefaultsReq) -> ModelDefaultsResp:
     # Update defaults
     defaults = manager.update_defaults(**updates)
     return ModelDefaultsResp(**defaults.to_dict())
-
 @app.get("/hardware/snapshot")
 async def get_hardware_snapshot_endpoint() -> Dict[str, Any]:
     """Get hardware system snapshot including GPU/CPU/Audio devices.
