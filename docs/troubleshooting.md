@@ -7,6 +7,7 @@ This guide covers common issues, offline-first behavior scenarios, and troublesh
 ## Table of Contents
 
 - [Offline-First Behavior](#offline-first-behavior)
+- [Hardware Requirements & Thresholds](#hardware-requirements--thresholds)
 - [Installation & Setup Issues](#installation--setup-issues)
 - [Audio & Microphone Problems](#audio--microphone-problems)
 - [Model Loading & Download Issues](#model-loading--download-issues)
@@ -72,6 +73,187 @@ WhisperForConditionalGeneration.from_pretrained('openai/whisper-tiny.en')
 // Problem: Incorrect offline configuration
 const wsUrl = 'ws://localhost:8000/ws' // ❌ Wrong
 const wsUrl = 'ws://127.0.0.1:8000/ws' // ✅ Correct offline URL
+```
+
+## Hardware Requirements & Thresholds
+
+### Overview
+
+LoquiLex automatically detects your system hardware and evaluates it against performance thresholds. The hardware snapshot feature helps identify potential issues before starting transcription sessions.
+
+### Hardware Detection
+
+Access hardware information via:
+- **API**: `GET /hardware/snapshot`
+- **UI**: Hardware status shown in Launch Wizard
+- **CLI**: `python -c "from loquilex.hardware import get_hardware_snapshot; print(get_hardware_snapshot().overall_status)"`
+
+### System Scoring
+
+LoquiLex assigns an overall score (0-100) and status:
+- **90-100** (Excellent): Optimal for all use cases
+- **75-89** (Good): Suitable for most scenarios  
+- **60-74** (Fair): May have minor issues
+- **45-59** (Poor): Significant limitations
+- **<45** (Unusable): Major problems detected
+
+### Configurable Thresholds
+
+#### CPU Thresholds
+```bash
+# Minimum CPU cores (default: 2)
+export LX_MIN_CPU_CORES=4
+
+# Maximum CPU usage percentage (default: 80.0)
+export LX_MAX_CPU_USAGE=70.0
+```
+
+#### GPU Thresholds
+```bash
+# Minimum GPU memory in GB (default: 4.0)
+export LX_MIN_GPU_MEMORY_GB=8.0
+```
+
+#### Memory Thresholds
+```bash
+# Minimum system memory in GB (default: 8.0)
+export LX_MIN_MEMORY_GB=16.0
+```
+
+### Common Hardware Issues
+
+#### Issue: "CPU below threshold" warning
+```bash
+# Problem: Insufficient CPU cores
+CPU has 1 cores, minimum recommended: 2
+
+# Solutions:
+# 1. Lower CPU threshold
+export LX_MIN_CPU_CORES=1
+
+# 2. Use lighter models
+export LX_ASR_MODEL_ID="tiny.en"  # Instead of large models
+
+# 3. Increase compute allocation (Docker/VM)
+docker run --cpus="2.0" loquilex  # Allocate 2 CPU cores
+```
+
+#### Issue: "GPU memory below threshold" warning
+```bash
+# Problem: GPU has insufficient VRAM
+GPU memory 2.0GB below threshold 4.0GB
+
+# Solutions:
+# 1. Lower GPU memory threshold
+export LX_MIN_GPU_MEMORY_GB=2.0
+
+# 2. Force CPU mode
+export LX_DEVICE=cpu
+
+# 3. Use quantized models
+export LX_ASR_MODEL_ID="tiny.en"  # Lower memory usage
+```
+
+#### Issue: "No audio devices available" warning
+```bash
+# Problem: Audio devices not accessible
+Device not accessible: [Errno 16] Device or resource busy
+
+# Solutions:
+# 1. Check audio permissions
+sudo usermod -a -G audio $USER
+sudo chmod 666 /dev/snd/*
+
+# 2. Stop conflicting audio processes
+pulseaudio --kill
+sudo fuser -v /dev/snd/*
+
+# 3. Test audio access directly
+python -c "import sounddevice as sd; print(sd.query_devices())"
+```
+
+#### Issue: "System memory below threshold" warning
+```bash
+# Problem: Insufficient RAM
+System memory 4.0GB below threshold 8.0GB
+
+# Solutions:
+# 1. Lower memory threshold
+export LX_MIN_MEMORY_GB=4.0
+
+# 2. Increase system memory (VM/container)
+docker run --memory="8g" loquilex
+
+# 3. Use memory-efficient models
+export LX_ASR_MODEL_ID="tiny"  # Lower memory footprint
+```
+
+### Performance Recommendations
+
+#### For Limited Hardware (Score < 60)
+```bash
+# Use minimal models and CPU-only processing
+export LX_ASR_MODEL_ID="tiny.en"
+export LX_DEVICE=cpu
+export LX_MT_ENABLED=false
+export LX_MIN_CPU_CORES=1
+export LX_MIN_MEMORY_GB=2.0
+```
+
+#### For High Performance (Score > 75)
+```bash
+# Use larger models with GPU acceleration
+export LX_ASR_MODEL_ID="large-v3"
+export LX_DEVICE=auto  # Will use CUDA if available
+export LX_MT_ENABLED=true
+export LX_BEAMS=5  # Higher beam search for better quality
+```
+
+#### For Docker/Container Environments
+```bash
+# GPU passthrough (NVIDIA)
+docker run --gpus all loquilex
+
+# Audio device passthrough
+docker run --device /dev/snd loquilex
+
+# Memory and CPU limits
+docker run --memory="8g" --cpus="4.0" loquilex
+```
+
+### Debugging Hardware Issues
+
+#### Check Hardware Snapshot Details
+```bash
+# Get detailed hardware information
+curl http://localhost:8000/hardware/snapshot | jq '.'
+
+# Check specific warnings
+curl http://localhost:8000/hardware/snapshot | jq '.warnings[]'
+
+# Check GPU availability
+python -c "import torch; print(f'CUDA: {torch.cuda.is_available()}')"
+```
+
+#### Validate Audio Setup
+```bash
+# Test microphone access
+python -c "
+import sounddevice as sd
+try:
+    sd.check_input_settings(samplerate=16000, channels=1)
+    print('✓ Audio input available')
+except Exception as e:
+    print(f'✗ Audio error: {e}')
+"
+```
+
+#### Monitor Resource Usage
+```bash
+# During transcription
+htop  # CPU/memory usage
+nvidia-smi  # GPU usage (if available)
+lsof /dev/snd/*  # Audio device usage
 ```
 
 ## Installation & Setup Issues

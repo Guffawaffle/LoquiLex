@@ -10,42 +10,49 @@ from loquilex.api.server import app
 from loquilex.api.ws_types import AckData, ClientHelloData, MessageType, WSEnvelope
 from starlette.websockets import WebSocketDisconnect
 
+from types import ModuleType
+from typing import Optional, List, Tuple, Type
+
+# Optional runtime modules used only in certain environments
+_websockets: Optional[ModuleType] = None
 try:
-    import websockets as _websockets
+    import websockets as _websockets  # type: ignore
 except Exception:
     _websockets = None
 
+# httpx (optional)
+httpx: Optional[ModuleType] = None
 try:
     import httpx  # type: ignore
 
+    # keep name for runtime checks
     _HTTPX_AVAILABLE = True
 except Exception:
-    httpx = None  # type: ignore
+    httpx = None
     _HTTPX_AVAILABLE = False
 
-# `requests` is optional in some CI/test environments; import lazily and
-# include its exception types in the handler only when available to avoid
-# hard import errors during test collection.
+# requests (optional)
+requests: Optional[ModuleType] = None
 try:
     import requests  # type: ignore
 
     _REQUESTS_AVAILABLE = True
 except Exception:
-    requests = None  # type: ignore
+    requests = None
     _REQUESTS_AVAILABLE = False
 
 # Build the exception tuple used in the except-block dynamically so the
 # test module can be collected even if `requests` is not installed.
-_EXC_TYPES = [
+_EXC_TYPES_LIST: List[Type[BaseException]] = [
     WebSocketDisconnect,
     ConnectionError,
     RuntimeError,
 ]
-if _HTTPX_AVAILABLE:
-    _EXC_TYPES.extend([httpx.ConnectError, httpx.HTTPStatusError])
-if _REQUESTS_AVAILABLE:
-    _EXC_TYPES.append(requests.exceptions.RequestException)
-_EXC_TYPES = tuple(_EXC_TYPES)
+if _HTTPX_AVAILABLE and httpx is not None:
+    _EXC_TYPES_LIST.extend([httpx.ConnectError, httpx.HTTPStatusError])
+if _REQUESTS_AVAILABLE and requests is not None:
+    _EXC_TYPES_LIST.append(requests.exceptions.RequestException)
+_EXC_TYPES: Tuple[Type[BaseException], ...] = tuple(_EXC_TYPES_LIST)
 
 
 @pytest.mark.e2e
