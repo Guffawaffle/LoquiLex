@@ -331,7 +331,7 @@ async def get_storage_info(path: Optional[str] = None) -> StorageInfoResp:
     candidate = path if path is not None else OUT_ROOT
 
     try:
-        target_path = STORAGE_GUARD.ensure_dir(candidate, allow_relative=True, create=True)
+        target_path = STORAGE_GUARD.ensure_dir(candidate, allow_relative=True, create=False, must_exist=True)
     except PathSecurityError as exc:
         raise HTTPException(status_code=400, detail="Cannot access path") from exc
     except Exception as exc:
