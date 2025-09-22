@@ -126,27 +126,20 @@ class PathGuard:
         except FileNotFoundError as exc:
             raise PathSecurityError(f"path not found for resolution: {candidate}") from exc
 
-        if not self._is_within_roots(resolved, strict=True):
+        if not self._is_within_roots(resolved):
             raise PathSecurityError(f"path not permitted: {resolved}")
         return resolved
 
-    def _is_within_roots(self, candidate: Path, strict: bool = False) -> bool:
+    def _is_within_roots(self, candidate: Path) -> bool:
         """
         Returns True if candidate is fully contained in one of the allowed roots,
         following normalization and canonicalization (symlinks resolved as far as possible).
         """
-        # Normalize, resolving symlinks as strictly as desired
-        try:
-            candidate_resolved = candidate.resolve(strict=strict)
-        except FileNotFoundError:
-            return False
+        # Normalize without requiring existence; resolves symlinks where possible
+        candidate_resolved = candidate.resolve(strict=False)
 
         for root in self._allowed_roots:
-            # Roots are stored normalized, but re-normalize defensively
-                root_resolved = root.resolve(strict=strict)
-            except FileNotFoundError:
-                continue
-            try:
+            root_resolved = root.resolve(strict=False)
             try:
                 candidate_resolved.relative_to(root_resolved)
             except ValueError:
