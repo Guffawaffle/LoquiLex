@@ -51,7 +51,7 @@ Run the suite in BOTH environments (OFFLINE first, then ONLINE), reusing the sam
 - Keep commit messages imperative; reference ISSUE_REF if provided.
 
 #deliverable-format
-Write ONLY this report to `.github/copilot/current-task-deliverables.md`:
+Write ONLY this report to `docs/deliverables/.live.md` (gitignored):
 1. Executive Summary — Which target(s) ran, failures found, key changes, outcome (OFFLINE vs ONLINE).
 2. Steps Taken — Bullet list of commands, diagnoses, and edits (per iteration), clearly separated by OFFLINE and ONLINE runs.
 3. Evidence & Verification — Full command outputs for failing→passing runs; relevant diffs/snippets, grouped per environment.

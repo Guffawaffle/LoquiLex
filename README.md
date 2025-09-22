@@ -105,12 +105,12 @@ LoquiLex uses a structured GitHub Copilot/Codex workflow for development tasks:
 
 - **Task Management**: Tasks initiated via prompts in `.github/prompts/` or maintainer directives
 - **Quality Gates**: Automated linting, formatting, type checking, and testing
-- **Deliverables**: Live log in `current-task-deliverables.md` (repo root, gitignored) with archived copies tracked under `docs/deliverables/ARCHIVE/PR-<number>-<YYYYMMDD>-<shortsha>.md`
+- **Deliverables**: Live log in `docs/deliverables/.live.md` (gitignored) with archived copies tracked under `docs/deliverables/ARCHIVE/PR-<number>-<YYYYMMDD>-<shortsha>.md`
 - **Branch Strategy**: Feature branches with imperative commit messages
 
 See `AGENTS.md` for complete workflow documentation.
 
-We’re prompt-driven (Codex/Copilot). See `AGENTS.md` and `.github/prompts/*`. The legacy Copilot workflow directory has been removed. The working log is `current-task-deliverables.md` (ignored), archived under `docs/deliverables/ARCHIVE/` on merge.
+We’re prompt-driven (Codex/Copilot). See `AGENTS.md` and `.github/prompts/*`. The live working log is `docs/deliverables/.live.md` (ignored), archived under `docs/deliverables/ARCHIVE/` on merge.
 
 ## Documentation
 

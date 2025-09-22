@@ -41,7 +41,7 @@ For **each acceptance criterion** in the authoritative task spec:
 - When quoting diffs/snippets, include just enough surrounding context to be unambiguous.
 
 #deliverable-format
-Write a single file: `.github/copilot/current-task-deliverables.md`, containing:
+Write a single file: `docs/deliverables/.live.md` (gitignored), containing:
 
 1) **Executive Summary**
    One paragraph: what was attempted, what changed, and the outcome.
@@ -62,4 +62,4 @@ Write a single file: `.github/copilot/current-task-deliverables.md`, containing:
    Each modified file with the kind of change (feature/fix/tests/config/docs).
 
 #output
-Only write `.github/copilot/current-task-deliverables.md`. No additional commentary or files.
+Only write `docs/deliverables/.live.md`. No additional commentary or files.

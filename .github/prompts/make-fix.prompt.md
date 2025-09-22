@@ -43,7 +43,7 @@ Run the specified `make` target in the LoquiLex repo and fix failures methodical
    - If CI config must change, justify the necessity and keep the diff minimal.
 
 #deliverable-format
-Write **only** the following report to `.github/copilot/current-task-deliverables.md`:
+Write **only** the following report to `docs/deliverables/.live.md` (gitignored):
 
 1. **Executive Summary**
    - What target was run, the main failures found, key changes made, and the outcome.
@@ -70,7 +70,7 @@ Write **only** the following report to `.github/copilot/current-task-deliverable
 
 #output
 - Commit changes with imperative messages (e.g., `fix(streaming): prevent loop mismatch in thread handoff`).
-- Produce `.github/copilot/current-task-deliverables.md` exactly as specified.
+- Produce `docs/deliverables/.live.md` exactly as specified.
 
 #run
 - TARGET: <FILL>

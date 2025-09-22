@@ -23,8 +23,8 @@ jobs:
 
       - name: Rotate (script or placeholder)
         run: |
-          if [ -x .github/copilot/rotate-task.sh ]; then
-            .github/copilot/rotate-task.sh
+          if [ -x scripts/rotate-task.sh ]; then
+            bash scripts/rotate-task.sh
           else
-            echo "No .github/copilot/rotate-task.sh found; rotation is a no-op."
+            echo "No scripts/rotate-task.sh found; rotation is a no-op."
           fi

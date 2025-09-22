@@ -24,10 +24,10 @@ Local-first live captioning + EN↔ZH translation with:
 - Lint/format/typing must pass (Ruff, Black@100, mypy) before proposing a PR.
 
 ## Workflow
-1. Read the relevant prompt file in `.github/prompts/` (e.g., `current-task.prompt.md`). Keep architecture changes minimal.
+1. Read the relevant prompt file in `.github/prompts/` (e.g., `main.prompt.md`, `make-fix*.prompt.md`). Keep architecture changes minimal.
 2. **Search the repo first** (ripgrep/grep) for similar functions/classes. Reuse patterns.
 3. Propose focused changes; avoid new dependencies unless the task asks.
-4. Record full logs/diffs/outcomes to the repo-root `current-task-deliverables.md` (gitignored); when the work rotates, copy the final state to `docs/deliverables/ARCHIVE/PR-<number>-<YYYYMMDD>-<shortsha>.md` and reset the root log.
+4. Record full logs/diffs/outcomes to `docs/deliverables/.live.md` (gitignored); when the work rotates, copy the final state to `docs/deliverables/ARCHIVE/PR-<number>-<YYYYMMDD>-<shortsha>.md` and reset the live log.
 5. Use `docs/deliverables/templates/deliverables-template.md` as the starting scaffold when creating or restoring the log.
 
 ## Conventions

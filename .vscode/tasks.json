@@ -95,19 +95,19 @@
     {
       "label": "Copilot: Promote (new → current)",
       "type": "shell",
-      "command": ".github/copilot/rotate-task.sh promote",
+      "command": "bash scripts/rotate-task.sh promote",
       "problemMatcher": []
     },
     {
       "label": "Copilot: Advance (next → new)",
       "type": "shell",
-      "command": ".github/copilot/rotate-task.sh advance",
+      "command": "bash scripts/rotate-task.sh advance",
       "problemMatcher": []
     },
     {
       "label": "Copilot: Complete (archive + clear current)",
       "type": "shell",
-      "command": ".github/copilot/rotate-task.sh complete",
+      "command": "bash scripts/rotate-task.sh complete",
       "problemMatcher": []
     },
 

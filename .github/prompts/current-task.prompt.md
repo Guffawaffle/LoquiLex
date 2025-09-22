@@ -6,7 +6,7 @@ description: 'Execute the repo’s current task and record full deliverables wit
 ---
 
 #instruction
-Execute the task described in `.github/copilot/current-task.md` while following all project rules in `AGENTS.md`.
+Execute the maintainer-provided task for this run (as described in the active prompt, issue, or conversation) while following all project rules in `AGENTS.md`.
 
 #requirements
 - Work only on the branch specified in `current-task.md` (create/switch as instructed). **Never** use `main`.
@@ -29,7 +29,7 @@ Execute the task described in `.github/copilot/current-task.md` while following 
 - **Tool restraint:** Only use tools necessary to complete and verify the task; avoid redundant scans or repeated environment prints if unchanged.
 
 ## Verification Strategy (task-agnostic)
-For **each acceptance criterion** in `current-task.md`:
+For **each acceptance criterion** in the authoritative task spec (prompt/issue/maintainer message):
 1. Implement the change with a **minimal diff**.
 2. Capture one **decisive verification** that proves the criterion (command output, test log, file header, grep result, etc.).
 3. Prefer **positive assertions** (status OK, content-type match, test pass) over negative proofs.
@@ -41,7 +41,7 @@ For **each acceptance criterion** in `current-task.md`:
 - When quoting diffs/snippets, include just enough surrounding context to be unambiguous.
 
 #deliverable-format
-Write a single file: `.github/copilot/current-task-deliverables.md`, containing:
+Write a single file: `docs/deliverables/.live.md` (gitignored), containing:
 
 1) **Executive Summary**
    One paragraph: what was attempted, what changed, and the outcome.
@@ -62,4 +62,4 @@ Write a single file: `.github/copilot/current-task-deliverables.md`, containing:
    Each modified file with the kind of change (feature/fix/tests/config/docs).
 
 #output
-Only write `.github/copilot/current-task-deliverables.md`. No additional commentary or files.
+Only write `docs/deliverables/.live.md`. No additional commentary or files.

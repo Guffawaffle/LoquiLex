@@ -83,7 +83,7 @@ echo "No build step"
 
 ## Deliverables Policy
 
-* Maintain exactly one local `current-task-deliverables.md` at the repo root (gitignored). This is the ephemeral working log for the active branch.
+* Maintain exactly one local `docs/deliverables/.live.md` (gitignored). This is the ephemeral working log for the active branch.
 * When a PR merges, a hand-off occurs, or reviewers need the state, copy the log to `docs/deliverables/ARCHIVE/PR-<number>-<YYYYMMDD>-<shortsha>.md` (tracked) and share context in the PR notes; reset or remove the root log afterward so the next task starts clean.
 * Top of file requirements:
   - `Task:` include the authoritative source (e.g., `.github/prompts/next-pr-runner.md`, issue/PR URL, or “Conversation — YYYY-MM-DD”).
@@ -101,7 +101,7 @@ echo "No build step"
 * Evidence must be real, complete outputs; redact secrets only. Avoid truncating unless the `<details>` wrapper is used.
 * Use `docs/deliverables/templates/deliverables-template.md` as the canonical scaffold for new entries; update the template if the policy evolves.
 
-Treat `current-task-deliverables.md` as scratch space during execution. When the work rotates or merges, capture the final state in the archive path and clear the root file so the next assignee starts with a blank log.
+Treat `docs/deliverables/.live.md` as scratch space during execution. When the work rotates or merges, capture the final state in the archive path and clear the live file so the next assignee starts with a blank log.
 
 ---
 

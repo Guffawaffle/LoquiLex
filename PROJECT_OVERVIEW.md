@@ -25,7 +25,7 @@ This document captures the brand, vision, goals, principles, and workflow of the
 - ✅ CI separation: unit vs. e2e tests (`@pytest.mark.e2e` enforced).
 - ✅ Lint & format standardization: Ruff + Black at 100 chars, Flake8 removed.
 - ✅ Type checking: Mypy integrated in **warn-only mode**; last 4 errors resolved; incremental strictness plan in place.
-- ✅ Copilot/Codex agents integrated: prompts in `.github/prompts/` drive execution, live logs kept locally in the gitignored root deliverables log with tracked archives under `docs/deliverables/ARCHIVE/`.
+- ✅ Copilot/Codex agents integrated: prompts in `.github/prompts/` drive execution, live logs kept locally in `docs/deliverables/.live.md` (gitignored) with tracked archives under `docs/deliverables/ARCHIVE/`.
 - ✅ Repo cleanup: prune historical artifacts with git-filter-repo, harden `.gitignore`.
 
 ### Mid-term (next cycle)
@@ -56,8 +56,8 @@ This document captures the brand, vision, goals, principles, and workflow of the
 ## Workflow
 
 - **One PR = One Chat**
-  - Each PR has a dedicated chat tied to its prompt or maintainer instructions.
-  - Deliverables are logged locally in the root deliverables log; archive the final state to `docs/deliverables/ARCHIVE/PR-<number>-<YYYYMMDD>-<shortsha>.md` when rotating or merging.
+   - Each PR has a dedicated chat tied to its prompt or maintainer instructions.
+   - Deliverables are logged locally in `docs/deliverables/.live.md`; archive the final state to `docs/deliverables/ARCHIVE/PR-<number>-<YYYYMMDD>-<shortsha>.md` when rotating or merging.
 
 - **Meta Chat**
   - This planning chat exists for pruning, creating new tasks, and setting direction.
@@ -65,7 +65,7 @@ This document captures the brand, vision, goals, principles, and workflow of the
 
 - **Copilot/Codex Agent Rules**
   - Defined in `AGENTS.md`.
-  - Agents execute tasks from the active prompt/spec, logging evidence in the root deliverables file and checking in archived copies under `docs/deliverables/ARCHIVE/` when rotation requires a record.
+   - Agents execute tasks from the active prompt/spec, logging evidence in `docs/deliverables/.live.md` and checking in archived copies under `docs/deliverables/ARCHIVE/` when rotation requires a record.
 
 ---
 

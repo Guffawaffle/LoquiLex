@@ -59,4 +59,4 @@ ui/app/test-results/
 .ruff_cache/
 
 # Ephemeral agent log
-/current-task-deliverables.md
+docs/deliverables/.live.md
