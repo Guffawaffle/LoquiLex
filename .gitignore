@@ -57,3 +57,4 @@ ui/app/test-results/
 .gitignore.local
 
 .ruff_cache/
+/.github/copilot/current-task-deliverables.md

@@ -1,7 +1,7 @@
 Task: Conversation — 2025-09-22 Streamline Codex deliverables
 SHA256: n/a (conversation)
 
-**Git:** branch=chore/codex-integration, head=59c8bd0, base=origin/main@e72d90a
+**Git:** branch=chore/codex-integration, head=051da7d, base=origin/main@e72d90a
 **Env:** Python 3.12.3; Ruff n/a (not in PATH); mypy n/a (not in PATH); OS=Ubuntu 24.04.3 LTS
 **Mode:** Workspace-Only
 **Network:** Offline (no model downloads)
@@ -14,8 +14,8 @@ SHA256: n/a (conversation)
 ## Log
 
 ### 2025-09-21T22:41:56-05:00 — Streamline task source & deliverables
-**Mode:** Workspace-Only  
-**Network:** Offline (no model downloads)  
+**Mode:** Workspace-Only
+**Network:** Offline (no model downloads)
 **Secrets/CI:** Unchanged
 
 - Updated `AGENTS.md`, `README.md`, `PROJECT_OVERVIEW.md`, and `.github/prompts/main.prompt.md` to reference prompt/maintainer specs instead of `.github/copilot/current-task.md`.
@@ -51,22 +51,32 @@ rg "current-task.md" -n
 # no matches
 
 rg "current-task-deliverables" -n AGENTS.md README.md PROJECT_OVERVIEW.md
-AGENTS.md:85:* Keep exactly one `.github/copilot/current-task-deliverables.md` on the active feature branch. When a PR merges or the task rotates, archive it (e.g., move to `docs/deliverables/PR-<number>-<YYYYMMDD>.md`) or capture the executive summary/evidence links in the PR description before starting a new log.
-README.md:108:- **Deliverables**: Detailed execution logs in `.github/copilot/current-task-deliverables.md` (one per active branch)
-PROJECT_OVERVIEW.md:28:- ✅ Copilot/Codex agents integrated: prompts in `.github/prompts/` drive execution, `.github/copilot/current-task-deliverables.md` captures the log.
-PROJECT_OVERVIEW.md:60:  - Deliverables are written to `.github/copilot/current-task-deliverables.md` on that branch.
-PROJECT_OVERVIEW.md:68:  - Agents execute tasks from the active prompt/spec and must log full evidence in `.github/copilot/current-task-deliverables.md`.
+AGENTS.md:85:* Maintain exactly one local `.github/copilot/current-task-deliverables.md` (gitignored). This is the live working log for the active branch.
+README.md:108:- **Deliverables**: Live log in `.github/copilot/current-task-deliverables.md` (local, untracked) with archived snapshots under `docs/deliverables/`
+PROJECT_OVERVIEW.md:28:- ✅ Copilot/Codex agents integrated: prompts in `.github/prompts/` drive execution, live logs kept locally in `.github/copilot/current-task-deliverables.md` with archives under `docs/deliverables/`.
+PROJECT_OVERVIEW.md:60:  - Deliverables are logged locally in `.github/copilot/current-task-deliverables.md` and archived to `docs/deliverables/` when shared.
+
 ```
 
 </details>
 
 ### 2025-09-21T22:45:38-05:00 — Ignore deliverables archive
-**Mode:** Workspace-Only  
-**Network:** Offline (no model downloads)  
+**Mode:** Workspace-Only
+**Network:** Offline (no model downloads)
 **Secrets/CI:** Unchanged
 
 - Updated local-only `.gitignore.local` to ignore `.github/copilot/current-task-deliverables.md` explicitly and the `.github/copilot/archive/` directory.
 - Search receipt: `rg "archive/" .gitignore.local`
+
+### 2025-09-21T22:53:17-05:00 — Archive deliverables snapshot
+**Mode:** Workspace-Only  
+**Network:** Offline (no model downloads)  
+**Secrets/CI:** Unchanged
+
+- Added `/.github/copilot/current-task-deliverables.md` to `.gitignore` so the live log stays local-only.
+- Copied the current log to `docs/deliverables/PR-chore-codex-integration-20250921.md` for reviewers.
+- Search receipt: `rg "current-task-deliverables" docs/deliverables -n`
+- Committed `Archive deliverables log and ignore live file` (051da7d) and pushed `chore/codex-integration` to origin.
 
 <details><summary>Legacy log (pre-2025-09-22)</summary>
 

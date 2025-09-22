@@ -105,7 +105,7 @@ LoquiLex uses a structured GitHub Copilot/Codex workflow for development tasks:
 
 - **Task Management**: Tasks initiated via prompts in `.github/prompts/` or maintainer directives
 - **Quality Gates**: Automated linting, formatting, type checking, and testing
-- **Deliverables**: Detailed execution logs in `.github/copilot/current-task-deliverables.md` (one per active branch)
+- **Deliverables**: Live log in `.github/copilot/current-task-deliverables.md` (local, untracked) with archived snapshots under `docs/deliverables/`
 - **Branch Strategy**: Feature branches with imperative commit messages
 
 See [`.github/copilot/README.md`](.github/copilot/README.md) for complete workflow documentation.

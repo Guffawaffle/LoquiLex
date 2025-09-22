@@ -7,6 +7,8 @@ SHA256: <sha256sum <file> | n/a>
 **Network:** Offline (no model downloads)
 **Secrets/CI:** Unchanged
 
+<!-- Local log only; do not commit. Archive copies to docs/deliverables/PR-<number>-<YYYYMMDD>.md when sharing. -->
+
 ## Executive Summary
 - <One-line outcome>
 - <Key verification result>

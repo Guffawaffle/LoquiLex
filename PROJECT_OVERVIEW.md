@@ -25,7 +25,7 @@ This document captures the brand, vision, goals, principles, and workflow of the
 - ✅ CI separation: unit vs. e2e tests (`@pytest.mark.e2e` enforced).
 - ✅ Lint & format standardization: Ruff + Black at 100 chars, Flake8 removed.
 - ✅ Type checking: Mypy integrated in **warn-only mode**; last 4 errors resolved; incremental strictness plan in place.
-- ✅ Copilot/Codex agents integrated: prompts in `.github/prompts/` drive execution, `.github/copilot/current-task-deliverables.md` captures the log.
+- ✅ Copilot/Codex agents integrated: prompts in `.github/prompts/` drive execution, live logs kept locally in `.github/copilot/current-task-deliverables.md` with archives under `docs/deliverables/`.
 - ✅ Repo cleanup: prune historical artifacts with git-filter-repo, harden `.gitignore`.
 
 ### Mid-term (next cycle)
@@ -57,7 +57,7 @@ This document captures the brand, vision, goals, principles, and workflow of the
 
 - **One PR = One Chat**
   - Each PR has a dedicated chat tied to its prompt or maintainer instructions.
-  - Deliverables are written to `.github/copilot/current-task-deliverables.md` on that branch.
+  - Deliverables are logged locally in `.github/copilot/current-task-deliverables.md` and archived to `docs/deliverables/` when shared.
 
 - **Meta Chat**
   - This planning chat exists for pruning, creating new tasks, and setting direction.
@@ -65,7 +65,7 @@ This document captures the brand, vision, goals, principles, and workflow of the
 
 - **Copilot/Codex Agent Rules**
   - Defined in `AGENTS.md`.
-  - Agents execute tasks from the active prompt/spec and must log full evidence in `.github/copilot/current-task-deliverables.md`.
+  - Agents execute tasks from the active prompt/spec, logging evidence in the local deliverables file and publishing archives as required.
 
 ---
 
