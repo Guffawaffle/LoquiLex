@@ -12,7 +12,8 @@
     "preview": "vite preview --strictPort --host 127.0.0.1",
     "test": "vitest run",
     "test:ui:watch": "vitest",
-    "e2e": "playwright test"
+    "e2e": "playwright test",
+    "e2e:a11y": "playwright test --config=playwright.a11y.config.ts"
   },
   "dependencies": {
     "react": "^18.2.0",
@@ -20,16 +21,17 @@
     "react-router-dom": "^6.26.0"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.10.2",
     "@playwright/test": "^1.47.0",
     "@testing-library/jest-dom": "^6.5.0",
     "@testing-library/react": "^16.0.1",
     "@testing-library/user-event": "^14.5.2",
-    "@types/react": "^18.2.43",
-    "@types/react-dom": "^18.2.17",
-    "@vitejs/plugin-react": "^4.2.1",
+  "@types/react": "^18.3.24",
+  "@types/react-dom": "^18.3.7",
+  "@vitejs/plugin-react": "^4.7.0",
     "jsdom": "^25.0.1",
     "typescript": "^5.6.0",
     "vite": "^5.4.8",
-    "vitest": "^2.1.2"
+  "vitest": "^2.1.9"
   }
 }

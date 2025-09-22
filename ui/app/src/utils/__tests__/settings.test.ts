@@ -44,6 +44,8 @@ describe('settings', () => {
         device: 'auto',
         cadence_threshold: 3,
         show_timestamps: true,
+        translation_target: 'zho_Hans',
+        audio_latency_target_ms: 200,
       });
     });
   });
@@ -112,6 +114,8 @@ describe('settings', () => {
         device: 'cuda',
         cadence_threshold: 5,
         show_timestamps: true,
+        translation_target: 'zho_Hans',
+        audio_latency_target_ms: 200,
       };
 
       const config = applySettingsToSessionConfig({}, settings);
@@ -140,6 +144,8 @@ describe('settings', () => {
         device: 'cuda',
         cadence_threshold: 5,
         show_timestamps: true,
+        translation_target: 'zho_Hans',
+        audio_latency_target_ms: 200,
       };
 
       const partialConfig: Partial<SessionConfig> = {
@@ -163,6 +169,8 @@ describe('settings', () => {
         device: 'auto',
         cadence_threshold: 4,
         show_timestamps: false,
+        translation_target: 'spa_Latn',
+        audio_latency_target_ms: 150,
       };
 
       localStorageMock.setItem('loquilex-settings', JSON.stringify(savedSettings));
@@ -172,6 +180,7 @@ describe('settings', () => {
       expect(config.asr_model_id).toBe('whisper-medium');
       expect(config.mt_model_id).toBe('nllb-200-1.3B');
       expect(config.partial_word_cap).toBe(4);
+      expect(config.dest_lang).toBe('spa_Latn'); // From translation_target
     });
 
     it('should validate cadence threshold range (1-8)', () => {
