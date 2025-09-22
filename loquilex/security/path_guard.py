@@ -53,7 +53,9 @@ class PathGuard:
         """Return a safe directory path subject to guard constraints."""
         # When creating, normalisation must not require existence
         effective_must_exist = False if create else must_exist
-        path = self._normalise(candidate, allow_relative=allow_relative, must_exist=effective_must_exist)
+        path = self._normalise(
+            candidate, allow_relative=allow_relative, must_exist=effective_must_exist
+        )
 
         if path.exists():
             if not path.is_dir():
@@ -116,7 +118,9 @@ class PathGuard:
             raise PathSecurityError(f"path escapes allowed roots: {candidate}")
         return candidate
 
-    def _normalise(self, candidate: str | Path, *, allow_relative: bool, must_exist: bool = False) -> Path:
+    def _normalise(
+        self, candidate: str | Path, *, allow_relative: bool, must_exist: bool = False
+    ) -> Path:
         path = Path(candidate)
 
         try:
