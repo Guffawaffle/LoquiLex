@@ -77,13 +77,14 @@ echo "No build step"
 * The maintainer-provided task spec (prompt file, issue/PR description, or direct instruction) is authoritative.
 * Record the exact source (path or URL) and digest at the top of the deliverables log so reviewers can trace what was executed.
 * If the spec changes mid-task, add a new timestamped log entry noting the update and the new digest.
+* Active prompt files live under `.github/prompts/`: `main.prompt.md`, `make-fix.prompt.md`, `make-fix-full.prompt.md`, `current-task.prompt.md`, and `next-pr-runner.md`.
 
 ---
 
 ## Deliverables Policy
 
-* Maintain exactly one local `.github/copilot/current-task-deliverables.md` (gitignored). This is the live working log for the active branch.
-* When a PR merges, a hand-off occurs, or reviewers need the state, copy the log to `docs/deliverables/PR-<number>-<YYYYMMDD>.md` (also gitignored) and attach/share it out-of-band (PR comment upload, external doc), or summarize key evidence directly in the PR description before rotating the task.
+* Maintain exactly one local `current-task-deliverables.md` at the repo root (gitignored). This is the ephemeral working log for the active branch.
+* When a PR merges, a hand-off occurs, or reviewers need the state, copy the log to `docs/deliverables/ARCHIVE/PR-<number>-<YYYYMMDD>-<shortsha>.md` (tracked) and share context in the PR notes; reset or remove the root log afterward so the next task starts clean.
 * Top of file requirements:
   - `Task:` include the authoritative source (e.g., `.github/prompts/next-pr-runner.md`, issue/PR URL, or “Conversation — YYYY-MM-DD”).
   - `SHA256:` hash of the source file if stored in the repo (`sha256sum <file>`). Use `n/a` when the spec is conversational or remote-only.
@@ -98,7 +99,9 @@ echo "No build step"
   - When reusing patterns, include a “Search receipt” line showing the grep command and hit paths (no contents).
   - Wrap long outputs, diffs, or logs in `<details>` blocks with a succinct `<summary>` (include line counts when possible).
 * Evidence must be real, complete outputs; redact secrets only. Avoid truncating unless the `<details>` wrapper is used.
-* Use `.github/copilot/deliverables-template.md` as the canonical scaffold for new entries; update the template if the policy evolves.
+* Use `docs/deliverables/templates/deliverables-template.md` as the canonical scaffold for new entries; update the template if the policy evolves.
+
+Treat `current-task-deliverables.md` as scratch space during execution. When the work rotates or merges, capture the final state in the archive path and clear the root file so the next assignee starts with a blank log.
 
 ---
 
