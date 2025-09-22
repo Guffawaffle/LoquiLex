@@ -1,61 +1,60 @@
-# Copilot Instructions (Canonical)
+# LoquiLex — Copilot Instructions (Canonical)
 
-Adopt the **Lex** voice: direct, thoughtful, challenges assumptions. Be concise and show evidence.
+> This is the **only** repo‑wide custom instructions file used by Copilot. Keep it at `.github/copilot-instructions.md`. Do not duplicate under subfolders. See official docs.
 
 ## Big Picture
-Local-first live captioning + EN↔ZH translation with:
-- **CLI** entry points (e.g., `loquilex/cli/*`)
+Local-first live captioning + EN↔ZH translation:
+- **CLI** (e.g., `loquilex/cli/live_en_to_zh.py`) for local runs
 - **FastAPI WebSocket API** (`loquilex/api/server.py`) streaming partial/final events
 - **Supervisor/session** pattern with bounded queues
 
 ## Environment & Config
-- Use `LX_*` env vars only (e.g., `LX_ASR_MODEL`, `LX_DEVICE`, `LX_OUT_DIR`).
-- Tests must be **offline**; use fakes/mocks instead of downloading models.
+- Use **`LX_*`** env vars exclusively.
+- Common: `LX_ASR_MODEL`, `LX_ASR_LANGUAGE`, `LX_DEVICE`, `LX_NLLB_MODEL`/`LX_M2M_MODEL`, `LX_OUT_DIR`, timing (`LX_PAUSE_FLUSH_SEC`, `LX_SEGMENT_MAX_SEC`).
 
-## Gates & Commands
-- Default quick gate (no heavy ML):
+## Day‑1 Commands
+- **Lightweight CI‑parity (no heavy ML):**
   ```bash
   make run-ci-mode
   ```
-- Heavier local parity when required:
+- **Full local dev with ML deps:**
   ```bash
   make run-local-ci
   ```
-- Lint/format/typing must pass (Ruff, Black@100, mypy) before proposing a PR.
 
-## Workflow
-1. Read the relevant prompt file in `.github/prompts/` (e.g., `main.prompt.md`, `make-fix*.prompt.md`). Keep architecture changes minimal.
-2. **Search the repo first** (ripgrep/grep) for similar functions/classes. Reuse patterns.
-3. Propose focused changes; avoid new dependencies unless the task asks.
-4. Record full logs/diffs/outcomes to `docs/deliverables/.live.md` (gitignored); when the work rotates, copy the final state to `docs/deliverables/ARCHIVE/PR-<number>-<YYYYMMDD>-<shortsha>.md` and reset the live log.
-5. Use `docs/deliverables/templates/deliverables-template.md` as the starting scaffold when creating or restoring the log.
+## Testing Modes
+- **Unit (offline):** Fakes in `tests/fakes/` injected via `tests/conftest.py` to prevent network/model downloads.
+- **E2E (heavier):** Real models; run when end‑to‑end coverage is required.
 
 ## Conventions
+- Black (100 cols) + Ruff; minimal diffs; imports ordered.
+- mypy enabled; don’t regress typing quality.
 - Commit messages in **imperative** mood.
-- Minimal diffs; stable imports and ordering.
-- No network access in tests; respect fakes and env guards.
-- Do not change CI, secrets, or deployment unless explicitly requested.
+- Offline‑first: no network calls in tests; respect fakes/envs.
 
-## Git Etiquette
-- Use **SSH** remotes.
-- Default conflict strategy when merging main: `-X ours` (call out when `-X theirs` is correct).
-- No force-push unless instructed. Prefer **squash merges**.
+## Task Source of Truth
+- **Active:** `.github/copilot/current-task.md`
+- **Fallback:** `.github/copilot/new-task-deliverables.md`
+- Standard **deliverables** file: `.github/copilot/current-task-deliverables.md`
 
-## VS Code Prompt Files
-Prompt files live in `.github/prompts/` with front-matter (e.g., `mode: agent`, `model: GPT-5`).
-Examples:
-- `main.prompt.md` — primary operating instructions for Codex/Copilot.
-- `make-fix.prompt.md` — quick remediation workflow.
-- `make-fix-full.prompt.md` — fuller remediation workflow when context resets are needed.
-- `current-task.prompt.md` — active task driver with deliverables logging reminders.
-- `next-pr-runner.md` — follow-up checklist for PR grooming.
+## Agent Workflow
+1. Read the current task (above). Keep architectural changes minimal.
+2. Run gates via Make: lint → format → typecheck → tests.
+3. Record full logs, diffs, and outcomes to the deliverables file.
 
-## Known Gotchas
-- VS Code problemMatcher `$pytest` requires a defined matcher; prefer `make` targets for tests.
-- Keep Markdown fences valid; avoid trailing whitespace to prevent ingestion issues.
+## Integration Notes
+- WebSocket stream separates **partial** vs **final** transcript/translation events.
+- Supervisor manages per‑session processes and cleanup with bounded queues.
+
+## Prompts (VS Code)
+Prompt files live in `.github/prompts/` with front‑matter (e.g., `mode: agent`, `model: GPT-4o`).
+- `/run-current-task-4o` runs the task pinned to GPT‑4o.
+- `/finish-and-rotate` verifies success and logs `bash .github/copilot/rotate-task.sh` output into deliverables.
+
+## Gotchas
+- VS Code tasks: avoid `$pytest` problemMatcher unless defined; use Make/CLI to run tests.
 
 ## Forbidden Patterns
-- Network calls in tests; implicit model downloads.
-- Introducing new libraries or tools without a task mandate.
-- Silent changes to core API/session contracts; if modified, update tests & docs.
-- Editing out-of-scope files (e.g., CI, secrets, deploy) unless explicitly requested.
+- Network access in tests; implicit model downloads; hidden side effects.
+- Bypassing env‑migration rules.
+- Changing core API/session contracts without updating tests & docs.
