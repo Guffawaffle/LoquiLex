@@ -25,7 +25,7 @@ httpx: Optional[ModuleType] = None
 try:
     import httpx  # type: ignore
 
-    httpx = httpx  # keep name for runtime checks
+    # keep name for runtime checks
     _HTTPX_AVAILABLE = True
 except Exception:
     httpx = None
@@ -36,7 +36,6 @@ requests: Optional[ModuleType] = None
 try:
     import requests  # type: ignore
 
-    requests = requests
     _REQUESTS_AVAILABLE = True
 except Exception:
     requests = None
