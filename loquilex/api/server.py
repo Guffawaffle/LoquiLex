@@ -19,6 +19,7 @@ from pydantic import BaseModel, Field, model_validator
 from .model_discovery import list_asr_models, list_mt_models, mt_supported_languages
 from loquilex.hardware.detection import get_hardware_snapshot
 from loquilex.config.model_defaults import get_model_defaults_manager
+from loquilex.security import PathGuard, PathSecurityError
 from .supervisor import SessionConfig, SessionManager, StreamingSession
 
 logger = logging.getLogger(__name__)
@@ -113,9 +114,6 @@ if DEV_MODE:
 OUT_ROOT = Path(os.getenv("LLX_OUT_DIR", "loquilex/out")).resolve()
 OUT_ROOT.mkdir(parents=True, exist_ok=True)
 
-# Application-controlled safe root for user-specified base directories
-SAFE_ROOT = OUT_ROOT
-
 # UI static files path (mounted later to avoid shadowing API routes)
 UI_DIST_PATH = Path("ui/app/dist").resolve()
 
@@ -123,10 +121,10 @@ UI_DIST_PATH = Path("ui/app/dist").resolve()
 def _safe_session_dir(sid: str) -> Path:
     if not re.fullmatch(r"[A-Za-z0-9_-]{6,64}", sid):
         raise HTTPException(status_code=400, detail="bad sid")
-    p = (OUT_ROOT / sid).resolve()
-    if not str(p).startswith(str(OUT_ROOT)):
-        raise HTTPException(status_code=400, detail="invalid path")
-    return p
+    try:
+        return STORAGE_GUARD.ensure_dir(OUT_ROOT / sid, allow_relative=False)
+    except PathSecurityError as exc:
+        raise HTTPException(status_code=400, detail="invalid path") from exc
 
 
 app.mount("/out", StaticFiles(directory=str(OUT_ROOT), html=False), name="out")
@@ -142,26 +140,7 @@ if not _env_allowed_roots:  # Treat missing or empty as default '/tmp'
 else:
     _EXTRA_ALLOWED_ROOTS = [p for p in _env_allowed_roots.split(":") if p]
 ALLOWED_STORAGE_ROOTS: List[Path] = [OUT_ROOT] + [Path(p).resolve() for p in _EXTRA_ALLOWED_ROOTS]
-
-
-def _is_within(child: Path, base: Path) -> bool:
-    try:
-        child_r = child.resolve()
-        base_r = base.resolve()
-    except Exception:
-        return False
-    # Ensure base is a parent of child or equal
-    try:
-        child_r.relative_to(base_r)
-        return True
-    except Exception:
-        return child_r == base_r
-
-
-def _ensure_allowed_path(p: Path) -> None:
-    if not any(_is_within(p, root) for root in ALLOWED_STORAGE_ROOTS):
-        allowed = ", ".join(str(r) for r in ALLOWED_STORAGE_ROOTS)
-        raise HTTPException(status_code=400, detail=f"path not allowed; must be under: {allowed}")
+STORAGE_GUARD = PathGuard(ALLOWED_STORAGE_ROOTS, default_root=OUT_ROOT)
 
 
 class CreateSessionReq(BaseModel):
@@ -264,7 +243,25 @@ class BaseDirectoryResp(BaseModel):
 
 
 # Simple profiles CRUD on disk under loquilex/ui/profiles
-PROFILES_DIR = os.path.join("loquilex", "ui", "profiles")
+PROFILES_DIR = Path("loquilex/ui/profiles")
+PROFILES_ROOT = PROFILES_DIR.resolve()
+PROFILES_GUARD = PathGuard([PROFILES_ROOT], default_root=PROFILES_ROOT)
+
+
+def _profile_path(name: str, *, must_exist: bool = False, for_write: bool = False) -> Path:
+    try:
+        return PROFILES_GUARD.ensure_file(
+            PROFILES_ROOT,
+            name,
+            suffix=".json",
+            create_parents=for_write,
+            must_exist=must_exist,
+            allow_fallback=False,
+        )
+    except PathSecurityError as exc:
+        if must_exist and "does not exist" in str(exc):
+            raise HTTPException(status_code=404, detail="not found") from exc
+        raise HTTPException(status_code=400, detail="invalid profile name") from exc
 
 
 @app.get("/sessions/{sid}/storage/stats")
@@ -321,51 +318,33 @@ async def get_session_commits(
 @app.get("/storage/info")
 async def get_storage_info(path: Optional[str] = None) -> StorageInfoResp:
     """Get storage information for a given path or current output directory."""
-    target_path = Path(path) if path else OUT_ROOT
+    candidate = path if path is not None else OUT_ROOT
 
     try:
-        # Ensure path exists and is accessible
-        target_path = target_path.resolve()
-        # Enforce SAFE_ROOT/allowed roots constraint using commonpath to prevent escapes
-        allowed_roots = [str(SAFE_ROOT)] + [
-            str(p) for p in ALLOWED_STORAGE_ROOTS if str(p) != str(SAFE_ROOT)
-        ]
-        try:
-            ok_under_some_root = any(
-                os.path.commonpath([str(target_path), root]) == root for root in allowed_roots
-            )
-        except Exception:
-            ok_under_some_root = False
-        if not ok_under_some_root:
-            allowed = ", ".join(allowed_roots)
-            raise HTTPException(
-                status_code=400,
-                detail=f"Cannot access path: must reside under one of: {allowed}",
-            )
-        _ensure_allowed_path(target_path)
-        if not target_path.exists():
-            target_path.mkdir(parents=True, exist_ok=True)
+        target_path = STORAGE_GUARD.ensure_dir(candidate, allow_relative=True, create=True)
+    except PathSecurityError as exc:
+        raise HTTPException(status_code=400, detail=f"Cannot access path: {exc}") from exc
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=f"Cannot access path: {exc}") from exc
 
-        # Get disk usage statistics
-        stat = shutil.disk_usage(target_path)
-        total_bytes = stat.total
-        free_bytes = stat.free
-        used_bytes = total_bytes - free_bytes
-        percent_used = (used_bytes / total_bytes * 100) if total_bytes > 0 else 0
+    # Get disk usage statistics
+    stat = shutil.disk_usage(target_path)
+    total_bytes = stat.total
+    free_bytes = stat.free
+    used_bytes = total_bytes - free_bytes
+    percent_used = (used_bytes / total_bytes * 100) if total_bytes > 0 else 0
 
-        # Check if writable
-        writable = os.access(target_path, os.W_OK)
+    # Check if writable
+    writable = os.access(target_path, os.W_OK)
 
-        return StorageInfoResp(
-            path=str(target_path),
-            total_bytes=total_bytes,
-            free_bytes=free_bytes,
-            used_bytes=used_bytes,
-            percent_used=percent_used,
-            writable=writable,
-        )
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Cannot access path: {str(e)}")
+    return StorageInfoResp(
+        path=str(target_path),
+        total_bytes=total_bytes,
+        free_bytes=free_bytes,
+        used_bytes=used_bytes,
+        percent_used=percent_used,
+        writable=writable,
+    )
 
 
 @app.get("/hardware/snapshot")
@@ -445,49 +424,18 @@ async def admin_cache_clear(request: Request) -> Dict[str, Any]:
 async def set_base_directory(req: BaseDirectoryReq) -> BaseDirectoryResp:
     """Set and validate a new base directory for storage."""
     try:
-        original_path = Path(req.path)
+        target_path = STORAGE_GUARD.ensure_dir(req.path, allow_relative=False, create=True)
+    except PathSecurityError as exc:
+        detail = str(exc)
+        if "relative paths" in detail:
+            message = "Path must be absolute"
+        else:
+            message = f"Invalid path: {detail}"
+        return BaseDirectoryResp(path=req.path, valid=False, message=message)
+    except Exception as exc:
+        return BaseDirectoryResp(path=req.path, valid=False, message=f"Invalid path: {exc}")
 
-        # Validate path is absolute before resolving and contains no traversal
-        if not original_path.is_absolute():
-            return BaseDirectoryResp(path=req.path, valid=False, message="Path must be absolute")
-
-        target_path = original_path.resolve()
-
-        # Enforce SAFE_ROOT/allowed roots constraint using commonpath to prevent escapes
-        allowed_roots = [str(SAFE_ROOT)] + [
-            str(p) for p in ALLOWED_STORAGE_ROOTS if str(p) != str(SAFE_ROOT)
-        ]
-        try:
-            ok_under_some_root = any(
-                os.path.commonpath([str(target_path), root]) == root for root in allowed_roots
-            )
-        except Exception:
-            ok_under_some_root = False
-        if not ok_under_some_root:
-            allowed = ", ".join(allowed_roots)
-            return BaseDirectoryResp(
-                path=str(target_path),
-                valid=False,
-                message=f"Invalid path: must reside under one of: {allowed}",
-            )
-        try:
-            _ensure_allowed_path(target_path)
-        except HTTPException as he:
-            return BaseDirectoryResp(
-                path=str(target_path),
-                valid=False,
-                message=f"Invalid path: {he.detail}",
-            )
-
-        # Try to create directory if it doesn't exist
-        if not target_path.exists():
-            try:
-                target_path.mkdir(parents=True, exist_ok=True)
-            except Exception as e:
-                return BaseDirectoryResp(
-                    path=str(target_path), valid=False, message=f"Cannot create directory: {str(e)}"
-                )
-
+    try:
         # Check if writable
         if not os.access(target_path, os.W_OK):
             return BaseDirectoryResp(
@@ -506,50 +454,47 @@ async def set_base_directory(req: BaseDirectoryReq) -> BaseDirectoryResp:
         return BaseDirectoryResp(
             path=str(target_path), valid=True, message="Directory is valid and writable"
         )
-
-    except Exception as e:
-        return BaseDirectoryResp(path=req.path, valid=False, message=f"Invalid path: {str(e)}")
+    except Exception as exc:
+        return BaseDirectoryResp(
+            path=str(target_path), valid=False, message=f"Invalid path: {exc}"
+        )
 
 
 @app.get("/profiles")
 def get_profiles() -> List[str]:
-    if not os.path.isdir(PROFILES_DIR):
+    if not PROFILES_ROOT.is_dir():
         return []
-    return sorted([p[:-5] for p in os.listdir(PROFILES_DIR) if p.endswith(".json")])
+    return sorted(
+        [p.stem for p in PROFILES_ROOT.glob("*.json") if p.is_file()]
+    )
 
 
 @app.get("/profiles/{name}")
 def get_profile(name: str) -> Dict[str, Any]:
-    safe = "".join(c for c in name if c.isalnum() or c in ("-", "_"))
-    path = os.path.join(PROFILES_DIR, f"{safe}.json")
-    if not os.path.isfile(path):
-        raise HTTPException(status_code=404, detail="not found")
     import json as _json
 
-    with open(path, "r", encoding="utf-8") as f:
+    path = _profile_path(name, must_exist=True)
+    with path.open("r", encoding="utf-8") as f:
         return _json.load(f)
 
 
 @app.post("/profiles/{name}")
 def save_profile(name: str, body: Dict[str, Any]) -> Dict[str, Any]:
-    os.makedirs(PROFILES_DIR, exist_ok=True)
-    safe = "".join(c for c in name if c.isalnum() or c in ("-", "_"))
-    path = os.path.join(PROFILES_DIR, f"{safe}.json")
     import json as _json
 
-    tmp = path + ".tmp"
-    with open(tmp, "w", encoding="utf-8") as f:
+    path = _profile_path(name, for_write=True)
+    tmp_path = path.with_suffix(".json.tmp")
+    with tmp_path.open("w", encoding="utf-8") as f:
         _json.dump(body, f, ensure_ascii=False, indent=2)
-    os.replace(tmp, path)
+    os.replace(tmp_path, path)
     return {"ok": True}
 
 
 @app.delete("/profiles/{name}")
 def delete_profile(name: str) -> Dict[str, Any]:
-    safe = "".join(c for c in name if c.isalnum() or c in ("-", "_"))
-    path = os.path.join(PROFILES_DIR, f"{safe}.json")
-    if os.path.isfile(path):
-        os.remove(path)
+    path = _profile_path(name)
+    if path.exists():
+        path.unlink()
     return {"ok": True}
 
 
