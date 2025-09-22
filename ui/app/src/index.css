@@ -6,8 +6,8 @@
   --text-primary: #f5f5f5;
   --text-secondary: #cccccc;
   --text-muted: #999999;
-  --accent-primary: #4a9eff;
-  --accent-hover: #357abd;
+  --accent-primary: #1e3a8a; /* blue-900 */
+  --accent-hover: #1e40af; /* blue-800 */
   --border-color: #4d4d4d;
   --border-focus: #4a9eff;
   --success: #22c55e;
