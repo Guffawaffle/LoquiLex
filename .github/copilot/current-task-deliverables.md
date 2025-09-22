@@ -1,7 +1,7 @@
 Task: Conversation — 2025-09-22 Streamline Codex deliverables
 SHA256: n/a (conversation)
 
-**Git:** branch=chore/codex-integration, head=4479b2c, base=origin/main@e72d90a
+**Git:** branch=chore/codex-integration, head=59c8bd0, base=origin/main@e72d90a
 **Env:** Python 3.12.3; Ruff n/a (not in PATH); mypy n/a (not in PATH); OS=Ubuntu 24.04.3 LTS
 **Mode:** Workspace-Only
 **Network:** Offline (no model downloads)
@@ -24,7 +24,7 @@ SHA256: n/a (conversation)
 - Updated `.github/copilot/current-task.md` to a minimal stub pointing to the new workflow docs.
 - Search receipt: `rg "current-task.md" -n` → no matches (confirms global deprecation).
 - Search receipt: `rg "current-task-deliverables" -n AGENTS.md README.md PROJECT_OVERVIEW.md` → see evidence below.
-- Committed `Streamline Codex deliverables workflow` (4479b2c) and pushed `chore/codex-integration` to origin.
+- Committed `Streamline Codex deliverables workflow` (59c8bd0) and pushed `chore/codex-integration` to origin.
 
 <details><summary>Environment fingerprints</summary>
 
@@ -59,6 +59,14 @@ PROJECT_OVERVIEW.md:68:  - Agents execute tasks from the active prompt/spec and 
 ```
 
 </details>
+
+### 2025-09-21T22:45:38-05:00 — Ignore deliverables archive
+**Mode:** Workspace-Only  
+**Network:** Offline (no model downloads)  
+**Secrets/CI:** Unchanged
+
+- Updated local-only `.gitignore.local` to ignore `.github/copilot/current-task-deliverables.md` explicitly and the `.github/copilot/archive/` directory.
+- Search receipt: `rg "archive/" .gitignore.local`
 
 <details><summary>Legacy log (pre-2025-09-22)</summary>
 
