@@ -34,15 +34,11 @@ except Exception:
 # requests (optional)
 requests_mod: Optional[ModuleType] = None
 try:
-    import requests as _requests  # type: ignore[import-untyped]
-
+    import requests as requests_mod  # type: ignore[import-untyped]
     _REQUESTS_AVAILABLE = True
 except Exception:
-    _requests = None
+    requests_mod = None
     _REQUESTS_AVAILABLE = False
-finally:
-    # Bind to a consistently named optional module variable
-    requests_mod = _requests
 
 # Build the exception tuple used in the except-block dynamically so the
 # test module can be collected even if `requests` is not installed.
