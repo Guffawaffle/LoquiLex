@@ -48,6 +48,7 @@ def demo_structured_logging():
         )
 
         # Read back logs to show redaction
+        # TODO: REMOVE Path()
         log_file = Path(tmpdir) / "demo_session_demo123.jsonl"
         if log_file.exists():
             print(f"\nGenerated log file: {log_file}")
