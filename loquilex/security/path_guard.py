@@ -378,6 +378,7 @@ class PathGuard:
         except ValueError:
             raise PathSecurityError("directory outside allowed roots (canonical check)")
         resolved_dir.mkdir(parents=True, exist_ok=True, mode=mode)
+
     # ---------- Quotas ----------
     def compute_usage_bytes(self, root: str) -> int:
         """Compute total size of regular files under a root without following symlinks."""
@@ -450,6 +451,7 @@ class PathGuard:
         for part in rel.parts:
             cur = cur / part
             yield cur
+
     def _reject_symlink_segments(self, base: Path, candidate: Path) -> None:
         for seg in self._iter_segments(base, candidate):
             try:

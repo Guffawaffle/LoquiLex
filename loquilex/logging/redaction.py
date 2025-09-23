@@ -87,6 +87,7 @@ class DataRedactor:
             Redacted path with directory structure hidden
         """
         import os as _os
+
         path_str = str(path)
         norm = _os.path.normpath(path_str)
         base = _os.path.basename(norm)

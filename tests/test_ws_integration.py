@@ -35,6 +35,7 @@ except Exception:
 requests_mod: Optional[ModuleType] = None
 try:
     import requests as requests_mod  # type: ignore[import-untyped]
+
     _REQUESTS_AVAILABLE = True
 except Exception:
     requests_mod = None

@@ -7,8 +7,7 @@ import logging
 import os
 import io
 from dataclasses import asdict, dataclass
-from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, cast
 
 from .paths import resolve_out_dir
 from loquilex.security import PathGuard, PathSecurityError
@@ -48,7 +47,7 @@ class ModelDefaults:
 class ModelDefaultsManager:
     """Manages persistent model defaults with fallback to environment variables."""
 
-    def __init__(self, storage_path: Optional[Path] = None):
+    def __init__(self, storage_path: Optional[str] = None):
         """Initialize defaults manager.
 
         Args:
@@ -65,13 +64,17 @@ class ModelDefaultsManager:
                 self._path_guard = PathGuard({"storage": out_dir_abs}, follow_symlinks=False)
                 self.storage_path = out_dir_abs / "model_defaults.json"
             else:
-                assert os.path.isabs(
-                    str(storage_path)
-                ), "storage_path must be absolute (trusted config)"
-                sp = Path(storage_path)
-                base = sp.parent.resolve(strict=False)
-                self._path_guard = PathGuard({"storage": base}, follow_symlinks=False)
-                self.storage_path = base / sp.name
+                sp_str = str(storage_path)
+                assert os.path.isabs(sp_str), "storage_path must be absolute (trusted config)"
+                base = os.path.dirname(sp_str)
+                # Let PathGuard validate and wrap the absolute path instead of
+                # constructing a Path from untrusted input here. Cast the
+                # mapping to avoid static-type complaints.
+                self._path_guard = PathGuard(
+                    cast(Dict[str, Any], {"storage": base}), follow_symlinks=False
+                )
+                cp = self._path_guard.wrap_absolute(sp_str)
+                self.storage_path = cp.as_path()
         except PathSecurityError as exc:
             raise RuntimeError("invalid storage path for model defaults") from exc
         self._defaults: Optional[ModelDefaults] = None

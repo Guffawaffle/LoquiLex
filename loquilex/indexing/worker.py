@@ -7,8 +7,7 @@ import logging
 import threading
 import time
 from dataclasses import asdict, dataclass
-from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, cast
 
 from ..api.model_discovery import list_asr_models, list_mt_models
 from ..config.paths import resolve_out_dir
@@ -40,7 +39,7 @@ class ModelIndexer:
     STOP_TIMEOUT_SEC = 5.0
     ERROR_RETRY_SLEEP_SEC = 30.0
 
-    def __init__(self, cache_path: Optional[Path] = None, refresh_interval: int = 300):
+    def __init__(self, cache_path: Optional[str] = None, refresh_interval: int = 300):
         """Initialize indexer.
 
         Args:
@@ -56,14 +55,16 @@ class ModelIndexer:
                 self._path_guard = PathGuard({"storage": out_dir_abs}, follow_symlinks=False)
                 self.cache_path = out_dir_abs / "model_index.json"
             else:
+                sp_str = str(cache_path)
                 import os as _os
-                assert _os.path.isabs(
-                    str(cache_path)
-                ), "cache_path must be absolute (trusted config)"
-                sp = Path(cache_path)
-                base = sp.parent.resolve(strict=False)
-                self._path_guard = PathGuard({"storage": base}, follow_symlinks=False)
-                self.cache_path = base / sp.name
+
+                assert _os.path.isabs(sp_str), "cache_path must be absolute (trusted config)"
+                base = _os.path.dirname(sp_str)
+                self._path_guard = PathGuard(
+                    cast(Dict[str, Any], {"storage": base}), follow_symlinks=False
+                )
+                cp = self._path_guard.wrap_absolute(sp_str)
+                self.cache_path = cp.as_path()
         except PathSecurityError as exc:
             raise RuntimeError("invalid cache path for model indexer") from exc
         self.refresh_interval = refresh_interval

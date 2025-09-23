@@ -134,7 +134,10 @@ UI_DIST_PATH = Path("ui/app/dist").resolve()
 
 # String-only absolute-path detector (do not resolve user inputs)
 import os as _os  # alias to avoid shadowing
+
 _ABS_RE = re.compile(r"^(?:/|[A-Za-z]:[\\/]|\\\\)")
+
+
 def _is_abs_like(s: str | _os.PathLike[str]) -> bool:
     return bool(_ABS_RE.match(str(s)))
 
@@ -577,7 +580,7 @@ def get_profiles() -> List[str]:
 
 @app.get("/profiles/{name}")
 def get_profile(name: str):
-    cp = _profile_cp(name)                   # CanonicalPath
+    cp = _profile_cp(name)  # CanonicalPath
     with PATH_GUARD.open_read_cp(cp) as fh:  # guarded read
         data = json.load(fh)
     return JSONResponse(data)
