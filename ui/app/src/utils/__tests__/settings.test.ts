@@ -1,9 +1,9 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { 
-  AppSettings, 
-  DEFAULT_SETTINGS, 
-  loadSettings, 
-  saveSettings, 
+import {
+  AppSettings,
+  DEFAULT_SETTINGS,
+  loadSettings,
+  saveSettings,
   clearSettings,
   applySettingsToSessionConfig
 } from '../settings';
@@ -44,6 +44,8 @@ describe('settings', () => {
         device: 'auto',
         cadence_threshold: 3,
         show_timestamps: true,
+        audio_latency_target_ms: 200,
+        translation_target: 'zho_Hans',
         base_directory: 'loquilex/out',
       });
     });
@@ -61,9 +63,9 @@ describe('settings', () => {
         device: 'cpu',
         cadence_threshold: 5,
       };
-      
+
       localStorageMock.setItem('loquilex-settings', JSON.stringify(savedSettings));
-      
+
       const settings = loadSettings();
       expect(settings).toEqual({
         ...DEFAULT_SETTINGS,
@@ -74,7 +76,7 @@ describe('settings', () => {
 
     it('should handle invalid JSON gracefully', () => {
       localStorageMock.setItem('loquilex-settings', 'invalid-json');
-      
+
       const settings = loadSettings();
       expect(settings).toEqual(DEFAULT_SETTINGS);
     });
@@ -89,7 +91,7 @@ describe('settings', () => {
       };
 
       saveSettings(settings);
-      
+
       expect(localStorageMock.setItem).toHaveBeenCalledWith(
         'loquilex-settings',
         JSON.stringify(settings)
@@ -100,7 +102,7 @@ describe('settings', () => {
   describe('clearSettings', () => {
     it('should remove settings from localStorage', () => {
       clearSettings();
-      
+
       expect(localStorageMock.removeItem).toHaveBeenCalledWith('loquilex-settings');
     });
   });
@@ -114,6 +116,8 @@ describe('settings', () => {
         cadence_threshold: 5,
         show_timestamps: true,
         base_directory: 'test/output',
+        audio_latency_target_ms: 150,
+        translation_target: 'zho_Hans',
       };
 
       const config = applySettingsToSessionConfig({}, settings);
@@ -143,6 +147,8 @@ describe('settings', () => {
         cadence_threshold: 5,
         show_timestamps: true,
         base_directory: 'test/output',
+        audio_latency_target_ms: 150,
+        translation_target: 'zho_Hans',
       };
 
       const partialConfig: Partial<SessionConfig> = {
@@ -167,6 +173,8 @@ describe('settings', () => {
         cadence_threshold: 4,
         show_timestamps: false,
         base_directory: 'saved/output',
+        audio_latency_target_ms: 300,
+        translation_target: 'spa_Latn',
       };
 
       localStorageMock.setItem('loquilex-settings', JSON.stringify(savedSettings));
@@ -176,6 +184,8 @@ describe('settings', () => {
       expect(config.asr_model_id).toBe('whisper-medium');
       expect(config.mt_model_id).toBe('nllb-200-1.3B');
       expect(config.partial_word_cap).toBe(4);
+      expect(config.dest_lang).toBe('spa_Latn'); // From translation_target
+      expect(config.device).toBe('auto');
     });
 
     it('should validate cadence threshold range (1-8)', () => {
@@ -185,7 +195,7 @@ describe('settings', () => {
       };
 
       const config = applySettingsToSessionConfig({}, settingsWithInvalidCadence);
-      
+
       // The function should use the invalid value as-is since validation
       // should happen at the UI level
       expect(config.partial_word_cap).toBe(0);

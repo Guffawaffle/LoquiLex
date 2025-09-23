@@ -48,12 +48,27 @@ export function StorageStep() {
   const validatePath = async (path: string) => {
     try {
       setLoading(true);
+      // Normalize path for server contract: server requires absolute paths
+      // or a single-segment relative leaf. Convert multi-segment relative
+      // paths (e.g. "loquilex/out") to their leaf segment ("out") so the
+      // backend will map it under the configured storage root.
+      const isAbsolute = (p: string) => p.startsWith('/') || /^[A-Za-z]:\\/.test(p);
+      const normalizeForServer = (p: string) => {
+        if (!p) return p;
+        if (isAbsolute(p)) return p;
+        // If it's a multi-segment relative path, use the final leaf only
+        if (p.includes('/')) return p.split('/').filter(Boolean).pop() as string;
+        return p;
+      };
+
+      const normalized = normalizeForServer(path);
+
       const response = await fetch('/storage/base-directory', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ path }),
+        body: JSON.stringify({ path: normalized }),
       });
 
       if (!response.ok) {

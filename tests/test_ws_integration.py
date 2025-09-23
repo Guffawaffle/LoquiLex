@@ -17,7 +17,7 @@ from typing import Optional, List, Tuple, Type
 _websockets: Optional[ModuleType] = None
 try:
     import websockets as _websockets
-except Exception:
+except ImportError:
     _websockets = None
 
 # httpx (optional)
@@ -27,7 +27,7 @@ try:
 
     # keep name for runtime checks
     _HTTPX_AVAILABLE = True
-except Exception:
+except ImportError:
     httpx = None
     _HTTPX_AVAILABLE = False
 
@@ -37,7 +37,7 @@ try:
     import requests as requests_mod  # type: ignore[import-untyped]
 
     _REQUESTS_AVAILABLE = True
-except Exception:
+except ImportError:
     requests_mod = None
     _REQUESTS_AVAILABLE = False
 

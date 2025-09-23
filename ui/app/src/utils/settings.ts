@@ -6,8 +6,9 @@ export interface AppSettings {
   device: string;
   cadence_threshold: number; // Word count threshold for triggering EN→ZH translation (1-8). Lower values provide faster but potentially less accurate translations.
   show_timestamps: boolean;
-  base_directory: string; // Base directory for storing outputs
+  audio_latency_target_ms: number; // Target latency in milliseconds for audio processing
   translation_target: string; // Target language for translation (e.g., 'zho_Hans' for Simplified Chinese)
+  base_directory: string; // Base directory for storing outputs
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -16,8 +17,23 @@ export const DEFAULT_SETTINGS: AppSettings = {
   device: 'auto',
   cadence_threshold: 3, // Default: 3 (chosen as a balanced word count for EN→ZH translation)
   show_timestamps: true,
-  base_directory: 'loquilex/out', // Default output directory
+  audio_latency_target_ms: 100, // Default audio latency target
   translation_target: 'zho_Hans', // Default translation target language
+  base_directory: 'loquilex/out', // Default output directory
+};
+
+// Restart requirements for each setting
+export type RestartScope = 'none' | 'app' | 'backend' | 'full';
+
+export const RESTART_METADATA: Record<keyof AppSettings, RestartScope> = {
+  asr_model_id: 'backend',
+  mt_model_id: 'backend',
+  device: 'backend',
+  cadence_threshold: 'none',
+  show_timestamps: 'none',
+  audio_latency_target_ms: 'backend',
+  translation_target: 'backend',
+  base_directory: 'backend',
 };
 
 const SETTINGS_KEY = 'loquilex-settings';
@@ -62,6 +78,7 @@ export function applySettingsToSessionConfig(
 ): SessionConfig {
   const savedSettings = settings || loadSettings();
 
+
   return {
     name: config.name,
     asr_model_id: config.asr_model_id || savedSettings.asr_model_id,
@@ -77,6 +94,15 @@ export function applySettingsToSessionConfig(
     save_audio: config.save_audio || 'off',
     streaming_mode: config.streaming_mode ?? true,
   };
+}
+
+// Helper for components that need to send a `base_directory` to the server.
+// The backend accepts absolute paths or a single-segment relative leaf.
+export function normalizeBaseDirectoryForServer(p: string): string {
+  if (!p) return p;
+  if (p.startsWith('/') || /^[A-Za-z]:\\/.test(p)) return p;
+  const parts = p.split('/').filter(Boolean);
+  return parts.length > 0 ? parts[parts.length - 1] : p;
 }
 
 // Pending changes management
@@ -112,7 +138,7 @@ export function clearPendingChanges(): void {
 }
 
 // Check if any pending changes require restart
-/*
+
 export function getRequiredRestartScope(changes: Partial<AppSettings>): RestartScope {
   let maxScope: RestartScope = 'none';
 
@@ -134,4 +160,3 @@ export function getRequiredRestartScope(changes: Partial<AppSettings>): RestartS
 export function requiresRestart(setting: keyof AppSettings): boolean {
   return RESTART_METADATA[setting] !== 'none';
 }
-*/
