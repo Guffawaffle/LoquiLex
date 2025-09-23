@@ -19,7 +19,11 @@ OUT_DIR="${OUT_DIR:-codeql-out}"
 DB_JS="${DB_JS:-ql-db-js}"
 DB_PY="${DB_PY:-ql-db-py}"
 PK_JS="codeql/javascript-queries"
+JS_SUITE_QUALITY="codeql/javascript-queries:codeql-suites/javascript-security-and-quality.qls"
+JS_SUITE_EXTENDED="codeql/javascript-queries:codeql-suites/javascript-security-extended.qls"
 PK_PY="codeql/python-queries"
+PY_SUITE_QUALITY="codeql/python-queries:codeql-suites/python-security-and-quality.qls"
+PY_SUITE_EXTENDED="codeql/python-queries:codeql-suites/python-security-extended.qls"
 SUITE_SUFFIX=""      # "" or ":security-extended"
 DOWNLOAD="--download"
 CREATE_DBS=1
@@ -389,17 +393,28 @@ THREADS_ARG=()
 if [[ "$THREADS" != "0" ]]; then THREADS_ARG+=("--threads=$THREADS"); fi
 
 if [[ "$LANG_FILTER" == "js" || "$LANG_FILTER" == "all" ]]; then
-  vlog "[2/3] Analyzing (JavaScript/TypeScript) with $PK_JS$SUITE_SUFFIX ..."
+  vlog "[2/3] Analyzing (JavaScript/TypeScript) with quality suite$([[ -n "$SUITE_SUFFIX" ]] && echo "+extended") ..."
   SARIF_JS="$OUT_DIR/codeql-js.sarif"
-  codeql database analyze "$DB_JS" "$PK_JS$SUITE_SUFFIX" \
-    --format=sarifv2.1.0 --output "$SARIF_JS" ${DOWNLOAD:+$DOWNLOAD} "${THREADS_ARG[@]}"
+  ADDL_JS_ARGS=()
+  if [[ -n "$SUITE_SUFFIX" ]]; then
+    # When --extended is requested, include the extended suite via additional packs
+    ADDL_JS_ARGS+=("--additional-packs=$JS_SUITE_EXTENDED")
+  fi
+  codeql database analyze "$DB_JS" "$JS_SUITE_QUALITY" \
+    --format=sarifv2.1.0 --output "$SARIF_JS" \
+    --verbosity=progress ${DOWNLOAD:+$DOWNLOAD} "${THREADS_ARG[@]}" "${ADDL_JS_ARGS[@]}"
 fi
 
 if [[ "$LANG_FILTER" == "py" || "$LANG_FILTER" == "all" ]]; then
-  vlog "[2/3] Analyzing (Python) with $PK_PY$SUITE_SUFFIX ..."
+  vlog "[2/3] Analyzing (Python) with quality suite$([[ -n "$SUITE_SUFFIX" ]] && echo "+extended") ..."
   SARIF_PY="$OUT_DIR/codeql-py.sarif"
-  codeql database analyze "$DB_PY" "$PK_PY$SUITE_SUFFIX" \
-    --format=sarifv2.1.0 --output "$SARIF_PY" ${DOWNLOAD:+$DOWNLOAD} "${THREADS_ARG[@]}"
+  ADDL_PY_ARGS=()
+  if [[ -n "$SUITE_SUFFIX" ]]; then
+    ADDL_PY_ARGS+=("--additional-packs=$PY_SUITE_EXTENDED")
+  fi
+  codeql database analyze "$DB_PY" "$PY_SUITE_QUALITY" \
+    --format=sarifv2.1.0 --output "$SARIF_PY" \
+    --verbosity=progress ${DOWNLOAD:+$DOWNLOAD} "${THREADS_ARG[@]}" "${ADDL_PY_ARGS[@]}"
 fi
 
 # ---- Step 3: Summaries ----

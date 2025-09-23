@@ -10,7 +10,7 @@ import shutil
 import time
 import uuid
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, TYPE_CHECKING, cast, BinaryIO
+from typing import Any, Callable, Dict, List, Optional, TYPE_CHECKING, TextIO, cast
 
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
@@ -133,13 +133,21 @@ OUT_ROOT.mkdir(parents=True, exist_ok=True)
 UI_DIST_PATH = Path("ui/app/dist").resolve()
 
 
+def _session_cp(sid: str) -> "CanonicalPath":
+    """canonicalize_leaf → safe_join("sessions", sid)"""
+    leaf = PATH_GUARD.canonicalize_leaf(sid)
+    return PATH_GUARD.safe_join("sessions", leaf)
+
+
 def _safe_session_dir(sid: str) -> Path:
     if not re.fullmatch(r"[A-Za-z0-9_-]{6,64}", sid):
         raise HTTPException(status_code=400, detail="bad sid")
     try:
-        path = PATH_GUARD.resolve("sessions", sid)
-        PATH_GUARD.ensure_dir(path)
-        return path
+        cp = _session_cp(sid)
+        p = cp.as_path()
+        # Ensure the directory itself exists (not just its parent)
+        PATH_GUARD.ensure_dir(p)
+        return p
     except PathSecurityError as exc:
         raise HTTPException(status_code=400, detail="invalid path") from exc
 
@@ -389,7 +397,8 @@ async def get_storage_info(path: Optional[str] = None) -> StorageInfoResp:
         try:
             leaf = PATH_GUARD.canonicalize_leaf(path)
             cp = PATH_GUARD.safe_join("storage", leaf)
-            PATH_GUARD.ensure_dir_cp(cp)
+            # Ensure the directory itself
+            PATH_GUARD.ensure_dir(cp.as_path())
             stat = PATH_GUARD.disk_usage_cp(cp)
             total_bytes = stat.total
             free_bytes = stat.free
@@ -409,30 +418,48 @@ async def get_storage_info(path: Optional[str] = None) -> StorageInfoResp:
         except Exception as exc:
             raise HTTPException(status_code=400, detail="Cannot access path") from exc
 
-    # Fallback: None or absolute path -> legacy Path-based flow
+    # Fallback: None or absolute path -> guarded absolute handling
     try:
         target_path = _resolve_storage_dir(path)
-        PATH_GUARD.ensure_dir(target_path)
+        # Convert to CanonicalPath when absolute to reuse guarded sinks
+        if isinstance(target_path, Path) and target_path.is_absolute():
+            cp = PATH_GUARD.wrap_absolute(target_path)
+            PATH_GUARD.ensure_dir(cp.as_path())
+            stat = PATH_GUARD.disk_usage_cp(cp)
+            total_bytes = stat.total
+            free_bytes = stat.free
+            used_bytes = total_bytes - free_bytes
+            percent_used = (used_bytes / total_bytes * 100) if total_bytes > 0 else 0
+            writable = os.access(os.fspath(cp), os.W_OK)
+            return StorageInfoResp(
+                path=str(cp),
+                total_bytes=total_bytes,
+                free_bytes=free_bytes,
+                used_bytes=used_bytes,
+                percent_used=percent_used,
+                writable=writable,
+            )
+        else:
+            # Non-absolute should already be handled above; fallback defensively
+            PATH_GUARD.ensure_dir(target_path)
+            stat = shutil.disk_usage(target_path)
+            total_bytes = stat.total
+            free_bytes = stat.free
+            used_bytes = total_bytes - free_bytes
+            percent_used = (used_bytes / total_bytes * 100) if total_bytes > 0 else 0
+            writable = os.access(target_path, os.W_OK)
+            return StorageInfoResp(
+                path=str(target_path),
+                total_bytes=total_bytes,
+                free_bytes=free_bytes,
+                used_bytes=used_bytes,
+                percent_used=percent_used,
+                writable=writable,
+            )
     except PathSecurityError as exc:
         raise HTTPException(status_code=400, detail="Cannot access path") from exc
     except Exception as exc:
         raise HTTPException(status_code=400, detail="Cannot access path") from exc
-
-    stat = shutil.disk_usage(target_path)
-    total_bytes = stat.total
-    free_bytes = stat.free
-    used_bytes = total_bytes - free_bytes
-    percent_used = (used_bytes / total_bytes * 100) if total_bytes > 0 else 0
-    writable = os.access(target_path, os.W_OK)
-
-    return StorageInfoResp(
-        path=str(target_path),
-        total_bytes=total_bytes,
-        free_bytes=free_bytes,
-        used_bytes=used_bytes,
-        percent_used=percent_used,
-        writable=writable,
-    )
 
 
 @app.get("/hardware/snapshot")
@@ -516,6 +543,8 @@ async def set_base_directory(req: BaseDirectoryReq) -> BaseDirectoryResp:
         if not req.path or not Path(req.path).is_absolute():
             return BaseDirectoryResp(path=req.path, valid=False, message="Path must be absolute")
         target_path = _resolve_storage_dir(req.path)
+        # target_path may be absolute (allowed) or a CanonicalPath.as_path return.
+        # Ensure directory using guard; for absolute paths, guard verifies containment.
         PATH_GUARD.ensure_dir(target_path)
     except PathSecurityError as exc:
         detail = str(exc)
@@ -531,8 +560,12 @@ async def set_base_directory(req: BaseDirectoryReq) -> BaseDirectoryResp:
                 path=str(target_path), valid=False, message="Directory is not writable"
             )
 
-        # Check disk space (warn if less than 1GB free)
-        stat = shutil.disk_usage(target_path)
+        # Check disk space (warn if less than 1GB free) using guarded path
+        cp = PATH_GUARD.wrap_absolute(target_path) if Path(target_path).is_absolute() else None
+        if cp is not None:
+            stat = PATH_GUARD.disk_usage_cp(cp)
+        else:
+            stat = shutil.disk_usage(target_path)
         if stat.free < 1024 * 1024 * 1024:  # 1GB
             return BaseDirectoryResp(
                 path=str(target_path),
@@ -566,19 +599,20 @@ def get_profile(name: str):
 def save_profile(name: str, data: dict):
     cp = _profile_cp(name)
     PATH_GUARD.ensure_dir_cp(cp)
-    with PATH_GUARD.open_write_cp(cp, overwrite=True, binary=True) as fh:
-        payload = json.dumps(data, ensure_ascii=False, separators=(",", ":"))
-        bio = cast(BinaryIO, fh)
-        bio.write(payload.encode("utf-8"))
+    # Guarded write; symlinks and traversal are blocked by PathGuard policies
+    with cast(TextIO, PATH_GUARD.open_write_cp(cp, overwrite=True, binary=False)) as fh:
+        json.dump(data, fh, ensure_ascii=False, separators=(",", ":"))
     return JSONResponse({"ok": True, "path": str(cp)})
 
 
 @app.delete("/profiles/{name}")
 def delete_profile(name: str) -> Dict[str, Any]:
-    path = _profile_path(name)
-    if path.exists():
+    # Derive CanonicalPath to enforce leaf policy and root containment
+    cp = _profile_cp(name)
+    p = cp.as_path()
+    if p.exists():
         try:
-            path.unlink()
+            p.unlink()
         except Exception:
             raise HTTPException(status_code=500, detail="delete failed")
     return {"ok": True}
