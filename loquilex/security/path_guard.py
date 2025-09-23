@@ -25,6 +25,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, IO, Iterable, Optional, overload, cast
 from typing import Literal, TextIO, BinaryIO
+from ._types import CanonicalPath
 
 
 class PathSecurityError(ValueError):
@@ -130,6 +131,79 @@ class PathGuard:
                 name_pattern=re.compile(r"[A-Za-z0-9._-]{1,64}"),
             ),
         }
+
+    # --- New minimal helpers (no behavior change) ---
+
+    # Conservative, single-segment filename policy.
+    # Keep local to PathGuard to avoid cross-module imports/regex drift.
+    _FILENAME_RE = re.compile(r"^[A-Za-z0-9._-]{1,255}$")
+
+    def canonicalize_leaf(self, name: str) -> str:
+        """
+        Validate a single leaf filename (no path separators).
+        Raises ValueError/TypeError on invalid input. Does not touch the filesystem.
+        """
+        if not isinstance(name, str):
+            raise TypeError("name must be str")
+        # reject empties, absolute hints, parent jumps, and path separators
+        if not name:
+            raise ValueError("empty name")
+        if name.startswith(("/", "\\")):
+            raise ValueError("absolute or drive-like paths are not permitted")
+        if name.startswith("."):
+            raise ValueError("hidden or relative dot-segments not allowed")
+        if "/" in name or "\\" in name:
+            raise ValueError("leaf must be a single segment (no slashes)")
+        if name in (".", ".."):
+            raise ValueError("reserved path segment")
+        if not self._FILENAME_RE.fullmatch(name):
+            raise ValueError("invalid filename")
+        return name
+
+    def safe_join(self, root_name: str, leaf: str) -> CanonicalPath:
+        """
+        Join a validated leaf to a configured root **using existing guard rules**.
+        This calls the current PathGuard.resolve(...) to avoid behavior changes today.
+        Returns a CanonicalPath wrapper for downstream FS calls.
+        """
+        leaf = self.canonicalize_leaf(leaf)
+        # Delegate to your existing resolve logic (non-resolving unless explicitly allowed).
+        # If your resolve signature differs, adapt accordingly.
+        p = self.resolve(root_name, leaf)
+        return CanonicalPath(p)
+
+    def open_read_cp(self, cp: CanonicalPath):
+        """
+        Read-only open for a CanonicalPath. Delegates to existing open_read().
+        """
+        return self.open_read(cp.as_path())
+
+    def open_write_cp(
+        self, cp: CanonicalPath, *, overwrite: bool = False, binary: bool = True
+    ) -> BinaryIO | TextIO:
+        """
+        Write open for a CanonicalPath. Delegates to existing open_write().
+        """
+        # Use literals so mypy can pick the correct overload
+        if binary:
+            return self.open_write(cp.as_path(), overwrite=overwrite, binary=True)
+        else:
+            return self.open_write(cp.as_path(), overwrite=overwrite, binary=False)
+
+    def ensure_dir_cp(self, cp: CanonicalPath):
+        """
+        Ensure parent directory exists for a CanonicalPath. Delegates to existing ensure_dir().
+        """
+        self.ensure_dir(cp.as_path().parent)
+
+    def disk_usage_cp(self, cp: CanonicalPath):
+        """
+        shutil.disk_usage wrapper for CanonicalPath. Delegates to existing behavior.
+        """
+        # If you already wrap disk_usage elsewhere, call that instead.
+        import shutil as _shutil
+
+        return _shutil.disk_usage(str(cp))
 
     # ---------- Core resolution ----------
     def resolve(self, root: str, user_path: str | Path) -> Path:

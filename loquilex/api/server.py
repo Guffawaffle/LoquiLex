@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 import os
 import re
@@ -8,7 +9,7 @@ import shutil
 import time
 import uuid
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, TYPE_CHECKING
 
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
@@ -21,6 +22,9 @@ from loquilex.hardware.detection import get_hardware_snapshot
 from loquilex.config.model_defaults import get_model_defaults_manager
 from loquilex.security import PathGuard, PathSecurityError
 from .supervisor import SessionConfig, SessionManager, StreamingSession
+
+if TYPE_CHECKING:  # pragma: no cover - type-only import
+    from loquilex.security import CanonicalPath
 
 logger = logging.getLogger(__name__)
 
@@ -153,6 +157,8 @@ else:
     _EXTRA_ALLOWED_ROOTS = [p for p in _env_allowed_roots.split(":") if p]
 
 _root_map: Dict[str, Path] = {
+    # Canonical storage root for user-facing directories (CP-safe joins)
+    "storage": OUT_ROOT,
     "sessions": OUT_ROOT,
     "exports": OUT_ROOT / "exports",
     "profiles": Path("loquilex/ui/profiles").resolve(),
@@ -268,20 +274,29 @@ class BaseDirectoryResp(BaseModel):
 def _resolve_storage_dir(candidate: Optional[str]) -> Path:
     """Resolve a candidate path for storage/info and validation.
 
+    Compatibility behavior retained for API stability:
     - None -> default OUT_ROOT
-    - Relative -> sessions root relative resolution
     - Absolute -> allowed only if inside any configured root
+    - Relative single-segment leaf -> handled via CanonicalPath join on 'storage'
+    - Other relative forms -> rejected
     """
     if candidate is None:
         return OUT_ROOT
     p = Path(candidate)
-    if not p.is_absolute():
-        return PATH_GUARD.resolve("sessions", candidate)
-    # Absolute: allow only when inside one of our roots, without resolving
-    for base in _root_map.values():
-        if PathGuard._is_within_root(base, p):
-            return p
-    raise PathSecurityError("path not permitted")
+    if p.is_absolute():
+        # Absolute: allow only when inside one of our roots, without resolving
+        for base in _root_map.values():
+            if PathGuard._is_within_root(base, p):
+                return p
+        raise PathSecurityError("path not permitted")
+    # For relative inputs, only accept a single-segment leaf and map under 'storage'
+    try:
+        leaf = PATH_GUARD.canonicalize_leaf(candidate)
+        cp = PATH_GUARD.safe_join("storage", leaf)
+        # Return the underlying Path for existing call sites that expect Path
+        return cp.as_path()
+    except Exception as exc:
+        raise PathSecurityError("invalid relative path") from exc
 
 
 # Simple profiles CRUD on disk under loquilex/ui/profiles
@@ -300,6 +315,15 @@ def _profile_path(name: str, *, must_exist: bool = False, for_write: bool = Fals
         return candidate
     except PathSecurityError as exc:
         raise HTTPException(status_code=400, detail="invalid profile name") from exc
+
+
+def _profile_cp(name: str) -> "CanonicalPath":
+    """
+    Build a CanonicalPath for profile JSON under the 'profiles' root.
+    Enforces single-segment leaf name and '.json' extension.
+    """
+    leaf = PATH_GUARD.canonicalize_leaf(name)
+    return PATH_GUARD.safe_join("profiles", f"{leaf}.json")
 
 
 @app.get("/sessions/{sid}/storage/stats")
@@ -355,7 +379,36 @@ async def get_session_commits(
 
 @app.get("/storage/info")
 async def get_storage_info(path: Optional[str] = None) -> StorageInfoResp:
-    """Get storage information for a given path or current output directory."""
+    """Get storage information for a given path or current output directory.
+
+    Uses CanonicalPath flow for relative single-segment inputs; keeps absolute/None behavior.
+    """
+    # Branch: relative single-segment -> CanonicalPath guarded flow
+    if path is not None and not Path(path).is_absolute():
+        try:
+            leaf = PATH_GUARD.canonicalize_leaf(path)
+            cp = PATH_GUARD.safe_join("storage", leaf)
+            PATH_GUARD.ensure_dir_cp(cp)
+            stat = PATH_GUARD.disk_usage_cp(cp)
+            total_bytes = stat.total
+            free_bytes = stat.free
+            used_bytes = total_bytes - free_bytes
+            percent_used = (used_bytes / total_bytes * 100) if total_bytes > 0 else 0
+            writable = os.access(os.fspath(cp), os.W_OK)
+            return StorageInfoResp(
+                path=str(cp),
+                total_bytes=total_bytes,
+                free_bytes=free_bytes,
+                used_bytes=used_bytes,
+                percent_used=percent_used,
+                writable=writable,
+            )
+        except PathSecurityError as exc:
+            raise HTTPException(status_code=400, detail="Cannot access path") from exc
+        except Exception as exc:
+            raise HTTPException(status_code=400, detail="Cannot access path") from exc
+
+    # Fallback: None or absolute path -> legacy Path-based flow
     try:
         target_path = _resolve_storage_dir(path)
         PATH_GUARD.ensure_dir(target_path)
@@ -364,14 +417,11 @@ async def get_storage_info(path: Optional[str] = None) -> StorageInfoResp:
     except Exception as exc:
         raise HTTPException(status_code=400, detail="Cannot access path") from exc
 
-    # Get disk usage statistics
     stat = shutil.disk_usage(target_path)
     total_bytes = stat.total
     free_bytes = stat.free
     used_bytes = total_bytes - free_bytes
     percent_used = (used_bytes / total_bytes * 100) if total_bytes > 0 else 0
-
-    # Check if writable
     writable = os.access(target_path, os.W_OK)
 
     return StorageInfoResp(
@@ -504,12 +554,11 @@ def get_profiles() -> List[str]:
 
 
 @app.get("/profiles/{name}")
-def get_profile(name: str) -> Dict[str, Any]:
-    import json as _json
-
-    path = _profile_path(name, must_exist=True)
-    with PATH_GUARD.open_read(path) as f:
-        return _json.load(f)
+def get_profile(name: str):
+    cp = _profile_cp(name)                   # CanonicalPath
+    with PATH_GUARD.open_read_cp(cp) as fh:  # guarded read
+        data = json.load(fh)
+    return JSONResponse(data)
 
 
 @app.post("/profiles/{name}")
