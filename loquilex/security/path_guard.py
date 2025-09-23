@@ -430,12 +430,14 @@ class PathGuard:
         except ValueError:
             return False
 
-    @staticmethod
-    def _iter_segments(base: Path, target: Path) -> Iterable[Path]:
+    def _iter_segments(self, base: Path, target: Path) -> Iterable[Path]:
         # Yield each cumulative path from base to target (inclusive)
         # Avoid resolving `target` which may contain untrusted input that could
         # cause filesystem-dependent side effects. Use the path parts to build
         # the cumulative segments relative to the already-trusted `base`.
+        # Validate that base is a trusted root before resolving.
+        if base not in self._roots.values():
+            raise PathSecurityError("base path is not a trusted root")
         base_r = base.resolve(strict=False)
         # If `target` is not under `base` (without resolving symlinks), raise
         # a security error rather than resolving the untrusted target. Resolving
