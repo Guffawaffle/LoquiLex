@@ -9,7 +9,7 @@ import shutil
 import time
 import uuid
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, TYPE_CHECKING
+from typing import Any, Callable, Dict, List, Optional, TYPE_CHECKING, cast, BinaryIO
 
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
@@ -562,15 +562,14 @@ def get_profile(name: str):
 
 
 @app.post("/profiles/{name}")
-def save_profile(name: str, body: Dict[str, Any]) -> Dict[str, Any]:
-    import json as _json
-
-    path = _profile_path(name, for_write=True)
-    tmp_path = path.with_suffix(".json.tmp")
-    with PATH_GUARD.open_write(tmp_path, overwrite=True, binary=False) as f:
-        _json.dump(body, f, ensure_ascii=False, indent=2)
-    os.replace(tmp_path, path)
-    return {"ok": True}
+def save_profile(name: str, data: dict):
+    cp = _profile_cp(name)
+    PATH_GUARD.ensure_dir_cp(cp)
+    with PATH_GUARD.open_write_cp(cp, overwrite=True, binary=True) as fh:
+        payload = json.dumps(data, ensure_ascii=False, separators=(",", ":"))
+        bio = cast(BinaryIO, fh)
+        bio.write(payload.encode("utf-8"))
+    return JSONResponse({"ok": True, "path": str(cp)})
 
 
 @app.delete("/profiles/{name}")
