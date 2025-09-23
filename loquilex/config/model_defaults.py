@@ -5,11 +5,13 @@ from __future__ import annotations
 import json
 import logging
 import os
+import io
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any, Dict, Optional
 
 from .paths import resolve_out_dir
+from loquilex.security import PathGuard, PathSecurityError
 
 logger = logging.getLogger(__name__)
 
@@ -55,18 +57,31 @@ class ModelDefaultsManager:
                 `LX_OUT_DIR` (or legacy `LLX_OUT_DIR`) and falls back to
                 `loquilex/out`.
         """
-        if storage_path is None:
-            out_dir = resolve_out_dir()
-            self.storage_path = out_dir / "model_defaults.json"
-        else:
-            assert os.path.isabs(
-                str(storage_path)
-            ), "storage_path must be absolute (trusted config)"
-            self.storage_path = Path(storage_path)
+        try:
+            if storage_path is None:
+                out_dir = resolve_out_dir()
+                out_dir_abs = out_dir.expanduser().resolve(strict=False)
+                # Create a local PathGuard rooted at the configured out directory
+                self._path_guard = PathGuard({"storage": out_dir_abs}, follow_symlinks=False)
+                self.storage_path = out_dir_abs / "model_defaults.json"
+            else:
+                assert os.path.isabs(
+                    str(storage_path)
+                ), "storage_path must be absolute (trusted config)"
+                sp = Path(storage_path)
+                base = sp.parent.resolve(strict=False)
+                self._path_guard = PathGuard({"storage": base}, follow_symlinks=False)
+                self.storage_path = base / sp.name
+        except PathSecurityError as exc:
+            raise RuntimeError("invalid storage path for model defaults") from exc
         self._defaults: Optional[ModelDefaults] = None
 
-        # Ensure storage directory exists
-        self.storage_path.parent.mkdir(parents=True, exist_ok=True)
+        # Ensure storage directory exists (use guard to enforce policies)
+        try:
+            self._path_guard.ensure_dir(self.storage_path.parent)
+        except PathSecurityError:
+            # Fallback to mkdir if guard validation unexpectedly fails
+            self.storage_path.parent.mkdir(parents=True, exist_ok=True)
 
         # Load existing defaults
         self._load_defaults()
@@ -75,8 +90,10 @@ class ModelDefaultsManager:
         """Load defaults from storage, falling back to environment variables."""
         try:
             if self.storage_path.exists():
-                with open(self.storage_path, "r") as f:
-                    data = json.load(f)
+                # Use guarded open to avoid symlink attacks
+                with self._path_guard.open_read(self.storage_path) as bf:
+                    with io.TextIOWrapper(bf, encoding="utf-8") as f:
+                        data = json.load(f)
                 self._defaults = ModelDefaults.from_dict(data)
                 logger.debug(f"Loaded model defaults from {self.storage_path}")
                 return
@@ -104,7 +121,9 @@ class ModelDefaultsManager:
             return
 
         try:
-            with open(self.storage_path, "w") as f:
+            # Use guarded open for writing to enforce safe flags
+            # overwrite existing file
+            with self._path_guard.open_write(self.storage_path, overwrite=True, binary=False) as f:
                 json.dump(self._defaults.to_dict(), f, indent=2)
             logger.debug(f"Saved model defaults to {self.storage_path}")
         except Exception as e:

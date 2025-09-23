@@ -12,6 +12,7 @@ from typing import Any, Dict, List, Optional
 
 from ..api.model_discovery import list_asr_models, list_mt_models
 from ..config.paths import resolve_out_dir
+from loquilex.security import PathGuard, PathSecurityError
 
 logger = logging.getLogger(__name__)
 
@@ -48,23 +49,34 @@ class ModelIndexer:
                 falls back to `loquilex/out`.
             refresh_interval: Seconds between automatic re-indexing (default 5 minutes)
         """
-        if cache_path is None:
-            out_dir = resolve_out_dir()
-            self.cache_path = out_dir / "model_index.json"
-        else:
-            import os as _os
-            assert _os.path.isabs(
-                str(cache_path)
-            ), "cache_path must be absolute (trusted config)"
-            self.cache_path = Path(cache_path)
+        try:
+            if cache_path is None:
+                out_dir = resolve_out_dir()
+                out_dir_abs = out_dir.expanduser().resolve(strict=False)
+                self._path_guard = PathGuard({"storage": out_dir_abs}, follow_symlinks=False)
+                self.cache_path = out_dir_abs / "model_index.json"
+            else:
+                import os as _os
+                assert _os.path.isabs(
+                    str(cache_path)
+                ), "cache_path must be absolute (trusted config)"
+                sp = Path(cache_path)
+                base = sp.parent.resolve(strict=False)
+                self._path_guard = PathGuard({"storage": base}, follow_symlinks=False)
+                self.cache_path = base / sp.name
+        except PathSecurityError as exc:
+            raise RuntimeError("invalid cache path for model indexer") from exc
         self.refresh_interval = refresh_interval
         self._index: Optional[ModelIndex] = None
         self._lock = threading.RLock()
         self._worker_thread: Optional[threading.Thread] = None
         self._stop_event = threading.Event()
 
-        # Ensure cache directory exists
-        self.cache_path.parent.mkdir(parents=True, exist_ok=True)
+        # Ensure cache directory exists (use guard)
+        try:
+            self._path_guard.ensure_dir(self.cache_path.parent)
+        except PathSecurityError:
+            self.cache_path.parent.mkdir(parents=True, exist_ok=True)
 
         # Load existing index if available
         self._load_cache()
@@ -73,8 +85,11 @@ class ModelIndexer:
         """Load cached index from disk."""
         try:
             if self.cache_path.exists():
-                with open(self.cache_path, "r") as f:
-                    data = json.load(f)
+                with self._path_guard.open_read(self.cache_path) as bf:
+                    import io as _io
+
+                    with _io.TextIOWrapper(bf, encoding="utf-8") as f:
+                        data = json.load(f)
                 self._index = ModelIndex.from_dict(data)
                 logger.debug(f"Loaded model index from {self.cache_path}")
         except Exception as e:
@@ -86,7 +101,7 @@ class ModelIndexer:
             return
 
         try:
-            with open(self.cache_path, "w") as f:
+            with self._path_guard.open_write(self.cache_path, overwrite=True, binary=False) as f:
                 json.dump(self._index.to_dict(), f, indent=2)
             logger.debug(f"Saved model index to {self.cache_path}")
         except Exception as e:
