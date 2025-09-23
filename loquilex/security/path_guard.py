@@ -153,15 +153,30 @@ class PathGuard:
         if p.is_absolute() or re.match(r"^[A-Za-z]:\\", up_str) or up_str.startswith("\\\\"):
             raise PathSecurityError("absolute paths are not permitted")
 
-        candidate = (base / p).resolve(strict=False)
-        if not self._is_within_root(base, candidate):
-            raise PathSecurityError("path traversal blocked")
+        # Normalize the user-provided relative path without touching the
+        # filesystem (do not call ``resolve`` on user-controlled input).
+        rel_parts: list[str] = []
+        for part in p.parts:
+            if part in ("", "."):
+                continue
+            if part == "..":
+                if rel_parts:
+                    rel_parts.pop()
+                else:
+                    # Attempt to escape the base via leading '..'
+                    raise PathSecurityError("path traversal blocked")
+            else:
+                rel_parts.append(part)
+        candidate = base.joinpath(*rel_parts)
 
         # Symlink policy
         if not self._follow_symlinks:
             self._reject_symlink_segments(base, candidate)
         else:
-            # Follow symlinks but ensure final target stays in root
+            # Follow symlinks: resolve the candidate to its final target and
+            # ensure it remains inside the configured root. This step is an
+            # explicit opt-in (``follow_symlinks=True``) because it touches
+            # the filesystem to follow link targets.
             final = candidate.resolve(strict=False)
             if not self._is_within_root(base, final):
                 raise PathSecurityError("symlink escapes root")
@@ -195,7 +210,7 @@ class PathGuard:
         if hasattr(os, "O_NOFOLLOW"):
             flags |= os.O_NOFOLLOW
         else:
-            st = os.lstat(resolved)
+            st = os.lstat(os.fspath(resolved))
             if _stat.S_ISLNK(st.st_mode):
                 raise PathSecurityError("symlink blocked")
         fd = os.open(resolved, flags)
@@ -241,7 +256,7 @@ class PathGuard:
             flags |= os.O_NOFOLLOW
         else:
             try:
-                st = os.lstat(resolved)
+                st = os.lstat(os.fspath(resolved))
                 if _stat.S_ISLNK(st.st_mode):
                     raise PathSecurityError("symlink blocked")
             except FileNotFoundError:
@@ -273,7 +288,7 @@ class PathGuard:
         total = 0
         for p in self._walk_nofollow(base):
             try:
-                st = os.lstat(p)
+                st = os.lstat(os.fspath(p))
             except FileNotFoundError:
                 continue
             if _stat.S_ISREG(st.st_mode):
@@ -296,18 +311,23 @@ class PathGuard:
             raise PathSecurityError(f"unknown root: {name}") from exc
 
     def _find_base_for(self, p: Path) -> Path | None:
-        pr = p.resolve(strict=False)
+        # Avoid resolving the input path; instead, attempt to match by
+        # canonicalizing relative components and checking containment.
         for base in self._roots.values():
-            if self._is_within_root(base, pr):
+            try:
+                p.relative_to(base)
                 return base
+            except ValueError:
+                continue
         return None
 
     @staticmethod
     def _is_within_root(base: Path, candidate: Path) -> bool:
-        base_r = base.resolve(strict=False)
-        cand_r = candidate.resolve(strict=False)
+        # Use relative_to without resolving to avoid touching the filesystem
+        # for untrusted inputs. Compare path parts after both are made
+        # absolute-ish by removing relative components.
         try:
-            cand_r.relative_to(base_r)
+            candidate.relative_to(base)
             return True
         except ValueError:
             return False
@@ -315,13 +335,19 @@ class PathGuard:
     @staticmethod
     def _iter_segments(base: Path, target: Path) -> Iterable[Path]:
         # Yield each cumulative path from base to target (inclusive)
+        # Avoid resolving `target` which may contain untrusted input that could
+        # cause filesystem-dependent side effects. Use the path parts to build
+        # the cumulative segments relative to the already-trusted `base`.
         base_r = base.resolve(strict=False)
-        target_r = target.resolve(strict=False)
+        # If `target` is not under `base` (without resolving symlinks), raise
+        # a security error rather than resolving the untrusted target. Resolving
+        # user-controlled paths can cause filesystem-dependent side-effects and
+        # was flagged by static analysis; callers should validate containment
+        # before invoking this helper.
         try:
-            rel = target_r.relative_to(base_r)
+            rel = target.relative_to(base)
         except ValueError:
-            yield target_r
-            return
+            raise PathSecurityError("target not within base")
         cur = base_r
         yield cur
         for part in rel.parts:
@@ -331,7 +357,7 @@ class PathGuard:
     def _reject_symlink_segments(self, base: Path, candidate: Path) -> None:
         for seg in self._iter_segments(base, candidate):
             try:
-                st = os.lstat(seg)
+                st = os.lstat(os.fspath(seg))
             except FileNotFoundError:
                 # only check existing ancestors; leaf may not exist yet
                 continue

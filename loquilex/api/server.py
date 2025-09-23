@@ -277,10 +277,11 @@ def _resolve_storage_dir(candidate: Optional[str]) -> Path:
     p = Path(candidate)
     if not p.is_absolute():
         return PATH_GUARD.resolve("sessions", candidate)
-    # Absolute: allow only when inside one of our roots
+    # Absolute: allow only when inside one of our roots, after resolution
+    p_resolved = p.resolve(strict=False)
     for base in _root_map.values():
-        if PathGuard._is_within_root(base, p):
-            return p.resolve(strict=False)
+        if PathGuard._is_within_root(base, p_resolved):
+            return p_resolved
     raise PathSecurityError("path not permitted")
 
 
