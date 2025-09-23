@@ -299,11 +299,14 @@ def _resolve_storage_dir(candidate: Optional[str]) -> Path:
         return OUT_ROOT
     p = Path(candidate)
     if _is_abs_like(candidate):
-        # Absolute: only allow when normalized and within a configured root
-        p_resolved = p.resolve(strict=False)
+        # Absolute: only allow when normalized and strictly within a configured root
+        # Normalize the candidate to eliminate .. and redundant separators, then resolve
+        normalized_candidate = os.path.normpath(str(candidate))
+        p_resolved = Path(normalized_candidate).resolve(strict=False)
         for base in _root_map.values():
             base_resolved = Path(base).resolve(strict=False)
-            if PathGuard._is_within_root(base_resolved, p_resolved):
+            # Use os.path.commonpath for strict containment
+            if os.path.commonpath([str(p_resolved), str(base_resolved)]) == str(base_resolved):
                 return p_resolved
         raise PathSecurityError("path not permitted")
     # For relative inputs, only accept a single-segment leaf and map under 'storage'
