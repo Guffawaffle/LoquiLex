@@ -297,34 +297,13 @@ def _resolve_storage_dir(candidate: Optional[str]) -> Path:
     """
     if candidate is None:
         return OUT_ROOT
-    p = Path(candidate)
     if _is_abs_like(candidate):
-        # Absolute: only allow when normalized and strictly within a configured root
-        # Normalize the candidate to eliminate .. and redundant separators, then resolve
-        # Always resolve both candidate and bases to their absolute, canonical forms
+        # Absolute: delegate to guard without resolving user input
         try:
-            # Normalize and resolve both candidate and base, and compare absolute paths.
-            p_abs = Path(candidate).resolve(strict=False)
-        except Exception as exc:
-            raise PathSecurityError("cannot resolve candidate path") from exc
-        for base in _root_map.values():
-            try:
-                base_abs = Path(base).resolve(strict=False)
-            except Exception:
-                continue  # Ignore bad/missing roots
-            # Strict containment check: candidate must be inside base
-            try:
-                # confirm candidate is a strict subpath of base
-                candidate_common = os.path.commonpath([str(p_abs), str(base_abs)])
-            except ValueError:
-                continue  # Different drives on Windows, skip
-            # Must not allow candidate==base (don't allow direct root)
-            if candidate_common == str(base_abs) and str(p_abs).startswith(str(base_abs)):
-                # Ensure no directory traversal: candidate != base, is subpath
-                rel_to_base = os.path.relpath(str(p_abs), str(base_abs))
-                if not rel_to_base.startswith('..'):
-                    return p_abs
-        raise PathSecurityError("path not permitted")
+            cp = PATH_GUARD.wrap_absolute(candidate)
+            return cp.as_path()
+        except PathSecurityError as exc:
+            raise PathSecurityError("path not permitted") from exc
     # For relative inputs, only accept a single-segment leaf and map under 'storage'
     try:
         leaf = PATH_GUARD.canonicalize_leaf(candidate)
@@ -445,44 +424,26 @@ async def get_storage_info(path: str | None = None) -> StorageInfoResp:
         except Exception as exc:
             raise HTTPException(status_code=400, detail="Cannot access path") from exc
 
-    # Fallback: None or absolute path -> guarded absolute handling
+    # Fallback: None or absolute path -> guarded absolute handling (CanonicalPath only)
     try:
         target_path = _resolve_storage_dir(path)
-        # Convert to CanonicalPath when absolute to reuse guarded sinks
-        if isinstance(target_path, Path) and _is_abs_like(target_path):
-            cp = PATH_GUARD.wrap_absolute(target_path)
-            PATH_GUARD.ensure_dir(cp.as_path())
-            stat = PATH_GUARD.disk_usage_cp(cp)
-            total_bytes = stat.total
-            free_bytes = stat.free
-            used_bytes = total_bytes - free_bytes
-            percent_used = (used_bytes / total_bytes * 100) if total_bytes > 0 else 0
-            writable = os.access(os.fspath(cp), os.W_OK)
-            return StorageInfoResp(
-                path=str(cp),
-                total_bytes=total_bytes,
-                free_bytes=free_bytes,
-                used_bytes=used_bytes,
-                percent_used=percent_used,
-                writable=writable,
-            )
-        else:
-            # Non-absolute should already be handled above; fallback defensively
-            PATH_GUARD.ensure_dir(target_path)
-            stat = shutil.disk_usage(target_path)
-            total_bytes = stat.total
-            free_bytes = stat.free
-            used_bytes = total_bytes - free_bytes
-            percent_used = (used_bytes / total_bytes * 100) if total_bytes > 0 else 0
-            writable = os.access(target_path, os.W_OK)
-            return StorageInfoResp(
-                path=str(target_path),
-                total_bytes=total_bytes,
-                free_bytes=free_bytes,
-                used_bytes=used_bytes,
-                percent_used=percent_used,
-                writable=writable,
-            )
+        # At this point, target_path is OUT_ROOT (None) or an absolute candidate.
+        cp = PATH_GUARD.wrap_absolute(target_path)
+        PATH_GUARD.ensure_dir(cp.as_path())
+        stat = PATH_GUARD.disk_usage_cp(cp)
+        total_bytes = stat.total
+        free_bytes = stat.free
+        used_bytes = total_bytes - free_bytes
+        percent_used = (used_bytes / total_bytes * 100) if total_bytes > 0 else 0
+        writable = os.access(os.fspath(cp), os.W_OK)
+        return StorageInfoResp(
+            path=str(cp),
+            total_bytes=total_bytes,
+            free_bytes=free_bytes,
+            used_bytes=used_bytes,
+            percent_used=percent_used,
+            writable=writable,
+        )
     except PathSecurityError as exc:
         raise HTTPException(status_code=400, detail="Cannot access path") from exc
     except Exception as exc:
