@@ -132,6 +132,12 @@ OUT_ROOT.mkdir(parents=True, exist_ok=True)
 # UI static files path (mounted later to avoid shadowing API routes)
 UI_DIST_PATH = Path("ui/app/dist").resolve()
 
+# String-only absolute-path detector (do not resolve user inputs)
+import os as _os  # alias to avoid shadowing
+_ABS_RE = re.compile(r"^(?:/|[A-Za-z]:[\\/]|\\\\)")
+def _is_abs_like(s: str | _os.PathLike[str]) -> bool:
+    return bool(_ABS_RE.match(str(s)))
+
 
 def _session_cp(sid: str) -> "CanonicalPath":
     """canonicalize_leaf → safe_join("sessions", sid)"""
@@ -292,7 +298,7 @@ def _resolve_storage_dir(candidate: Optional[str]) -> Path:
     if candidate is None:
         return OUT_ROOT
     p = Path(candidate)
-    if p.is_absolute():
+    if _is_abs_like(candidate):
         # Absolute: allow only when inside one of our roots, without resolving
         for base in _root_map.values():
             if PathGuard._is_within_root(base, p):
@@ -393,7 +399,7 @@ async def get_storage_info(path: Optional[str] = None) -> StorageInfoResp:
     Uses CanonicalPath flow for relative single-segment inputs; keeps absolute/None behavior.
     """
     # Branch: relative single-segment -> CanonicalPath guarded flow
-    if path is not None and not Path(path).is_absolute():
+    if path is not None and not _is_abs_like(path):
         try:
             leaf = PATH_GUARD.canonicalize_leaf(path)
             cp = PATH_GUARD.safe_join("storage", leaf)
@@ -422,7 +428,7 @@ async def get_storage_info(path: Optional[str] = None) -> StorageInfoResp:
     try:
         target_path = _resolve_storage_dir(path)
         # Convert to CanonicalPath when absolute to reuse guarded sinks
-        if isinstance(target_path, Path) and target_path.is_absolute():
+        if isinstance(target_path, Path) and _is_abs_like(target_path):
             cp = PATH_GUARD.wrap_absolute(target_path)
             PATH_GUARD.ensure_dir(cp.as_path())
             stat = PATH_GUARD.disk_usage_cp(cp)
@@ -540,7 +546,7 @@ async def set_base_directory(req: BaseDirectoryReq) -> BaseDirectoryResp:
     """Set and validate a new base directory for storage."""
     # Require absolute path input (UI contract)
     try:
-        if not req.path or not Path(req.path).is_absolute():
+        if not req.path or not _is_abs_like(req.path):
             return BaseDirectoryResp(path=req.path, valid=False, message="Path must be absolute")
         target_path = _resolve_storage_dir(req.path)
         # target_path may be absolute (allowed) or a CanonicalPath.as_path return.
@@ -561,7 +567,7 @@ async def set_base_directory(req: BaseDirectoryReq) -> BaseDirectoryResp:
             )
 
         # Check disk space (warn if less than 1GB free) using guarded path
-        cp = PATH_GUARD.wrap_absolute(target_path) if Path(target_path).is_absolute() else None
+        cp = PATH_GUARD.wrap_absolute(target_path) if _is_abs_like(target_path) else None
         if cp is not None:
             stat = PATH_GUARD.disk_usage_cp(cp)
         else:
