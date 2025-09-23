@@ -52,6 +52,10 @@ class ModelIndexer:
             out_dir = resolve_out_dir()
             self.cache_path = out_dir / "model_index.json"
         else:
+            import os as _os
+            assert _os.path.isabs(
+                str(cache_path)
+            ), "cache_path must be absolute (trusted config)"
             self.cache_path = Path(cache_path)
         self.refresh_interval = refresh_interval
         self._index: Optional[ModelIndex] = None

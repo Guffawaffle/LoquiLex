@@ -59,6 +59,9 @@ class ModelDefaultsManager:
             out_dir = resolve_out_dir()
             self.storage_path = out_dir / "model_defaults.json"
         else:
+            assert os.path.isabs(
+                str(storage_path)
+            ), "storage_path must be absolute (trusted config)"
             self.storage_path = Path(storage_path)
         self._defaults: Optional[ModelDefaults] = None
 

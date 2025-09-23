@@ -86,11 +86,12 @@ class DataRedactor:
         Returns:
             Redacted path with directory structure hidden
         """
+        import os as _os
         path_str = str(path)
-        path_obj = Path(path_str)
-
+        norm = _os.path.normpath(path_str)
+        base = _os.path.basename(norm)
         # Keep only filename and indicate it was redacted
-        return f"[REDACTED]/{path_obj.name}"
+        return f"[REDACTED]/{base}"
 
     def redact_dict(self, data: Dict[str, Any]) -> Dict[str, Any]:
         """Recursively redact sensitive data from dictionary.
