@@ -414,7 +414,7 @@ async def get_session_commits(
 
 
 @app.get("/storage/info")
-async def get_storage_info(path: Optional[str] = None) -> StorageInfoResp:
+async def get_storage_info(path: str | None = None) -> StorageInfoResp:
     """Get storage information for a given path or current output directory.
 
     Uses CanonicalPath flow for relative single-segment inputs; keeps absolute/None behavior.

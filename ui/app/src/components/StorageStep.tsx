@@ -190,7 +190,13 @@ export function StorageStep() {
             </form>
             
             {validation && (
-              <div className={`mt-2 p-3 rounded ${validation.valid ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'}`}>
+              <div
+                className="mt-2 p-3 rounded"
+                style={{
+                  background: validation.valid ? 'var(--success-bg)' : 'var(--error-bg)',
+                  color: validation.valid ? 'var(--success-text)' : 'var(--error-text)',
+                }}
+              >
                 {validation.message}
               </div>
             )}
