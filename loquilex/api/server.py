@@ -277,11 +277,10 @@ def _resolve_storage_dir(candidate: Optional[str]) -> Path:
     p = Path(candidate)
     if not p.is_absolute():
         return PATH_GUARD.resolve("sessions", candidate)
-    # Absolute: allow only when inside one of our roots, after resolution
-    p_resolved = p.resolve(strict=False)
+    # Absolute: allow only when inside one of our roots, without resolving
     for base in _root_map.values():
-        if PathGuard._is_within_root(base, p_resolved):
-            return p_resolved
+        if PathGuard._is_within_root(base, p):
+            return p
     raise PathSecurityError("path not permitted")
 
 
@@ -406,7 +405,7 @@ def hardware_snapshot() -> Dict[str, Any]:
         logger.exception("hardware snapshot failed: %s", e)
         return {
             "cpu": {
-                "name": f"error: {e}",
+                "name": "error",
                 "cores_physical": 0,
                 "cores_logical": 0,
                 "frequency_mhz": 0.0,
