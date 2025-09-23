@@ -205,20 +205,19 @@ class PathGuard:
 
         return _shutil.disk_usage(str(cp))
 
-    def wrap_absolute(self, p: Path) -> CanonicalPath:
+    def wrap_absolute(self, abs_path: str | Path) -> CanonicalPath:
         """
-        Wrap an absolute path under an allowed root as a CanonicalPath.
-
-        Validates that ``p`` lies within a configured root and enforces the
-        current symlink policy without changing the path. This is useful for
-        guarded operations where callers already have an absolute path (e.g.,
-        UI-selected directories) and want to reuse CanonicalPath-based sinks.
+        Accept a caller-provided absolute path and return a CanonicalPath
+        **only if** it is lexically within a configured root.
+        - No resolve() on user input.
+        - Enforces existing symlink policy on ancestors when follow_symlinks is False.
         """
+        p = Path(str(abs_path))
         if not p.is_absolute():
             raise PathSecurityError("expected absolute path")
         base = self._find_base_for(p)
         if base is None or not self._is_within_root(base, p):
-            raise PathSecurityError("path outside allowed roots")
+            raise PathSecurityError("absolute path outside allowed roots")
         if not self._follow_symlinks:
             self._reject_symlink_segments(base, p)
         return CanonicalPath(p)
