@@ -401,6 +401,71 @@ class PathGuard:
         if used > max_bytes:
             raise PathSecurityError("quota exceeded")
 
+    @staticmethod
+    def validate_storage_candidate(p: str | Path) -> Path:
+        """Validate a user-chosen absolute directory for storage bootstrap.
+        
+        This is used during onboarding to validate directories that are not yet
+        in the configured root allowlist. Applies strict security checks:
+        - Must be absolute
+        - Must not be in system directories (denylist)
+        - Canonicalized path must remain absolute
+        - If directory doesn't exist, parent must exist and be writable
+        
+        Returns the canonicalized Path if validation passes.
+        Raises PathSecurityError if validation fails.
+        """
+        if not p:
+            raise PathSecurityError("empty path")
+        
+        candidate = Path(str(p)).expanduser()
+        if not candidate.is_absolute():
+            raise PathSecurityError("not absolute")
+            
+        # Canonicalize - this resolves symlinks and normalizes the path
+        try:
+            resolved = candidate.resolve(strict=False)
+        except (OSError, ValueError) as exc:
+            raise PathSecurityError("invalid path") from exc
+            
+        if not resolved.is_absolute():
+            raise PathSecurityError("resolved path not absolute")
+        
+        # System directory denylist - protect critical system paths  
+        # Check this BEFORE writability to give better error messages
+        forbidden_roots = {
+            Path("/"), Path("/proc"), Path("/sys"), Path("/dev"), Path("/run"),
+            Path("/etc"), Path("/boot"), Path("/var/lib/docker"), Path("/usr"),
+            Path("/bin"), Path("/sbin"), Path("/lib"), Path("/lib64"),
+            Path("/root")  # Require explicit permission for root's home
+        }
+        
+        # Check if resolved path is or starts with any forbidden root
+        for forbidden in forbidden_roots:
+            if resolved == forbidden:
+                raise PathSecurityError("system path not permitted")
+            try:
+                resolved.relative_to(forbidden)
+                # If we reach here, resolved is under forbidden
+                raise PathSecurityError("system path not permitted")
+            except ValueError:
+                # Not under this forbidden root, continue checking
+                continue
+        
+        # Now check existence and writability
+        if not resolved.exists():
+            parent = resolved.parent
+            if not parent.exists():
+                raise PathSecurityError("parent directory does not exist")
+            if not os.access(parent, os.W_OK):
+                raise PathSecurityError("parent directory not writable")
+        elif resolved.is_file():
+            raise PathSecurityError("path is a file, not a directory")
+        elif not os.access(resolved, os.W_OK):
+            raise PathSecurityError("directory not writable")
+            
+        return resolved
+
     # ---------- Internals ----------
     def _get_root(self, name: str) -> Path:
         try:
