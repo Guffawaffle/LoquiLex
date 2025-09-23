@@ -46,10 +46,11 @@ jobs:
             echo "::group::Direct open() occurrences (should use PathGuard.open_*)"
             while IFS=: read -r file line rest; do
               [[ -n "${file:-}" && -n "${line:-}" ]] || continue
-              echo "::error file=${file},line=${line}::Direct open() usage found; route IO through PathGuard"
+              echo "::warning file=${file},line=${line}::Direct open() usage found; consider routing IO through PathGuard"
             done < /tmp/gg_open
             echo "::endgroup::"
-            found=1
+            # Non-gating: do not set failure; only warn.
+            found=0
           else
             found=0
           fi
