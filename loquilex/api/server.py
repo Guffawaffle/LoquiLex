@@ -299,10 +299,12 @@ def _resolve_storage_dir(candidate: Optional[str]) -> Path:
         return OUT_ROOT
     p = Path(candidate)
     if _is_abs_like(candidate):
-        # Absolute: allow only when inside one of our roots, without resolving
+        # Absolute: only allow when normalized and within a configured root
+        p_resolved = p.resolve(strict=False)
         for base in _root_map.values():
-            if PathGuard._is_within_root(base, p):
-                return p
+            base_resolved = Path(base).resolve(strict=False)
+            if PathGuard._is_within_root(base_resolved, p_resolved):
+                return p_resolved
         raise PathSecurityError("path not permitted")
     # For relative inputs, only accept a single-segment leaf and map under 'storage'
     try:
