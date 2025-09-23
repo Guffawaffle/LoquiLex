@@ -122,31 +122,6 @@
         "args": ["clean-artifacts"],
         "problemMatcher": [],
         "presentation": { "reveal": "always", "panel": "dedicated", "clear": true }
-    },
-    {
-      "label": "Start Ollama (docker compose up)",
-      "type": "shell",
-      "command": "docker compose up -d",
-      "options": {
-        "cwd": "/mnt/c/wsl/docker/ollama"
-      },
-      "runOptions": {
-        "runOn": "folderOpen"
-      },
-      "problemMatcher": []
-    },
-    {
-      "label": "Stop Ollama (docker stop)",
-      "type": "shell",
-      "command": "docker stop ollama",
-      "problemMatcher": []
-    }/*,
-    {
-      "label": "Remove Ollama (docker rm)",
-      "type": "shell",
-      "command": "docker rm -f ollama",
-      "problemMatcher": []
     }
-    */
   ]
 }
