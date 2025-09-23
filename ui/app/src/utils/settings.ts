@@ -7,6 +7,7 @@ export interface AppSettings {
   cadence_threshold: number; // Word count threshold for triggering EN→ZH translation (1-8). Lower values provide faster but potentially less accurate translations.
   show_timestamps: boolean;
   base_directory: string; // Base directory for storing outputs
+  translation_target: string; // Target language for translation (e.g., 'zho_Hans' for Simplified Chinese)
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -16,6 +17,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   cadence_threshold: 3, // Default: 3 (chosen as a balanced word count for EN→ZH translation)
   show_timestamps: true,
   base_directory: 'loquilex/out', // Default output directory
+  translation_target: 'zho_Hans', // Default translation target language
 };
 
 const SETTINGS_KEY = 'loquilex-settings';
@@ -58,13 +60,13 @@ export function applySettingsToSessionConfig(
   settings?: AppSettings
 ): SessionConfig {
   const savedSettings = settings || loadSettings();
-  
+
   return {
     name: config.name,
     asr_model_id: config.asr_model_id || savedSettings.asr_model_id,
     mt_enabled: config.mt_enabled ?? true,
     mt_model_id: config.mt_model_id || savedSettings.mt_model_id,
-    dest_lang: config.dest_lang || 'zho_Hans',
+    dest_lang: config.dest_lang ||  savedSettings.translation_target,
     device: config.device || savedSettings.device,
     vad: config.vad ?? true,
     beams: config.beams ?? 1,

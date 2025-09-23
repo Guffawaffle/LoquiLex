@@ -19,7 +19,19 @@ export function StorageStep() {
   const loadStorageInfo = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`/storage/info?path=${encodeURIComponent(settings.base_directory)}`);
+      // Backend accepts absolute paths or single leaf segments. If the stored
+      // base_directory is a relative multi-segment path (e.g. "loquilex/out"),
+      // omit the `path` query to avoid a 400 response on first-run.
+      const isAbsolute = (p: string) => p.startsWith('/') || /^[A-Za-z]:\\/.test(p);
+      const isSingleSegment = (p: string) => !p.includes('/');
+
+      const shouldSendPath = settings.base_directory && (isAbsolute(settings.base_directory) || isSingleSegment(settings.base_directory));
+
+      const url = shouldSendPath
+        ? `/storage/info?path=${encodeURIComponent(settings.base_directory)}`
+        : `/storage/info`;
+
+      const response = await fetch(url);
       if (!response.ok) {
         throw new Error('Failed to load storage information');
       }
@@ -43,21 +55,21 @@ export function StorageStep() {
         },
         body: JSON.stringify({ path }),
       });
-      
+
       if (!response.ok) {
         throw new Error('Failed to validate path');
       }
-      
+
       const data = await response.json();
       setValidation(data);
-      
+
       if (data.valid) {
         const updatedSettings = { ...settings, base_directory: data.path };
         setSettings(updatedSettings);
         saveSettings(updatedSettings);
         await loadStorageInfo(); // Refresh storage info for new path
       }
-      
+
       return data.valid;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to validate path');
@@ -70,7 +82,7 @@ export function StorageStep() {
   const handleCustomPathSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!customPath.trim()) return;
-    
+
     await validatePath(customPath.trim());
     setCustomPath('');
   };
@@ -84,12 +96,12 @@ export function StorageStep() {
     const units = ['B', 'KB', 'MB', 'GB', 'TB'];
     let size = bytes;
     let unitIndex = 0;
-    
+
     while (size >= 1024 && unitIndex < units.length - 1) {
       size /= 1024;
       unitIndex++;
     }
-    
+
     return `${size.toFixed(unitIndex > 0 ? 1 : 0)} ${units[unitIndex]}`;
   };
 
@@ -122,7 +134,7 @@ export function StorageStep() {
               <div className="storage-info-card__path">
                 <strong>Path:</strong> {storageInfo?.path || settings.base_directory}
               </div>
-              
+
               {storageInfo && (
                 <>
                   <div className="storage-info-card__stats">
@@ -141,20 +153,20 @@ export function StorageStep() {
                       </span>
                     </div>
                   </div>
-                  
+
                   <div className="storage-progress">
                     <div className="storage-progress__bar">
-                      <div 
+                      <div
                         className="storage-progress__fill"
-                        style={{ 
+                        style={{
                           width: `${storageInfo.percent_used}%`,
-                          backgroundColor: storageInfo.percent_used >= 90 ? '#ef4444' : 
+                          backgroundColor: storageInfo.percent_used >= 90 ? '#ef4444' :
                                          storageInfo.percent_used >= 75 ? '#f59e0b' : '#10b981'
                         }}
                       />
                     </div>
                   </div>
-                  
+
                   <div className="storage-info-card__status">
                     <span className={`status-indicator ${storageInfo.writable ? 'status-indicator--success' : 'status-indicator--error'}`}>
                       {storageInfo.writable ? '✓ Writable' : '✗ Not writable'}
@@ -170,7 +182,7 @@ export function StorageStep() {
             <p className="form-group__description">
               Enter a custom path to store your transcription outputs. The directory will be created if it doesn't exist.
             </p>
-            
+
             <form className="flex gap-2" onSubmit={handleCustomPathSubmit}>
               <input
                 type="text"
@@ -188,7 +200,7 @@ export function StorageStep() {
                 {loading ? 'Validating...' : 'Set Path'}
               </button>
             </form>
-            
+
             {validation && (
               <div
                 className="mt-2 p-3 rounded"
@@ -221,7 +233,7 @@ export function StorageStep() {
             >
               Continue to Model Selection
             </button>
-            
+
             <button
               type="button"
               className="btn btn-secondary"
