@@ -68,3 +68,4 @@ docs/deliverables/.live.md
 # CodeQL outputs
 /codeql-out/
 *.sarif
+/.continue/**

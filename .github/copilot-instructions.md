@@ -21,7 +21,11 @@ Local-first live captioning + EN↔ZH translation with:
   ```bash
   make run-local-ci
   ```
-- Lint/format/typing must pass (Ruff, Black@100, mypy) before proposing a PR.
+- Lint/format/typing must pass (Ruff, Black@100, mypy) before proposing a PR
+- True CI Parity. This should be the final gate before PR:
+    ```bash
+    make docker-ci-build && make docker-ci-test
+    ```
 
 ## Workflow
 1. Read the relevant prompt file in `.github/prompts/` (e.g., `main.prompt.md`, `make-fix*.prompt.md`). Keep architecture changes minimal.
@@ -43,6 +47,7 @@ Local-first live captioning + EN↔ZH translation with:
 
 ## VS Code Prompt Files
 Prompt files live in `.github/prompts/` with front-matter (e.g., `mode: agent`, `model: GPT-5`).
+ALWAYS prioritize the user's last message over any of these prompt files.
 Examples:
 - `main.prompt.md` — primary operating instructions for Codex/Copilot.
 - `make-fix.prompt.md` — quick remediation workflow.
