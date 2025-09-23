@@ -301,13 +301,24 @@ def _resolve_storage_dir(candidate: Optional[str]) -> Path:
     if _is_abs_like(candidate):
         # Absolute: only allow when normalized and strictly within a configured root
         # Normalize the candidate to eliminate .. and redundant separators, then resolve
-        normalized_candidate = os.path.normpath(str(candidate))
-        p_resolved = Path(normalized_candidate).resolve(strict=False)
+        # Always resolve both candidate and bases to their absolute, canonical forms
+        try:
+            p_abs = Path(candidate).resolve(strict=False)
+        except Exception as exc:
+            raise PathSecurityError("cannot resolve candidate path") from exc
         for base in _root_map.values():
-            base_resolved = Path(base).resolve(strict=False)
-            # Use os.path.commonpath for strict containment
-            if os.path.commonpath([str(p_resolved), str(base_resolved)]) == str(base_resolved):
-                return p_resolved
+            try:
+                base_abs = Path(base).resolve(strict=False)
+            except Exception:
+                continue  # Ignore bad/missing roots
+            # Use os.path.commonpath for strict containment of candidate in base
+            # Both must be absolute
+            try:
+                candidate_common = os.path.commonpath([str(p_abs), str(base_abs)])
+            except ValueError:
+                continue  # Different drives on Windows, skip
+            if candidate_common == str(base_abs):
+                return p_abs
         raise PathSecurityError("path not permitted")
     # For relative inputs, only accept a single-segment leaf and map under 'storage'
     try:
