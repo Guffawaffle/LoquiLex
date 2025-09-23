@@ -303,6 +303,7 @@ def _resolve_storage_dir(candidate: Optional[str]) -> Path:
         # Normalize the candidate to eliminate .. and redundant separators, then resolve
         # Always resolve both candidate and bases to their absolute, canonical forms
         try:
+            # Normalize and resolve both candidate and base, and compare absolute paths.
             p_abs = Path(candidate).resolve(strict=False)
         except Exception as exc:
             raise PathSecurityError("cannot resolve candidate path") from exc
@@ -311,14 +312,18 @@ def _resolve_storage_dir(candidate: Optional[str]) -> Path:
                 base_abs = Path(base).resolve(strict=False)
             except Exception:
                 continue  # Ignore bad/missing roots
-            # Use os.path.commonpath for strict containment of candidate in base
-            # Both must be absolute
+            # Strict containment check: candidate must be inside base
             try:
+                # confirm candidate is a strict subpath of base
                 candidate_common = os.path.commonpath([str(p_abs), str(base_abs)])
             except ValueError:
                 continue  # Different drives on Windows, skip
-            if candidate_common == str(base_abs):
-                return p_abs
+            # Must not allow candidate==base (don't allow direct root)
+            if candidate_common == str(base_abs) and str(p_abs).startswith(str(base_abs)):
+                # Ensure no directory traversal: candidate != base, is subpath
+                rel_to_base = os.path.relpath(str(p_abs), str(base_abs))
+                if not rel_to_base.startswith('..'):
+                    return p_abs
         raise PathSecurityError("path not permitted")
     # For relative inputs, only accept a single-segment leaf and map under 'storage'
     try:
