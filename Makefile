@@ -76,7 +76,9 @@ endef
 	lint fmt fmt-check typecheck test unit test-e2e e2e ci clean clean-logs \
         docker-ci docker-ci-build docker-ci-run docker-ci-test docker-ci-shell \
         docker-build docker-run docker-gpu docker-stop docker-clean docker-test \
-        sec-scan dead-code-analysis dead-code-report clean-artifacts \
+	sec-scan dead-code-analysis dead-code-report clean-artifacts \
+	codeql codeql-extended codeql-js codeql-py codeql-view codeql-report \
+	codeql-export codeql-fail-high \
         ui-setup ui-dev ui-build ui-start ui-test ui-e2e ui-verify \
         api-start-bg ui-dev-bg ui-start-bg \
         stop-ui stop-api stop-ws stop-all stop-all-force \
@@ -124,6 +126,14 @@ help:
 	@echo "Analysis:"
 	@echo "  dead-code-analysis - run comprehensive dead code detection tools"
 	@echo "  dead-code-report   - generate reports locally (no CI gating)"
+	@echo "  codeql             - run CodeQL (JS+Py) and summarize"
+	@echo "  codeql-extended    - run CodeQL with :security-extended suites"
+	@echo "  codeql-js          - run CodeQL for JS only"
+	@echo "  codeql-py          - run CodeQL for Python only"
+	@echo "  codeql-view        - summarize existing SARIF in codeql-out/"
+	@echo "  codeql-report      - generate codeql-out/index.html"
+	@echo "  codeql-export      - write codeql-out/findings.json (triage)"
+	@echo "  codeql-fail-high   - exit non-zero on warning+ findings"
 	@echo ""
 	@echo "=== Environment Variables ==="
 	@echo "  LX_OFFLINE=1           - enable offline mode (skip network calls, e2e tests)"
@@ -295,6 +305,50 @@ run-ci-mode: ci
 clean:
 	rm -rf .pytest_cache .coverage $(VENV) dist build
 	cd ui/app && rm -rf node_modules dist .vite || true
+
+## ------------------------------
+## CodeQL helpers
+
+codeql-check:
+	@command -v codeql >/dev/null 2>&1 || { \
+		echo "ERROR: 'codeql' CLI not found in PATH."; \
+		echo "Install the CodeQL CLI and ensure 'codeql' is available."; \
+		echo "Linux quickstart: download from https://github.com/github/codeql-cli-binaries/releases"; \
+		echo "Then: tar -xzf codeql-*.tar.gz && export PATH=\"$$(pwd)/codeql:$$PATH\""; \
+		exit 127; \
+	}
+
+codeql: install-base codeql-check
+	@echo "[codeql] Analyzing JS and Python..."
+	bash scripts/run-codeql.sh --lang all
+
+codeql-extended: install-base codeql-check
+	@echo "[codeql-extended] Running :security-extended suites..."
+	bash scripts/run-codeql.sh --extended --lang all
+
+codeql-js: install-base codeql-check
+	@echo "[codeql-js] Analyzing JavaScript/TypeScript..."
+	bash scripts/run-codeql.sh --lang js
+
+codeql-py: install-base codeql-check
+	@echo "[codeql-py] Analyzing Python..."
+	bash scripts/run-codeql.sh --lang py
+
+codeql-view:
+	@echo "[codeql-view] Summarizing SARIF in codeql-out/"
+	bash scripts/run-codeql.sh view --lang all --out codeql-out || true
+
+codeql-report:
+	@echo "[codeql-report] Generating HTML report in codeql-out/"
+	bash scripts/run-codeql.sh report --lang all --out codeql-out
+
+codeql-export:
+	@echo "[codeql-export] Exporting to codeql-out/findings.json"
+	bash scripts/run-codeql.sh export --lang all --out codeql-out --min-level note
+
+codeql-fail-high:
+	@echo "[codeql-fail-high] Checking for warning+ findings"
+	bash scripts/run-codeql.sh report --lang all --out codeql-out --fail-on warning --min-level warning
 
 ## ------------------------------
 ## Background Service Management

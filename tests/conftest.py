@@ -70,7 +70,8 @@ def _patch_translator() -> None:
     # Import after fakes are installed so downstream imports see our stubs.
     import loquilex.mt.translator as mt  # (allowed here intentionally)
 
-    mt.Translator = fake_mt.Translator
+    # Assign via setattr to avoid mypy "Cannot assign to a type" errors in tests
+    setattr(mt, "Translator", fake_mt.Translator)
 
 
 def _patch_streaming_asr() -> None:
@@ -78,7 +79,8 @@ def _patch_streaming_asr() -> None:
     try:
         import loquilex.asr.stream as asr_stream
 
-        asr_stream.StreamingASR = FakeStreamingASR
+        # Assign via setattr to avoid mypy complaining about type assignments
+        setattr(asr_stream, "StreamingASR", FakeStreamingASR)
     except ImportError:
         # Module might not exist yet during early tests
         pass
@@ -89,7 +91,8 @@ def _patch_audio_capture() -> None:
     try:
         import loquilex.audio.capture as audio_capture
 
-        audio_capture.capture_stream = fake_capture_stream
+        # Assign via setattr for consistency and to satisfy static type checkers
+        setattr(audio_capture, "capture_stream", fake_capture_stream)
     except ImportError:
         # Module might not exist yet during early tests
         pass

@@ -65,3 +65,18 @@ export interface SessionStatus {
   mt_model?: string;
   metrics?: Metrics;
 }
+
+export interface StorageInfo {
+  path: string;
+  total_bytes: number;
+  free_bytes: number;
+  used_bytes: number;
+  percent_used: number;
+  writable: boolean;
+}
+
+export interface BaseDirectoryValidation {
+  path: string;
+  valid: boolean;
+  message: string;
+}

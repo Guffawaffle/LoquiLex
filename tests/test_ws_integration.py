@@ -16,29 +16,29 @@ from typing import Optional, List, Tuple, Type
 # Optional runtime modules used only in certain environments
 _websockets: Optional[ModuleType] = None
 try:
-    import websockets as _websockets  # type: ignore
-except Exception:
+    import websockets as _websockets
+except ImportError:
     _websockets = None
 
 # httpx (optional)
 httpx: Optional[ModuleType] = None
 try:
-    import httpx  # type: ignore
+    import httpx
 
     # keep name for runtime checks
     _HTTPX_AVAILABLE = True
-except Exception:
+except ImportError:
     httpx = None
     _HTTPX_AVAILABLE = False
 
 # requests (optional)
-requests: Optional[ModuleType] = None
+requests_mod: Optional[ModuleType] = None
 try:
-    import requests  # type: ignore
+    import requests as requests_mod  # type: ignore[import-untyped]
 
     _REQUESTS_AVAILABLE = True
-except Exception:
-    requests = None
+except ImportError:
+    requests_mod = None
     _REQUESTS_AVAILABLE = False
 
 # Build the exception tuple used in the except-block dynamically so the
@@ -50,8 +50,8 @@ _EXC_TYPES_LIST: List[Type[BaseException]] = [
 ]
 if _HTTPX_AVAILABLE and httpx is not None:
     _EXC_TYPES_LIST.extend([httpx.ConnectError, httpx.HTTPStatusError])
-if _REQUESTS_AVAILABLE and requests is not None:
-    _EXC_TYPES_LIST.append(requests.exceptions.RequestException)
+if _REQUESTS_AVAILABLE and requests_mod is not None:
+    _EXC_TYPES_LIST.append(requests_mod.exceptions.RequestException)
 _EXC_TYPES: Tuple[Type[BaseException], ...] = tuple(_EXC_TYPES_LIST)
 
 
@@ -159,7 +159,8 @@ def test_websocket_envelope_integration():
                     # requests HTTP errors expose response as well
                     elif (
                         _REQUESTS_AVAILABLE
-                        and isinstance(e, requests.exceptions.RequestException)
+                        and requests_mod is not None
+                        and isinstance(e, requests_mod.exceptions.RequestException)
                         and getattr(e, "response", None) is not None
                     ):
                         status_code = getattr(e.response, "status_code", None)
@@ -172,7 +173,9 @@ def test_websocket_envelope_integration():
                         pytest.skip(f"WebSocket connection failed: {e}")
                     if _HTTPX_AVAILABLE and isinstance(e, httpx.ConnectError):
                         pytest.skip(f"WebSocket connection failed: {e}")
-                    if _REQUESTS_AVAILABLE and isinstance(e, requests.exceptions.ConnectionError):
+                    if _REQUESTS_AVAILABLE and isinstance(
+                        e, requests_mod.exceptions.ConnectionError
+                    ):
                         pytest.skip(f"WebSocket connection failed: {e}")
 
                     # Otherwise, re-raise so the test fails and surfaces unexpected errors

@@ -64,7 +64,6 @@
       "problemMatcher": [],
       "dependsOn": ["Bootstrap venv"]
     },
-
     {
       "label": "Safety (vuln scan)",
       "type": "shell",

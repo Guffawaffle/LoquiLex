@@ -1,26 +1,31 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 import os
+import os.path
 import re
+import shutil
 import time
 import uuid
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, TYPE_CHECKING, TextIO, cast
 
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, model_validator
 
-from .model_discovery import mt_supported_languages
+from .model_discovery import list_asr_models, list_mt_models, mt_supported_languages
+from loquilex.hardware.detection import get_hardware_snapshot
+from loquilex.config.model_defaults import get_model_defaults_manager
+from loquilex.security import PathGuard, PathSecurityError
 from .supervisor import SessionConfig, SessionManager, StreamingSession
-from ..config.model_defaults import get_model_defaults_manager
-from ..config.paths import resolve_out_dir
-from ..indexing import get_model_indexer
-from ..hardware import get_hardware_snapshot
+
+if TYPE_CHECKING:  # pragma: no cover - type-only import
+    from loquilex.security import CanonicalPath
 
 logger = logging.getLogger(__name__)
 
@@ -58,18 +63,19 @@ _events_alias_warned = False
 app = FastAPI(title="LoquiLex API", version="0.1.0")
 
 
-# Hardware snapshot cache and configuration
-# TTL for cached snapshot in seconds (default 30s) and timeout for probing (default 10s)
-_HW_SNAPSHOT_TTL = float(os.getenv("LX_HW_SNAPSHOT_TTL_SEC", "30"))
-_HW_SNAPSHOT_TIMEOUT = float(os.getenv("LX_HW_SNAPSHOT_TIMEOUT_SEC", "10"))
-# Cache and lock (kept un-annotated to avoid complex serialization in typecheck)
-_hw_snapshot_cache = None
-_hw_snapshot_cache_ts = 0.0
-_hw_snapshot_lock = None
+# Global safety net: log exceptions, return generic 500 without internals
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception):
+    logger.error(
+        "Unhandled exception on %s: %s", getattr(request.url, "path", "?"), exc, exc_info=True
+    )
+    return JSONResponse(status_code=500, content={"detail": "Internal Server Error"})
 
-# Admin token for protected endpoints (optional). When set, endpoints under
-# `/admin/*` require a Bearer token in `Authorization` or `X-Admin-Token` header.
-_ADMIN_TOKEN = os.getenv("LX_ADMIN_TOKEN")
+
+# Admin token and simple in-process caches (overridable in tests)
+_ADMIN_TOKEN: Optional[str] = os.getenv("LX_ADMIN_TOKEN")
+_hw_snapshot_cache: Optional[Dict[str, Any]] = None
+_hw_snapshot_cache_ts: Optional[float] = None
 
 
 # CSP and security headers
@@ -120,20 +126,39 @@ if DEV_MODE:
     )
 
 # Serve outputs directory for easy linking from UI (hardened)
-OUT_ROOT = resolve_out_dir().resolve()
+OUT_ROOT = Path(os.getenv("LLX_OUT_DIR", "loquilex/out")).resolve()
 OUT_ROOT.mkdir(parents=True, exist_ok=True)
 
 # UI static files path (mounted later to avoid shadowing API routes)
 UI_DIST_PATH = Path("ui/app/dist").resolve()
 
+# String-only absolute-path detector (do not resolve user inputs)
+import os as _os  # alias to avoid shadowing
+
+_ABS_RE = re.compile(r"^(?:/|[A-Za-z]:[\\/]|\\\\)")
+
+
+def _is_abs_like(s: str | _os.PathLike[str]) -> bool:
+    return bool(_ABS_RE.match(str(s)))
+
+
+def _session_cp(sid: str) -> "CanonicalPath":
+    """canonicalize_leaf → safe_join("sessions", sid)"""
+    leaf = PATH_GUARD.canonicalize_leaf(sid)
+    return PATH_GUARD.safe_join("sessions", leaf)
+
 
 def _safe_session_dir(sid: str) -> Path:
     if not re.fullmatch(r"[A-Za-z0-9_-]{6,64}", sid):
         raise HTTPException(status_code=400, detail="bad sid")
-    p = (OUT_ROOT / sid).resolve()
-    if not str(p).startswith(str(OUT_ROOT)):
-        raise HTTPException(status_code=400, detail="invalid path")
-    return p
+    try:
+        cp = _session_cp(sid)
+        p = cp.as_path()
+        # Ensure the directory itself exists (not just its parent)
+        PATH_GUARD.ensure_dir(p)
+        return p
+    except PathSecurityError as exc:
+        raise HTTPException(status_code=400, detail="invalid path") from exc
 
 
 app.mount("/out", StaticFiles(directory=str(OUT_ROOT), html=False), name="out")
@@ -141,9 +166,28 @@ app.mount("/out", StaticFiles(directory=str(OUT_ROOT), html=False), name="out")
 # Global manager instance
 MANAGER = SessionManager()
 
-# Initialize model indexer and start background worker
-MODEL_INDEXER = get_model_indexer()
-MODEL_INDEXER.start_background_worker()
+
+# Allowed storage roots for path-based operations (named roots)
+_env_allowed_roots = os.getenv("LX_ALLOWED_STORAGE_ROOTS")
+if not _env_allowed_roots:  # Treat missing or empty as default '/tmp'
+    _EXTRA_ALLOWED_ROOTS = ["/tmp"]
+else:
+    _EXTRA_ALLOWED_ROOTS = [p for p in _env_allowed_roots.split(":") if p]
+
+_root_map: Dict[str, Path] = {
+    # Canonical storage root for user-facing directories (CP-safe joins)
+    "storage": OUT_ROOT,
+    "sessions": OUT_ROOT,
+    "exports": OUT_ROOT / "exports",
+    "profiles": Path("loquilex/ui/profiles").resolve(),
+}
+for p in _EXTRA_ALLOWED_ROOTS:
+    try:
+        _root_map.setdefault("extra", Path(p).resolve())
+    except Exception:
+        pass
+
+PATH_GUARD = PathGuard(_root_map, follow_symlinks=False)
 
 
 class CreateSessionReq(BaseModel):
@@ -220,34 +264,84 @@ class SelfTestResp(BaseModel):
     sample_rate: Optional[int] = None
 
 
-class UpdateDefaultsReq(BaseModel):
-    """Request to update model defaults."""
+class StorageInfoResp(BaseModel):
+    """Storage information response model."""
 
-    asr_model_id: Optional[str] = None
-    asr_device: Optional[str] = None
-    asr_compute_type: Optional[str] = None
-    mt_model_id: Optional[str] = None
-    mt_device: Optional[str] = None
-    mt_compute_type: Optional[str] = None
-    tts_model_id: Optional[str] = None
-    tts_device: Optional[str] = None
+    path: str
+    total_bytes: int
+    free_bytes: int
+    used_bytes: int
+    percent_used: float
+    writable: bool
 
 
-class ModelDefaultsResp(BaseModel):
-    """Model defaults response."""
+class BaseDirectoryReq(BaseModel):
+    """Base directory selection request."""
 
-    asr_model_id: str
-    asr_device: str
-    asr_compute_type: str
-    mt_model_id: str
-    mt_device: str
-    mt_compute_type: str
-    tts_model_id: str
-    tts_device: str
+    path: str
+
+
+class BaseDirectoryResp(BaseModel):
+    """Base directory selection response."""
+
+    path: str
+    valid: bool
+    message: str
+
+
+def _resolve_storage_dir(candidate: Optional[str]) -> Path:
+    """Resolve a candidate path for storage/info and validation.
+
+    Compatibility behavior retained for API stability:
+    - None -> default OUT_ROOT
+    - Absolute -> allowed only if inside any configured root
+    - Relative single-segment leaf -> handled via CanonicalPath join on 'storage'
+    - Other relative forms -> rejected
+    """
+    if candidate is None:
+        return OUT_ROOT
+    if _is_abs_like(candidate):
+        # Absolute: delegate to guard without resolving user input
+        try:
+            cp = PATH_GUARD.wrap_absolute(candidate)
+            return cp.as_path()
+        except PathSecurityError as exc:
+            raise PathSecurityError("path not permitted") from exc
+    # For relative inputs, only accept a single-segment leaf and map under 'storage'
+    try:
+        leaf = PATH_GUARD.canonicalize_leaf(candidate)
+        cp = PATH_GUARD.safe_join("storage", leaf)
+        # Return the underlying Path for existing call sites that expect Path
+        return cp.as_path()
+    except Exception as exc:
+        raise PathSecurityError("invalid relative path") from exc
 
 
 # Simple profiles CRUD on disk under loquilex/ui/profiles
-PROFILES_DIR = os.path.join("loquilex", "ui", "profiles")
+PROFILES_DIR = Path("loquilex/ui/profiles")
+PROFILES_ROOT = PROFILES_DIR.resolve()
+
+
+def _profile_path(name: str, *, must_exist: bool = False, for_write: bool = False) -> Path:
+    try:
+        # Enforce profile filename policy via resolve on the 'profiles' root
+        candidate = PATH_GUARD.resolve("profiles", f"{name}.json")
+        if for_write:
+            PATH_GUARD.ensure_dir(candidate.parent)
+        if must_exist and not candidate.exists():
+            raise HTTPException(status_code=404, detail="not found")
+        return candidate
+    except PathSecurityError as exc:
+        raise HTTPException(status_code=400, detail="invalid profile name") from exc
+
+
+def _profile_cp(name: str) -> "CanonicalPath":
+    """
+    Build a CanonicalPath for profile JSON under the 'profiles' root.
+    Enforces single-segment leaf name and '.json' extension.
+    """
+    leaf = PATH_GUARD.canonicalize_leaf(name)
+    return PATH_GUARD.safe_join("profiles", f"{leaf}.json")
 
 
 @app.get("/sessions/{sid}/storage/stats")
@@ -301,199 +395,233 @@ async def get_session_commits(
         raise HTTPException(status_code=400, detail="session does not support storage")
 
 
+@app.get("/storage/info")
+async def get_storage_info(path: Optional[str] = None) -> StorageInfoResp:
+    """Get storage information for a given path or current output directory.
+
+    Uses CanonicalPath flow for relative single-segment inputs; keeps absolute/None behavior.
+    """
+    # Branch: relative single-segment -> CanonicalPath guarded flow
+    if path is not None and not _is_abs_like(path):
+        try:
+            leaf = PATH_GUARD.canonicalize_leaf(path)
+            cp = PATH_GUARD.safe_join("storage", leaf)
+            # Ensure the directory itself
+            PATH_GUARD.ensure_dir(cp.as_path())
+            stat = PATH_GUARD.disk_usage_cp(cp)
+            total_bytes = stat.total
+            free_bytes = stat.free
+            used_bytes = total_bytes - free_bytes
+            percent_used = (used_bytes / total_bytes * 100) if total_bytes > 0 else 0
+            writable = os.access(os.fspath(cp), os.W_OK)
+            return StorageInfoResp(
+                path=str(cp),
+                total_bytes=total_bytes,
+                free_bytes=free_bytes,
+                used_bytes=used_bytes,
+                percent_used=percent_used,
+                writable=writable,
+            )
+        except PathSecurityError as exc:
+            raise HTTPException(status_code=400, detail="Cannot access path") from exc
+        except Exception as exc:
+            raise HTTPException(status_code=400, detail="Cannot access path") from exc
+
+    # Fallback: None or absolute path -> guarded absolute handling (CanonicalPath only)
+    try:
+        target_path = _resolve_storage_dir(path)
+        # At this point, target_path is OUT_ROOT (None) or an absolute candidate.
+        cp = PATH_GUARD.wrap_absolute(target_path)
+        PATH_GUARD.ensure_dir(cp.as_path())
+        stat = PATH_GUARD.disk_usage_cp(cp)
+        total_bytes = stat.total
+        free_bytes = stat.free
+        used_bytes = total_bytes - free_bytes
+        percent_used = (used_bytes / total_bytes * 100) if total_bytes > 0 else 0
+        writable = os.access(os.fspath(cp), os.W_OK)
+        return StorageInfoResp(
+            path=str(cp),
+            total_bytes=total_bytes,
+            free_bytes=free_bytes,
+            used_bytes=used_bytes,
+            percent_used=percent_used,
+            writable=writable,
+        )
+    except PathSecurityError as exc:
+        raise HTTPException(status_code=400, detail="Cannot access path") from exc
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail="Cannot access path") from exc
+
+
+@app.get("/hardware/snapshot")
+def hardware_snapshot() -> Dict[str, Any]:
+    """Return a cached hardware snapshot or compute a new one."""
+    global _hw_snapshot_cache, _hw_snapshot_cache_ts
+    now = time.time()
+    try:
+        if (
+            _hw_snapshot_cache is not None
+            and _hw_snapshot_cache_ts
+            and (now - _hw_snapshot_cache_ts) < 10
+        ):
+            return _hw_snapshot_cache
+        snap = get_hardware_snapshot()
+        data = snap.to_dict()
+        _hw_snapshot_cache = data
+        _hw_snapshot_cache_ts = now
+        return data
+    except Exception as e:
+        logger.exception("hardware snapshot failed: %s", e)
+        return {
+            "cpu": {
+                "name": "error",
+                "cores_physical": 0,
+                "cores_logical": 0,
+                "frequency_mhz": 0.0,
+                "usage_percent": 0.0,
+                "meets_threshold": False,
+                "warnings": ["snapshot failed"],
+            },
+            "gpus": [
+                {
+                    "name": "unknown",
+                    "memory_total_mb": 0,
+                    "memory_free_mb": 0,
+                    "memory_used_mb": 0,
+                    "temperature_c": None,
+                    "utilization_percent": None,
+                    "cuda_available": False,
+                    "meets_threshold": False,
+                    "warnings": ["snapshot failed"],
+                }
+            ],
+            "audio_devices": [],
+            "memory_total_gb": 0.0,
+            "memory_available_gb": 0.0,
+            "platform_info": {},
+            "overall_status": "unusable",
+            "overall_score": 0,
+            "warnings": ["snapshot failed"],
+        }
+
+
+@app.post("/admin/cache/clear")
+async def admin_cache_clear(request: Request) -> Dict[str, Any]:
+    """Clear in-process caches (hardware snapshot for now).
+
+    Requires Authorization: Bearer <token> matching LX_ADMIN_TOKEN or _ADMIN_TOKEN.
+    """
+    global _hw_snapshot_cache, _hw_snapshot_cache_ts
+    token = _ADMIN_TOKEN
+    auth = request.headers.get("authorization", "")
+    provided = None
+    if auth.startswith("Bearer "):
+        provided = auth[len("Bearer ") :].strip()
+    if not token or provided != token:
+        raise HTTPException(status_code=403, detail="forbidden")
+
+    prior_present = _hw_snapshot_cache is not None
+    _hw_snapshot_cache = None
+    _hw_snapshot_cache_ts = None
+    return {"ok": True, "cleared": True, "prior_cache_present": prior_present}
+
+
+@app.post("/storage/base-directory")
+async def set_base_directory(req: BaseDirectoryReq) -> BaseDirectoryResp:
+    """Set and validate a new base directory for storage."""
+    # Require absolute path input (UI contract)
+    try:
+        if not req.path or not _is_abs_like(req.path):
+            return BaseDirectoryResp(path=req.path, valid=False, message="Path must be absolute")
+        target_path = _resolve_storage_dir(req.path)
+        # target_path may be absolute (allowed) or a CanonicalPath.as_path return.
+        # Ensure directory using guard; for absolute paths, guard verifies containment.
+        PATH_GUARD.ensure_dir(target_path)
+    except PathSecurityError as exc:
+        detail = str(exc)
+        message = f"Invalid path: {detail}"
+        return BaseDirectoryResp(path=req.path, valid=False, message=message)
+    except Exception as exc:
+        return BaseDirectoryResp(path=req.path, valid=False, message=f"Invalid path: {exc}")
+
+    try:
+        # Check if writable
+        if not os.access(target_path, os.W_OK):
+            return BaseDirectoryResp(
+                path=str(target_path), valid=False, message="Directory is not writable"
+            )
+
+        # Check disk space (warn if less than 1GB free) using guarded path
+        cp = PATH_GUARD.wrap_absolute(target_path) if _is_abs_like(target_path) else None
+        if cp is not None:
+            stat = PATH_GUARD.disk_usage_cp(cp)
+        else:
+            stat = shutil.disk_usage(target_path)
+        if stat.free < 1024 * 1024 * 1024:  # 1GB
+            return BaseDirectoryResp(
+                path=str(target_path),
+                valid=True,
+                message=f"Warning: Only {stat.free // (1024*1024)} MB free space available",
+            )
+
+        return BaseDirectoryResp(
+            path=str(target_path), valid=True, message="Directory is valid and writable"
+        )
+    except Exception as exc:
+        return BaseDirectoryResp(path=str(target_path), valid=False, message=f"Invalid path: {exc}")
+
+
 @app.get("/profiles")
 def get_profiles() -> List[str]:
-    if not os.path.isdir(PROFILES_DIR):
+    if not PROFILES_ROOT.is_dir():
         return []
-    return sorted([p[:-5] for p in os.listdir(PROFILES_DIR) if p.endswith(".json")])
+    return sorted([p.stem for p in PROFILES_ROOT.glob("*.json") if p.is_file()])
 
 
 @app.get("/profiles/{name}")
-def get_profile(name: str) -> Dict[str, Any]:
-    safe = "".join(c for c in name if c.isalnum() or c in ("-", "_"))
-    path = os.path.join(PROFILES_DIR, f"{safe}.json")
-    if not os.path.isfile(path):
-        raise HTTPException(status_code=404, detail="not found")
-    import json as _json
-
-    with open(path, "r", encoding="utf-8") as f:
-        return _json.load(f)
+def get_profile(name: str):
+    cp = _profile_cp(name)  # CanonicalPath
+    with PATH_GUARD.open_read_cp(cp) as fh:  # guarded read
+        data = json.load(fh)
+    return JSONResponse(data)
 
 
 @app.post("/profiles/{name}")
-def save_profile(name: str, body: Dict[str, Any]) -> Dict[str, Any]:
-    os.makedirs(PROFILES_DIR, exist_ok=True)
-    safe = "".join(c for c in name if c.isalnum() or c in ("-", "_"))
-    path = os.path.join(PROFILES_DIR, f"{safe}.json")
-    import json as _json
-
-    tmp = path + ".tmp"
-    with open(tmp, "w", encoding="utf-8") as f:
-        _json.dump(body, f, ensure_ascii=False, indent=2)
-    os.replace(tmp, path)
-    return {"ok": True}
+def save_profile(name: str, data: dict):
+    cp = _profile_cp(name)
+    PATH_GUARD.ensure_dir_cp(cp)
+    # Guarded write; symlinks and traversal are blocked by PathGuard policies
+    with cast(TextIO, PATH_GUARD.open_write_cp(cp, overwrite=True, binary=False)) as fh:
+        json.dump(data, fh, ensure_ascii=False, separators=(",", ":"))
+    return JSONResponse({"ok": True, "path": str(cp)})
 
 
 @app.delete("/profiles/{name}")
 def delete_profile(name: str) -> Dict[str, Any]:
-    safe = "".join(c for c in name if c.isalnum() or c in ("-", "_"))
-    path = os.path.join(PROFILES_DIR, f"{safe}.json")
-    if os.path.isfile(path):
-        os.remove(path)
+    # Derive CanonicalPath to enforce leaf policy and root containment
+    cp = _profile_cp(name)
+    p = cp.as_path()
+    if p.exists():
+        try:
+            p.unlink()
+        except Exception:
+            raise HTTPException(status_code=500, detail="delete failed")
     return {"ok": True}
 
 
 @app.get("/models/asr")
 def get_asr_models() -> List[Dict[str, Any]]:
-    """Get available ASR models (cached via indexer)."""
-    indexer = get_model_indexer()
-    return indexer.get_asr_models()
+    return list_asr_models()
 
 
 @app.get("/models/mt")
 def get_mt_models() -> List[Dict[str, Any]]:
-    """Get available MT models (cached via indexer)."""
-    indexer = get_model_indexer()
-    return indexer.get_mt_models()
+    return list_mt_models()
 
 
 @app.get("/languages/mt/{model_id}")
 def get_mt_langs(model_id: str) -> Dict[str, Any]:
     return {"model_id": model_id, "languages": mt_supported_languages(model_id)}
-
-
-@app.get("/settings/defaults", response_model=ModelDefaultsResp)
-def get_model_defaults() -> ModelDefaultsResp:
-    """Get current model defaults."""
-    manager = get_model_defaults_manager()
-    defaults = manager.get_defaults()
-    return ModelDefaultsResp(**defaults.to_dict())
-
-
-@app.post("/settings/defaults", response_model=ModelDefaultsResp)
-def update_model_defaults(req: UpdateDefaultsReq) -> ModelDefaultsResp:
-    """Update model defaults."""
-    manager = get_model_defaults_manager()
-
-    # Pass all values from request; filtering of None values is handled in update_defaults
-    updates = req.model_dump()
-
-    # Update defaults
-    defaults = manager.update_defaults(**updates)
-    return ModelDefaultsResp(**defaults.to_dict())
-
-
-@app.get("/hardware/snapshot")
-async def get_hardware_snapshot_endpoint() -> Dict[str, Any]:
-    """Get hardware system snapshot including GPU/CPU/Audio devices.
-
-    The underlying `get_hardware_snapshot()` performs blocking operations
-    (psutil, PyTorch CUDA queries, sounddevice probing). Run it in a thread
-    pool via `asyncio.to_thread` to avoid blocking the ASGI event loop.
-    """
-    # Declare globals before use so static checkers know these are module-level
-    global _hw_snapshot_cache, _hw_snapshot_cache_ts
-
-    # Fast path: return cached snapshot when fresh
-    now = time.time()
-    if _hw_snapshot_cache is not None and (now - _hw_snapshot_cache_ts) < _HW_SNAPSHOT_TTL:
-        return _hw_snapshot_cache
-
-    # Ensure only one concurrent probe runs when cache is stale. Initialize
-    # the lock lazily to avoid binding event-loop resources at import time.
-    global _hw_snapshot_lock
-    if _hw_snapshot_lock is None:
-        _hw_snapshot_lock = asyncio.Lock()
-
-    async with _hw_snapshot_lock:
-        # Another coroutine might have populated the cache while we waited
-        now = time.time()
-        if _hw_snapshot_cache is not None and (now - _hw_snapshot_cache_ts) < _HW_SNAPSHOT_TTL:
-            return _hw_snapshot_cache
-
-        try:
-            # Run blocking probe in thread pool with a timeout
-            snapshot = await asyncio.wait_for(
-                asyncio.to_thread(get_hardware_snapshot), timeout=_HW_SNAPSHOT_TIMEOUT
-            )
-            data = snapshot.to_dict()
-            # Update cache
-            _hw_snapshot_cache = data
-            _hw_snapshot_cache_ts = time.time()
-            return data
-        except asyncio.TimeoutError:
-            logger.error("Hardware snapshot timed out")
-            raise HTTPException(status_code=504, detail="Hardware detection timed out")
-        except Exception as e:
-            logger.error(f"Hardware snapshot failed: {e}")
-            raise HTTPException(status_code=500, detail=f"Hardware detection failed: {e}")
-
-
-def _check_admin_auth(request: Request) -> None:
-    """Validate admin token from `Authorization: Bearer <token>` or `X-Admin-Token`.
-
-    Raises `HTTPException(status_code=403)` when token is configured but missing/invalid.
-    If `_ADMIN_TOKEN` is not set, admin checks are a no-op (useful for dev).
-    """
-    if not _ADMIN_TOKEN:
-        return
-
-    # Try Authorization header first
-    auth = request.headers.get("authorization") or request.headers.get("Authorization")
-    token = None
-    if auth and auth.lower().startswith("bearer "):
-        token = auth.split(None, 1)[1].strip()
-
-    # Fallback to explicit header
-    if not token:
-        token = request.headers.get("x-admin-token")
-
-    if not token or token != _ADMIN_TOKEN:
-        raise HTTPException(status_code=403, detail="admin auth required")
-
-
-@app.post("/admin/cache/clear", summary="Clear in-memory caches", operation_id="admin_clear_cache")
-async def admin_clear_cache(request: Request) -> Dict[str, Any]:
-    """Admin-only endpoint to clear in-memory caches (hardware snapshot).
-
-    Protected by `LX_ADMIN_TOKEN` when configured. Safe to call multiple times.
-    Returns diagnostic info about previous cache state.
-    """
-    # Validate admin auth (no-op if `_ADMIN_TOKEN` unset)
-    _check_admin_auth(request)
-
-    # Use the same lock as snapshot endpoint if initialized to avoid racing probes.
-    global _hw_snapshot_cache, _hw_snapshot_cache_ts, _hw_snapshot_lock
-    # Capture prior cache diagnostics
-    now = time.time()
-    prior_present = _hw_snapshot_cache is not None
-    prior_age = None
-    if prior_present:
-        prior_age = now - _hw_snapshot_cache_ts if _hw_snapshot_cache_ts else None
-
-    if _hw_snapshot_lock is None:
-        # Nothing in flight; just clear
-        _hw_snapshot_cache = None
-        _hw_snapshot_cache_ts = 0.0
-        return {
-            "ok": True,
-            "cleared": True,
-            "prior_cache_present": prior_present,
-            "prior_cache_age_sec": prior_age,
-            "admin_auth_required": bool(_ADMIN_TOKEN),
-        }
-
-    # Acquire lock to synchronize with any ongoing probes
-    async with _hw_snapshot_lock:
-        _hw_snapshot_cache = None
-        _hw_snapshot_cache_ts = 0.0
-        return {
-            "ok": True,
-            "cleared": True,
-            "prior_cache_present": prior_present,
-            "prior_cache_age_sec": prior_age,
-            "admin_auth_required": bool(_ADMIN_TOKEN),
-        }
 
 
 @app.get("/healthz")
@@ -511,6 +639,31 @@ async def api_health() -> Dict[str, Any]:
 @app.head("/api/health")
 async def api_health_head() -> Response:
     return Response(status_code=200)
+
+
+# Model defaults management
+@app.get("/settings/defaults")
+def get_model_defaults() -> Dict[str, Any]:
+    mgr = get_model_defaults_manager()
+    return mgr.get_defaults().to_dict()
+
+
+class _ModelDefaultsUpdate(BaseModel):
+    asr_model_id: Optional[str] = None
+    asr_device: Optional[str] = None
+    asr_compute_type: Optional[str] = None
+    mt_model_id: Optional[str] = None
+    mt_device: Optional[str] = None
+    mt_compute_type: Optional[str] = None
+    tts_model_id: Optional[str] = None
+    tts_device: Optional[str] = None
+
+
+@app.post("/settings/defaults")
+def post_model_defaults(update: _ModelDefaultsUpdate) -> Dict[str, Any]:
+    mgr = get_model_defaults_manager()
+    updated = mgr.update_defaults(**{k: v for k, v in update.model_dump().items()})
+    return updated.to_dict()
 
 
 @app.post("/models/download")

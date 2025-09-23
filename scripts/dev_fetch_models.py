@@ -34,7 +34,7 @@ if is_truthy(os.getenv("LX_SKIP_MODEL_PREFETCH")):
 try:
     # Force online just for this fetch (call-site can also set envs)
     # We do not mutate global env here to respect caller's choice.
-    from faster_whisper import WhisperModel
+    from faster_whisper import WhisperModel  # type: ignore[import-untyped]
 
     # CPU-only, int8 is fine for dev verification
     model = WhisperModel(

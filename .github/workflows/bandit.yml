@@ -1,0 +1,42 @@
+name: Bandit
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: bandit-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  bandit:
+    name: Static analysis (Bandit)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Bandit
+        run: |
+          python -m pip install -U pip
+          python -m pip install bandit
+
+      - name: Run Bandit (recursive)
+        run: |
+          # Scan Python sources; ignore UI and tests to reduce noise
+          bandit -q -r loquilex \
+            -x loquilex/ui,**/tests/**,**/.venv/** \
+            -f screen \
+            -lll

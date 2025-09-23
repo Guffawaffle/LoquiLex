@@ -8,14 +8,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- New features go here
+- Authoritative `PathGuard` with strict resolution, symlink protections, safe open helpers, and quota utilities
+- CI: Bandit static analysis and grep guard workflow for unsafe path usage
+- Documentation: `docs/SECURITY_PATHS.md` describing threat model and usage
 
 ### Changed
 - Legacy /events WebSocket alias is now dev-only and deprecated (use /ws instead)
-- Changes in existing functionality go here
+- API server refactored to route session, profile, and storage paths through `PathGuard`
 
 ### Fixed
-- Bug fixes go here
+- Blocked absolute/traversal path injections and hidden/reserved filename usage across API path flows
 
 ### Removed
 - Removed features go here
