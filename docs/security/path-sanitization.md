@@ -89,17 +89,3 @@ Filesystem checks and later use cannot be made perfectly atomic across all platf
 3. Encouraging callers to open files immediately after policy checks, using the same resolved path, and to re-apply critical invariants (e.g., re-check containment for follow-up operations).
 
 If your integration requires stronger guarantees (e.g., write to directories controlled by untrusted users), prefer opening directories with `O_DIRECTORY | O_NOFOLLOW` (Unix) and using `openat`-style patterns where available.
-## Platform notes: Windows paths & TOCTOU
-
-### Windows
-- **Drive letters & separators:** Inputs may include `C:\` and `\`. Internally we normalize via `Path` APIs; callers should avoid mixing separators in user-facing strings.
-- **Long paths:** Traditional MAX_PATH is ~260 chars. Modern Windows supports long paths with the `\\?\` prefix and policy/registry knobs. Our default **per-component** cap is 255 characters; the **total path** cap is configurable in `PathPolicyConfig`. When running on Windows, ensure long-path support is enabled if you need very deep directories.
-- **Symlinks/Junctions:** Windows supports symlinks and directory junctions. Our policy treats both as potential escape vectors; containment checks are applied post-resolution. If `allow_follow_symlinks` is false, symlink/junction final components should be rejected.
-
-### TOCTOU (Time-of-check vs. Time-of-use)
-Filesystem checks and later use cannot be made perfectly atomic across all platforms and filesystems. We mitigate this by:
-1. Canonicalizing and verifying containment (`commonpath`).
-2. (Optional) Rejecting symlink final components on Unix using `O_NOFOLLOW` (with lstat fallback), which reduces race surface.
-3. Encouraging callers to open files immediately after policy checks, using the same resolved path, and to re-apply critical invariants (e.g., re-check containment for follow-up operations).
-
-If your integration requires stronger guarantees (e.g., write to directories controlled by untrusted users), prefer opening directories with `O_DIRECTORY | O_NOFOLLOW` (Unix) and using `openat`-style patterns where available.

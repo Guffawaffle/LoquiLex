@@ -274,18 +274,7 @@ class PathGuard:
             raw_components = re.split(r"[/\\]+", raw_normalized)
 
             # Check for suspicious patterns: reject any path that has .. followed by more components
-            has_dotdot = False
-            components_after_dotdot = False
-            for component in raw_components:
-                if component == "..":
-                    has_dotdot = True
-                elif component and component != "." and has_dotdot:
-                    components_after_dotdot = True
-                    break
-
-            if has_dotdot and components_after_dotdot:
-                raise PathSecurityError("path traversal patterns not permitted")
-
+# Removed flawed traversal detection logic; rely on stack-based resolution below.
             stack: list[str] = []  # Simulate the path stack
 
             for component in raw_components:
