@@ -9,7 +9,7 @@ import pathlib
 import pytest
 
 # Adjust import paths to match your package layout.
-# from loquilex.security.path_policy import PathPolicy, PathPolicyConfig, PathSecurityError
+from loquilex.security.path_policy import PathPolicy, PathPolicyConfig, PathSecurityError
 
 pytestmark = pytest.mark.skipif(
     sys.platform.startswith("win"),
@@ -34,12 +34,12 @@ def test_symlink_escape_rejected(sandbox):
     evil_link = root / "link_out"
     os.symlink(str(outside), str(evil_link))
 
-    # Candidate path attempts to walk through the symlink
-    candidate = evil_link / "secrets.txt"
-
-    policy = PathPolicy(config=PathPolicyConfig(allow_follow_symlinks=False))
+    # Test current PathPolicy API: allowed_roots configuration and relative path resolution
+    policy = PathPolicy(config=PathPolicyConfig(allowed_roots=(root,)))
+    
+    # Try to resolve a relative path that would follow the symlink
     with pytest.raises(PathSecurityError):
-        policy.resolve_under(root, candidate)
+        policy.resolve_under(root, "link_out/secrets.txt")
 
 
 def test_normal_file_allowed(sandbox):
@@ -49,21 +49,19 @@ def test_normal_file_allowed(sandbox):
     safe_file = safe_dir / "ok.txt"
     safe_file.write_text("ok")
 
-    policy = PathPolicy(config=PathPolicyConfig(allow_follow_symlinks=False))
-    resolved = policy.resolve_under(root, safe_file.name, base_dir=safe_dir)
+    policy = PathPolicy(config=PathPolicyConfig(allowed_roots=(root,)))
+    resolved = policy.resolve_under(root, "safe/ok.txt")
     assert resolved.exists()
     assert resolved.read_text() == "ok"
 
 
 def test_commonpath_containment_even_if_following_symlinks(sandbox):
     root, outside, real_file = sandbox
-    # This variant demonstrates the expected behavior if allow_follow_symlinks=True:
-    # containment must still be enforced after resolution.
+    # This variant demonstrates the expected behavior: containment must be enforced.
     evil_link = root / "link_out"
     os.symlink(str(outside), str(evil_link))
-    candidate = evil_link / "secrets.txt"
 
-    policy = PathPolicy(config=PathPolicyConfig(allow_follow_symlinks=True))
+    policy = PathPolicy(config=PathPolicyConfig(allowed_roots=(root,)))
     # Expect rejection because resolved path would escape allowed root
     with pytest.raises(PathSecurityError):
-        policy.resolve_under(root, candidate)
+        policy.resolve_under(root, "link_out/secrets.txt")
