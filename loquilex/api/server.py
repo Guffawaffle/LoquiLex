@@ -564,7 +564,7 @@ async def set_base_directory(req: BaseDirectoryReq) -> BaseDirectoryResp:
     # Require absolute path input (UI contract)
     target_path = None
     is_bootstrap = False
-    
+
     try:
         if not req.path or not _is_abs_like(req.path):
             return BaseDirectoryResp(path=req.path, valid=False, message="Path must be absolute")
