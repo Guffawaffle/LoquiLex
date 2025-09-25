@@ -279,7 +279,7 @@ class PathGuard:
             raw_components = re.split(r"[/\\]+", raw_normalized)
 
             # Check for suspicious patterns: reject any path that has .. followed by more components
-# Removed flawed traversal detection logic; rely on stack-based resolution below.
+            # Removed flawed traversal detection logic; rely on stack-based resolution below.
             stack: list[str] = []  # Simulate the path stack
 
             for component in raw_components:
@@ -470,7 +470,7 @@ class PathGuard:
     @staticmethod
     def validate_storage_candidate(p: str | Path) -> Path:
         """Validate a user-chosen absolute directory for storage bootstrap.
-        
+
         This method allows absolute paths (unlike _sanitize_path_input) but applies
         legacy error message mapping to maintain test compatibility.
         """
@@ -481,23 +481,27 @@ class PathGuard:
             raw_input = os.fspath(p)
         except TypeError as exc:
             raise PathSecurityError("path input must be path-like") from exc
-        
+
         # For storage validation, we need to allow absolute paths but preserve other security checks
         # Import sanitizer here to avoid circular import
-        from .path_sanitizer import sanitize_path_string, PathInputError, PathSecurityError as _PathSecurityError
-        
+        from .path_sanitizer import (
+            sanitize_path_string,
+            PathInputError,
+            PathSecurityError as _PathSecurityError,
+        )
+
         # Check if path is absolute FIRST, before any other processing
         # This ensures relative paths (including traversal attempts) get consistent "not absolute" messages
         candidate_pre = Path(raw_input)
         if not candidate_pre.is_absolute():
             raise PathSecurityError("not absolute")
-        
+
         try:
             # Allow absolute paths for storage validation, but keep other restrictions
             safe_input = sanitize_path_string(
-                raw_input, 
+                raw_input,
                 forbid_absolute=False,  # Allow absolute paths for storage directories
-                forbid_tilde=False,     # Allow tilde expansion for user convenience
+                forbid_tilde=False,  # Allow tilde expansion for user convenience
                 forbid_traversal=True,  # Still block traversal attempts
             )
         except (PathInputError, _PathSecurityError) as e:
@@ -507,7 +511,7 @@ class PathGuard:
                 raise PathSecurityError("path traversal not permitted") from e
             else:
                 raise PathSecurityError(str(e)) from e
-        
+
         candidate = Path(safe_input).expanduser()
 
         try:

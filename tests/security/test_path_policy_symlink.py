@@ -36,7 +36,7 @@ def test_symlink_escape_rejected(sandbox):
 
     # Test current PathPolicy API: allowed_roots configuration and relative path resolution
     policy = PathPolicy(config=PathPolicyConfig(allowed_roots=(root,)))
-    
+
     # Try to resolve a relative path that would follow the symlink
     with pytest.raises(PathSecurityError):
         policy.resolve_under(root, "link_out/secrets.txt")
