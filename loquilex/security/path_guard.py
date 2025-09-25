@@ -402,57 +402,83 @@ class PathGuard:
             raise PathSecurityError("quota exceeded")
 
     @staticmethod
+    def _sanitize_path_input(raw: str) -> str:
+        """Validate raw user input before any filesystem interpretation."""
+        if not isinstance(raw, str):
+            raise PathSecurityError("path input must be text")
+        candidate = unicodedata.normalize("NFC", raw)
+        if not candidate:
+            raise PathSecurityError("empty path")
+        if re.search(r"[\x00-\x1F\x7F]", candidate):
+            raise PathSecurityError("control characters not permitted in path")
+        if "\x00" in candidate:
+            raise PathSecurityError("NUL byte in path")
+        if candidate.startswith("~"):
+            raise PathSecurityError("tilde expansion is not permitted")
+        if candidate.startswith("//") or candidate.startswith("\\\\"):
+            raise PathSecurityError("UNC paths are not permitted")
+        if re.match(r"^[A-Za-z]:", candidate):
+            raise PathSecurityError("drive-prefixed paths are not permitted")
+        if re.search(r"(^|[\\/])\.\.([\\/]|$)", candidate):
+            raise PathSecurityError("path traversal not permitted")
+        if re.search(r"[\\/]{3,}", candidate):
+            raise PathSecurityError("excessive path separators detected")
+        candidate = candidate.rstrip(" .")
+        if not candidate:
+            raise PathSecurityError("empty path after sanitization")
+        return candidate
+
+    @staticmethod
     def validate_storage_candidate(p: str | Path) -> Path:
-        """Validate a user-chosen absolute directory for storage bootstrap.
-        
-        This is used during onboarding to validate directories that are not yet
-        in the configured root allowlist. Applies strict security checks:
-        - Must be absolute
-        - Must not be in system directories (denylist)
-        - Canonicalized path must remain absolute
-        - If directory doesn't exist, parent must exist and be writable
-        
-        Returns the canonicalized Path if validation passes.
-        Raises PathSecurityError if validation fails.
-        """
+        """Validate a user-chosen absolute directory for storage bootstrap."""
         if not p:
             raise PathSecurityError("empty path")
-        
-        candidate = Path(str(p)).expanduser()
+
+        try:
+            raw_input = os.fspath(p)
+        except TypeError as exc:
+            raise PathSecurityError("path input must be path-like") from exc
+        # CodeQL: ensure sanitization precedes any Path/expanduser usage.
+        safe_input = PathGuard._sanitize_path_input(raw_input)
+        candidate = Path(safe_input).expanduser()
         if not candidate.is_absolute():
             raise PathSecurityError("not absolute")
-            
-        # Canonicalize - this resolves symlinks and normalizes the path
+
         try:
             resolved = candidate.resolve(strict=False)
         except (OSError, ValueError) as exc:
             raise PathSecurityError("invalid path") from exc
-            
+
         if not resolved.is_absolute():
             raise PathSecurityError("resolved path not absolute")
-        
-        # System directory denylist - protect critical system paths  
-        # Check this BEFORE writability to give better error messages
+
         forbidden_roots = {
-            Path("/"), Path("/proc"), Path("/sys"), Path("/dev"), Path("/run"),
-            Path("/etc"), Path("/boot"), Path("/var/lib/docker"), Path("/usr"),
-            Path("/bin"), Path("/sbin"), Path("/lib"), Path("/lib64"),
-            Path("/root")  # Require explicit permission for root's home
+            Path("/"),
+            Path("/proc"),
+            Path("/sys"),
+            Path("/dev"),
+            Path("/run"),
+            Path("/etc"),
+            Path("/boot"),
+            Path("/var/lib/docker"),
+            Path("/usr"),
+            Path("/bin"),
+            Path("/sbin"),
+            Path("/lib"),
+            Path("/lib64"),
+            Path("/root"),
         }
-        
-        # Check if resolved path is or starts with any forbidden root
+
         for forbidden in forbidden_roots:
             if resolved == forbidden:
                 raise PathSecurityError("system path not permitted")
             try:
                 resolved.relative_to(forbidden)
-                # If we reach here, resolved is under forbidden
-                raise PathSecurityError("system path not permitted")
             except ValueError:
-                # Not under this forbidden root, continue checking
                 continue
-        
-        # Now check existence and writability
+            else:
+                raise PathSecurityError("system path not permitted")
+
         if not resolved.exists():
             parent = resolved.parent
             if not parent.exists():
@@ -463,7 +489,7 @@ class PathGuard:
             raise PathSecurityError("path is a file, not a directory")
         elif not os.access(resolved, os.W_OK):
             raise PathSecurityError("directory not writable")
-            
+
         return resolved
 
     # ---------- Internals ----------
