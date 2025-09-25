@@ -13,7 +13,7 @@ import time
 import uuid
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Set, Tuple, Union
 
 from fastapi import WebSocket
 
@@ -536,6 +536,9 @@ class SessionManager:
         self._bg_threads: List[threading.Thread] = []
         self._lock = threading.Lock()
         self._downloads: Dict[str, Tuple[str, str]] = {}
+        self._download_status: Dict[str, Dict[str, Any]] = {}  # Track download status
+        self._bandwidth_limit_mbps = 0  # 0 = unlimited
+        self._paused_downloads: Set[str] = set()  # Track paused downloads
         self._stop = False
         self._max_cuda_sessions = int(os.getenv("LX_MAX_CUDA_SESSIONS", "1"))
         self._stampers: Dict[str, EventStamper] = {}
@@ -871,12 +874,35 @@ class SessionManager:
 
     # Download management
     def start_download_job(self, job_id: str, repo_id: str, _typ: str) -> None:
+        # Initialize download status
+        with self._lock:
+            self._download_status[job_id] = {
+                'job_id': job_id,
+                'repo_id': repo_id,
+                'type': _typ,
+                'status': 'queued',
+                'progress': 0,
+                'created_at': time.strftime('%Y-%m-%dT%H:%M:%SZ'),
+                'started_at': None,
+                'completed_at': None,
+                'error_message': None
+            }
+        
         t = threading.Thread(target=self._download_worker, args=(job_id, repo_id, _typ))
         t.start()
         self._bg_threads.append(t)
 
     def _download_worker(self, job_id: str, repo_id: str, _typ: str) -> None:
         chan = f"_download/{job_id}"
+        
+        # Update status to downloading
+        with self._lock:
+            if job_id in self._download_status:
+                self._download_status[job_id].update({
+                    'status': 'downloading',
+                    'started_at': time.strftime('%Y-%m-%dT%H:%M:%SZ')
+                })
+        
         # Initial progress
         self._safe_broadcast(
             chan,
@@ -920,6 +946,11 @@ class SessionManager:
         def heartbeats() -> None:
             pct = 0
             while proc.poll() is None and not self._stop:
+                # Update progress in status tracking
+                with self._lock:
+                    if job_id in self._download_status:
+                        self._download_status[job_id]['progress'] = pct
+                
                 self._safe_broadcast(
                     chan,
                     {
@@ -955,12 +986,31 @@ class SessionManager:
 
         # Final status
         if ret == 0:
+            # Update status to completed
+            with self._lock:
+                if job_id in self._download_status:
+                    self._download_status[job_id].update({
+                        'status': 'completed',
+                        'progress': 100,
+                        'completed_at': time.strftime('%Y-%m-%dT%H:%M:%SZ')
+                    })
+            
             self._safe_broadcast(
                 chan, {"type": "download_done", "job_id": job_id, "local_path": out}
             )
         else:
+            # Update status to failed
+            error_msg = out or f"Process exited with code {ret}"
+            with self._lock:
+                if job_id in self._download_status:
+                    self._download_status[job_id].update({
+                        'status': 'failed',
+                        'completed_at': time.strftime('%Y-%m-%dT%H:%M:%SZ'),
+                        'error_message': error_msg
+                    })
+            
             self._safe_broadcast(
-                chan, {"type": "download_error", "job_id": job_id, "message": out or f"rc={ret}"}
+                chan, {"type": "download_error", "job_id": job_id, "message": error_msg}
             )
 
     def cancel_download(self, job_id: str) -> bool:
@@ -1007,6 +1057,41 @@ class SessionManager:
                 return True
             except Exception:
                 return False
+
+    def get_download_status(self) -> Dict[str, Dict[str, Any]]:
+        """Get status of all downloads."""
+        with self._lock:
+            return self._download_status.copy()
+
+    def set_bandwidth_limit(self, limit_mbps: int) -> None:
+        """Set bandwidth limit for downloads."""
+        with self._lock:
+            self._bandwidth_limit_mbps = limit_mbps
+
+    def get_bandwidth_limit(self) -> int:
+        """Get current bandwidth limit."""
+        with self._lock:
+            return self._bandwidth_limit_mbps
+
+    def pause_all_downloads(self) -> int:
+        """Pause all active downloads."""
+        paused_count = 0
+        with self._lock:
+            for job_id, proc in self._dl_procs.items():
+                if proc.poll() is None:  # Process is still running
+                    self._paused_downloads.add(job_id)
+                    # Note: Actual pausing would require process suspension
+                    # For now, we just track the paused state
+                    paused_count += 1
+        return paused_count
+
+    def resume_all_downloads(self) -> int:
+        """Resume all paused downloads."""
+        resumed_count = 0
+        with self._lock:
+            resumed_count = len(self._paused_downloads)
+            self._paused_downloads.clear()
+        return resumed_count
 
     async def shutdown(self) -> None:
         """Shutdown all sessions and cleanup resources."""

@@ -2,9 +2,10 @@ import React, { useMemo, useState } from 'react'
 import LaunchWizard from './components/LaunchWizard'
 import SettingsDialog from './components/SettingsDialog'
 import SessionTab from './components/SessionTab'
+import DownloadsPage from './components/DownloadsPage'
 import { useSessionStore } from './store'
 
-type TabKey = 'launch' | 'settings' | { sid: string }
+type TabKey = 'launch' | 'downloads' | 'settings' | { sid: string }
 
 export default function App() {
   const sessions = useSessionStore(s => s.sessions)
@@ -21,11 +22,13 @@ export default function App() {
           {sessionTabs.map(sid=> (
             <button key={sid} className={`px-3 py-1 rounded ${typeof active==='object' && active.sid===sid ? 'bg-blue-600 text-white':'bg-slate-200 dark:bg-slate-800'}`} onClick={()=>setActive({sid})}>Session {sid.slice(0,6)}</button>
           ))}
+          <button className={`px-3 py-1 rounded ${active==='downloads'?'bg-blue-600 text-white':'bg-slate-200 dark:bg-slate-800'}`} onClick={()=>setActive('downloads')}>Downloads</button>
           <button className={`px-3 py-1 rounded ${active==='settings'?'bg-blue-600 text-white':'bg-slate-200 dark:bg-slate-800'}`} onClick={()=>setActive('settings')}>Settings</button>
         </nav>
       </header>
       <main className="flex-1 p-4">
         {active==='launch' && <LaunchWizard onStarted={(sid)=> setActive({sid})} />}
+        {active==='downloads' && <DownloadsPage />}
         {active==='settings' && <SettingsDialog />}
         {typeof active==='object' && sessions[active.sid] && (
           <SessionTab sid={active.sid} />
