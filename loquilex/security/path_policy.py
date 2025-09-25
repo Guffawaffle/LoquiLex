@@ -90,7 +90,7 @@ class PathPolicy:
         for allowed_root in self.config.allowed_roots:
             try:
                 # Check if our root is within any allowed root
-                allowed_root.resolve().relative_to(root_resolved)
+                root_resolved.relative_to(allowed_root.resolve())
                 allowed = True
                 break
             except ValueError:

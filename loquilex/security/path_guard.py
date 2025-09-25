@@ -261,8 +261,6 @@ class PathGuard:
             # Basic character validation (reuse sanitizer's logic but manually)
             if re.search(r"[\x00-\x1F\x7F]", raw_normalized):
                 raise PathSecurityError("control characters not permitted in path")
-            if "\x00" in raw_normalized:
-                raise PathSecurityError("NUL byte in path")
             if raw_normalized.startswith("~"):
                 raise PathSecurityError("tilde expansion is not permitted")
             if raw_normalized.startswith("/"):

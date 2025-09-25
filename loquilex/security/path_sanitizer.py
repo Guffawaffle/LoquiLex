@@ -158,7 +158,7 @@ def sanitize_path_string(
     if "\x00" in normalized:
         raise PathInputError("NUL byte in path")
 
-    if re.search(r"[\x00-\x1F\x7F]", normalized):
+    if re.search(r"[\x01-\x1F\x7F]", normalized):
         raise PathInputError("control characters not permitted in path")
 
     candidate = normalized
