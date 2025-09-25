@@ -260,7 +260,7 @@ class PathGuard:
 
             # Special handling: detect mixed backslash traversal patterns before normalization
             # Reject patterns like "dir\\..\\file" even if they would normalize to safe paths
-            if "\\" in raw_normalized and "\\..\\" in raw_normalized:
+            if re.search(r"\\\.{1,2}\\", raw_normalized):
                 raise PathSecurityError("path traversal blocked")
 
             # Basic character validation (reuse sanitizer's logic but manually)
@@ -546,8 +546,8 @@ class PathGuard:
             # This allows /tmp/user-dirs but blocks /etc/shadow
             try:
                 rel_path = resolved.relative_to(forbidden)
-                # If the relative path has no parts (empty) or is a direct child, reject
-                if not rel_path.parts or len(rel_path.parts) == 1:
+                # If the relative path is a direct child, reject
+                if len(rel_path.parts) == 1:
                     raise PathSecurityError("system path not permitted")
             except ValueError:
                 continue
