@@ -26,9 +26,16 @@ from pathlib import Path
 from typing import Dict, IO, Iterable, Optional, overload, cast
 from typing import Literal, TextIO, BinaryIO
 from ._types import CanonicalPath
+from .path_sanitizer import (
+    PathInputError,
+    PathSecurityError as _PathSecurityError,
+    normalize_filename,
+    sanitize_path_string,
+)
 
 
-class PathSecurityError(ValueError):
+# Re-export PathSecurityError to maintain backward compatibility
+class PathSecurityError(_PathSecurityError):
     """Raised when a path violates configured safety constraints."""
 
 
@@ -40,52 +47,58 @@ class _RootPolicy:
 
 
 def _is_reserved_windows_name(name: str) -> bool:
-    base = name.split(".")[0].upper()
-    reserved = {
-        "CON",
-        "PRN",
-        "AUX",
-        "NUL",
-        *(f"COM{i}" for i in range(1, 10)),
-        *(f"LPT{i}" for i in range(1, 10)),
-    }
-    return base in reserved
+    """Check if filename is a reserved Windows device name.
+
+    DEPRECATED: Use normalize_filename() from path_sanitizer instead.
+    This is kept for backward compatibility.
+    """
+    try:
+        normalize_filename(name, allow_hidden=True, forbid_reserved=True)
+        return False
+    except PathInputError as e:
+        return "reserved filename" in str(e)
 
 
 def strip_dangerous_chars(name: str) -> str:
     """Strip NUL/control chars and normalize Unicode to NFC; remove separators and trim.
+
+    DEPRECATED: Use normalize_filename() from path_sanitizer instead.
+    This function is kept for backward compatibility but may return "untitled"
+    for irrecoverable inputs.
 
     - Removes ``\x00`` and other C0 controls
     - Normalizes Unicode to NFC to reduce confusables
     - Removes path separators ``/`` and ``\\`` (intended for filenames, not paths)
     - Trims trailing dots/spaces (Windows compatibility)
     """
-
     if not isinstance(name, str):
         name = str(name)
-    # Normalize and strip control chars
-    name = unicodedata.normalize("NFC", name)
-    name = re.sub(r"[\x00-\x1F\x7F]", "", name)
-    # Remove path separators (use only for filenames)
-    name = name.replace("/", "").replace("\\", "")
-    # Trim trailing spaces and dots
-    return name.rstrip(" .")
+
+    try:
+        # Use sanitizer with permissive settings
+        return normalize_filename(name, allow_hidden=True, forbid_reserved=False, max_length=255)
+    except PathInputError:
+        # Fallback for irrecoverable inputs
+        return "untitled"
 
 
-def is_safe_filename(name: str, *, max_length: int = 128) -> bool:
+def is_safe_filename(name: str, *, max_length: int = 255) -> bool:
     """Return True if ``name`` matches strict filename policy.
 
-    Policy: ``[A-Za-z0-9._-]{1,128}``, not hidden unless explicitly allowed, and not
-    a Windows reserved device name.
+    Updated to use sanitizer and default to 255 character limit for consistency.
+    Policy: NFC-normalized, no control chars, not hidden, not reserved Windows names.
     """
-
-    if not name or len(name) > max_length:
+    try:
+        normalized = normalize_filename(
+            name,
+            max_length=max_length,
+            allow_hidden=False,
+            forbid_reserved=True,
+        )
+        # Additional legacy pattern check for strict compatibility
+        return bool(re.fullmatch(r"[A-Za-z0-9._-]+", normalized))
+    except PathInputError:
         return False
-    if _is_reserved_windows_name(name):
-        return False
-    if not re.fullmatch(r"[A-Za-z0-9._-]{1,128}", name):
-        return False
-    return True
 
 
 class PathGuard:
@@ -227,8 +240,7 @@ class PathGuard:
         """Resolve a user-supplied path under a named root and return absolute path.
 
         Steps:
-        - Reject absolute/drive/UNC forms in ``user_path``
-        - Strip dangerous chars and normalize
+        - Use path_sanitizer for validation and normalization
         - Join with base root, resolve with ``strict=False``
         - Verify path stays within the same root
         - Enforce symlink policy
@@ -236,29 +248,79 @@ class PathGuard:
         """
 
         base = self._get_root(root)
-        # Scrub control chars but preserve separators for traversal checks
-        up_raw = unicodedata.normalize("NFC", str(user_path))
-        up_str = re.sub(r"[\x00-\x1F\x7F]", "", up_raw)
-        # Reject absolute or drive/UNC forms
-        p = Path(up_str)
-        if p.is_absolute() or re.match(r"^[A-Za-z]:\\", up_str) or up_str.startswith("\\\\"):
-            raise PathSecurityError("absolute paths are not permitted")
 
-        # Normalize the user-provided relative path without touching the
-        # filesystem (do not call ``resolve`` on user-controlled input).
-        rel_parts: list[str] = []
-        for part in p.parts:
-            if part in ("", "."):
-                continue
-            if part == "..":
-                if rel_parts:
-                    rel_parts.pop()
+        # REFACTORED: Use path_sanitizer for validation, but handle traversal manually
+        # to preserve original PathGuard semantics
+        try:
+            # First, manually normalize and handle traversal on the raw input
+            # This preserves the original behavior that allowed non-escaping patterns like dir/..
+
+            # Now manually parse and normalize path components
+            raw_normalized = unicodedata.normalize("NFC", str(user_path))
+
+            # Basic character validation (reuse sanitizer's logic but manually)
+            if re.search(r"[\x00-\x1F\x7F]", raw_normalized):
+                raise PathSecurityError("control characters not permitted in path")
+            if "\x00" in raw_normalized:
+                raise PathSecurityError("NUL byte in path")
+            if raw_normalized.startswith("~"):
+                raise PathSecurityError("tilde expansion is not permitted")
+            if raw_normalized.startswith("/"):
+                raise PathSecurityError("absolute paths are not permitted")
+            if raw_normalized.startswith("\\\\"):
+                raise PathSecurityError("UNC paths are not permitted")
+            if re.match(r"^[A-Za-z]:[/\\]", raw_normalized):
+                raise PathSecurityError("drive-prefixed paths are not permitted")
+
+            # Parse components manually without losing ".." information
+            raw_components = re.split(r"[/\\]+", raw_normalized)
+
+            # Check for suspicious patterns: reject any path that has .. followed by more components
+            has_dotdot = False
+            components_after_dotdot = False
+            for component in raw_components:
+                if component == "..":
+                    has_dotdot = True
+                elif component and component != "." and has_dotdot:
+                    components_after_dotdot = True
+                    break
+
+            if has_dotdot and components_after_dotdot:
+                raise PathSecurityError("path traversal patterns not permitted")
+
+            stack: list[str] = []  # Simulate the path stack
+
+            for component in raw_components:
+                if not component or component == ".":
+                    continue  # Skip empty and current directory
+                elif component == "..":
+                    if stack:
+                        # We can go up because we have something in the stack
+                        stack.pop()
+                    else:
+                        # This would escape above the root - reject it
+                        raise PathSecurityError("path traversal blocked")
                 else:
-                    # Attempt to escape the base via leading '..'
-                    raise PathSecurityError("path traversal blocked")
-            else:
-                rel_parts.append(part)
-        candidate = base.joinpath(*rel_parts)
+                    # Regular component - validate it as a filename and add to stack
+                    normalized_component = normalize_filename(
+                        component,
+                        allow_hidden=True,  # Allow hidden for now, policy applied later
+                        forbid_reserved=True,
+                        max_length=255,
+                    )
+                    stack.append(normalized_component)
+
+            components = stack
+
+        except (PathInputError, _PathSecurityError) as e:
+            # Convert all sanitizer exceptions to PathGuard's PathSecurityError for compatibility
+            raise PathSecurityError(str(e)) from e
+
+        # Join with base root
+        if not components:
+            candidate = base
+        else:
+            candidate = base.joinpath(*components)
 
         # Symlink policy
         if not self._follow_symlinks:
@@ -403,30 +465,15 @@ class PathGuard:
 
     @staticmethod
     def _sanitize_path_input(raw: str) -> str:
-        """Validate raw user input before any filesystem interpretation."""
-        if not isinstance(raw, str):
-            raise PathSecurityError("path input must be text")
-        candidate = unicodedata.normalize("NFC", raw)
-        if not candidate:
-            raise PathSecurityError("empty path")
-        if re.search(r"[\x00-\x1F\x7F]", candidate):
-            raise PathSecurityError("control characters not permitted in path")
-        if "\x00" in candidate:
-            raise PathSecurityError("NUL byte in path")
-        if candidate.startswith("~"):
-            raise PathSecurityError("tilde expansion is not permitted")
-        if candidate.startswith("//") or candidate.startswith("\\\\"):
-            raise PathSecurityError("UNC paths are not permitted")
-        if re.match(r"^[A-Za-z]:", candidate):
-            raise PathSecurityError("drive-prefixed paths are not permitted")
-        if re.search(r"(^|[\\/])\.\.([\\/]|$)", candidate):
-            raise PathSecurityError("path traversal not permitted")
-        if re.search(r"[\\/]{3,}", candidate):
-            raise PathSecurityError("excessive path separators detected")
-        candidate = candidate.rstrip(" .")
-        if not candidate:
-            raise PathSecurityError("empty path after sanitization")
-        return candidate
+        """Validate raw user input before any filesystem interpretation.
+
+        REFACTORED: Now delegates to path_sanitizer for consistency.
+        """
+        try:
+            # Convert all sanitizer exceptions to PathSecurityError for backward compatibility
+            return sanitize_path_string(raw)
+        except (PathInputError, _PathSecurityError) as e:
+            raise PathSecurityError(str(e)) from e
 
     @staticmethod
     def validate_storage_candidate(p: str | Path) -> Path:
