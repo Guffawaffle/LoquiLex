@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Any
 import queue
 import sounddevice as sd
+import contextlib
 
 import numpy as np
 
@@ -76,15 +77,16 @@ async def _run_demo(
     mt = MTService()
 
     event_queue: asyncio.Queue = asyncio.Queue()
+    loop = asyncio.get_running_loop()
 
     stats = {"partials": 0, "finals": 0, "latencies_ms": []}
 
     def on_partial(ev: ASRPartialEvent) -> None:
         # push to queue for optional translation/writing
-        asyncio.get_event_loop().call_soon_threadsafe(event_queue.put_nowait, ("asr.partial", ev))
+        loop.call_soon_threadsafe(event_queue.put_nowait, ("asr.partial", ev))
 
     def on_final(ev: ASRFinalEvent) -> None:
-        asyncio.get_event_loop().call_soon_threadsafe(event_queue.put_nowait, ("asr.final", ev))
+        loop.call_soon_threadsafe(event_queue.put_nowait, ("asr.final", ev))
 
     async def event_consumer():
         # open files
@@ -246,20 +248,25 @@ async def _run_demo(
 
         stream = sd.InputStream(samplerate=ASR.sample_rate, channels=1, dtype="float32", callback=sd_callback)
 
+        running = True
         pump_task = asyncio.create_task(pump_audio())
-        try:
-            with stream:
-                # wait until duration elapses
-                while time.monotonic() < stop_at:
-                    await asyncio.sleep(0.1)
-        finally:
-            # stop the pump and drain
-            running = False
-            pump_task.cancel()
+
+        # pick settings your ASR expects; adjust samplerate/channels if different
+        with sd.InputStream(
+            samplerate=ASR.sample_rate,
+            channels=1,
+            dtype="float32",
+            blocksize=1024,          # small, steady blocks reduce latency
+            latency="low",
+            callback=sd_callback,
+        ):
             try:
-                await pump_task
-            except Exception:
-                pass
+                await asyncio.sleep(duration)
+            finally:
+                running = False
+                pump_task.cancel()
+                with contextlib.suppress(asyncio.CancelledError):
+                    await pump_task
 
     # Start consumer
     consumer_task = asyncio.create_task(event_consumer())
