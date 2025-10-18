@@ -513,8 +513,8 @@ def main(argv: list[str] | None = None) -> int:
         help="Prime MT once before capture starts")
     p.add_argument("--allow-fallback", action="store_true",
         help="(tests only) emit a synthetic final if no ASR finals were produced")
-    # default True to preserve previous behavior when running tests/demo
-    p.set_defaults(allow_fallback=True)
+    # default False for real usage; tests can opt-in with --allow-fallback
+    p.set_defaults(allow_fallback=False)
 
     args = p.parse_args(argv)
 
