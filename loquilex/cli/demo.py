@@ -115,21 +115,34 @@ async def _run_demo(
         base = np.arange(len(x))
         return np.interp(idx, base, x.astype("float32")).astype("float32", copy=False)
 
-    # Preflight: report input device and optionally countdown before capture
-    try:
-        in_idx = sd.default.device[0]
-        in_dev = sd.query_devices(in_idx, "input")
-        in_name = in_dev.get("name", "default")
-        in_rate = int(in_dev.get("default_samplerate") or ASR.sample_rate)
-    except Exception:
-        in_name, in_rate = "default", ASR.sample_rate
+    # Preflight: report input source (WAV or device) and optionally countdown
+    if wav_path:
+        # Read WAV header to determine source samplerate without opening audio device
+        try:
+            import wave
+
+            with wave.open(wav_path, "rb") as _wf:
+                src_rate = int(_wf.getframerate() or ASR.sample_rate)
+        except Exception:
+            src_rate = ASR.sample_rate
+        src_name = f"wav {wav_path}"
+    else:
+        try:
+            in_idx = sd.default.device[0]
+            in_dev = sd.query_devices(in_idx, "input")
+            src_name = in_dev.get("name", "default")
+            src_rate = int(in_dev.get("default_samplerate") or ASR.sample_rate)
+        except Exception:
+            src_name, src_rate = "default", ASR.sample_rate
+
+    # target/processing samplerate: CLI --samplerate overrides source rate
+    target_rate = int(samplerate or src_rate)
 
     print(f"📁 Session: {session_dir}")
-    print(f"🎙️  Input: {in_name} @ {in_rate} Hz")
-    # allow override of input samplerate for the stream
-    use_samplerate = int(samplerate or ASR.sample_rate)
-    if samplerate:
-        print(f"🔁 Overriding samplerate: {use_samplerate} Hz")
+    print(f"🎙️  Input: {src_name} @ {src_rate} Hz")
+    if src_rate != target_rate:
+        print(f"🔁 Overriding samplerate: {target_rate} Hz")
+
     if countdown and countdown > 0:
         for n in range(countdown, 0, -1):
             print(f"⏳ Starting in {n}…", end="\r", flush=True)
@@ -230,7 +243,7 @@ async def _run_demo(
     stop_at = time.monotonic() + float(duration)
 
     async def feed_wav(path: str):
-        # read wav and feed chunks matching ASR.sample_rate
+        # read wav and feed chunks at the processing/target rate
         import wave
 
         wf = wave.open(path, "rb")
@@ -238,9 +251,19 @@ async def _run_demo(
         chans = wf.getnchannels()
         sampwidth = wf.getsampwidth()
 
-        # Read in 100ms chunks
-        chunk_ms = 100
-        chunk_frames = int(sr * (chunk_ms / 1000.0))
+        # Determine chunk size in source frames.
+        # --blocksize is interpreted as frames at the processing/target rate.
+        if blocksize:
+            # If source and target rates match, pass blocksize straight through.
+            if sr == target_rate:
+                chunk_frames = int(blocksize)
+            else:
+                # convert processing frames -> source frames
+                chunk_frames = max(1, int(round(blocksize * (sr / float(target_rate)))))
+        else:
+            # default to ~100ms chunks at source rate
+            chunk_ms = 100
+            chunk_frames = int(sr * (chunk_ms / 1000.0))
 
         while True:
             frames = wf.readframes(chunk_frames)
@@ -256,20 +279,26 @@ async def _run_demo(
             if chans > 1:
                 audio = audio.reshape(-1, chans)[:, 0]
 
-            # If sample rate differs, simple resample via interpolation
-            if sr != ASR.sample_rate:
+            # If sample rate differs, resample to the processing/target rate
+            if sr != target_rate:
                 import numpy as _np
 
-                duration_s = audio.shape[0] / sr
-                target_n = int(duration_s * ASR.sample_rate)
+                duration_s = audio.shape[0] / float(sr)
+                target_n = int(round(duration_s * float(target_rate)))
+                if target_n <= 0:
+                    continue
                 audio = _np.interp(
                     _np.linspace(0.0, duration_s, target_n, endpoint=False),
                     _np.linspace(0.0, duration_s, audio.shape[0], endpoint=False),
                     audio,
-                ).astype(np.float32)
+                ).astype("float32", copy=False)
+            else:
+                # ensure float32 dtype
+                audio = audio.astype("float32", copy=False)
 
             asr.process_audio_chunk(audio, on_partial, on_final)
-            await asyncio.sleep(chunk_ms / 1000.0)
+            # sleep relative to target rate and number of frames processed
+            await asyncio.sleep(len(audio) / float(target_rate))
 
     async def feed_mic():
         try:
@@ -325,20 +354,24 @@ async def _run_demo(
         # pick settings your ASR expects; adjust samplerate/channels if different
         device_param = (input_device, None) if input_device is not None else None
 
+        # Interpret blocksize as frames at the processing/target rate
+        istream_blocksize = int(blocksize or 1024)
+
         with sd.InputStream(
-            samplerate=use_samplerate,
+            samplerate=target_rate,
             channels=1,
             dtype="float32",
-            blocksize=(blocksize or 1024),          # small, steady blocks reduce latency
+            blocksize=istream_blocksize,          # small, steady blocks reduce latency
             latency="low",
             callback=sd_callback,
             device=device_param,
         ) as istream:
             # Start warmup AFTER the stream opens
             start_mono = asyncio.get_running_loop().time()
+            # nonlocal warmup_deadline is not necessary; assign into outer var
             warmup_deadline = start_mono + (warmup_ms / 1000.0)
             # Print negotiated params after stream opens
-            actual_rate = getattr(istream, "samplerate", use_samplerate)
+            actual_rate = getattr(istream, "samplerate", target_rate)
             print(f"🎤 Listening… speak now ({duration}s) [stream @ {actual_rate} Hz]")
             try:
                 await asyncio.sleep(duration)
@@ -401,7 +434,7 @@ async def _run_demo(
     # Run priming (before opening mic stream)
     try:
         # use requested samplerate/blocksize for priming
-        prime_sr = int(samplerate or use_samplerate)
+        prime_sr = int(target_rate)
         prime_bs = int(blocksize or 1024)
         await _prime_mt_once()
         await _prime_asr_once(prime_sr, prime_bs)
