@@ -70,6 +70,9 @@ async def _run_demo(
     tgt_lang: str,
     echo: bool = False,
     countdown: int = 2,
+    blocksize: int | None = None,
+    queue_size: int = 64,
+    samplerate: int | None = None,
 ):
     session_dir = _make_session_dir(session_name)
     events_path = session_dir / "events.jsonl"
@@ -92,6 +95,10 @@ async def _run_demo(
 
     print(f"📁 Session: {session_dir}")
     print(f"🎙️  Input: {in_name} @ {in_rate} Hz")
+    # allow override of input samplerate for the stream
+    use_samplerate = int(samplerate or ASR.sample_rate)
+    if samplerate:
+        print(f"🔁 Overriding samplerate: {use_samplerate} Hz")
     if countdown and countdown > 0:
         for n in range(countdown, 0, -1):
             print(f"⏳ Starting in {n}…", end="\r", flush=True)
@@ -241,7 +248,7 @@ async def _run_demo(
         # PortAudio callback ultra-light and moves ASR processing off-thread.
         loop = asyncio.get_running_loop()
 
-        audio_q: queue.Queue = queue.Queue(maxsize=64)
+        audio_q: queue.Queue = queue.Queue(maxsize=queue_size)
         running = True
 
         def sd_callback(indata, frames, time_info, status):
@@ -269,17 +276,15 @@ async def _run_demo(
             except asyncio.CancelledError:
                 pass
 
-        stream = sd.InputStream(samplerate=ASR.sample_rate, channels=1, dtype="float32", callback=sd_callback)
-
         running = True
         pump_task = asyncio.create_task(pump_audio())
 
         # pick settings your ASR expects; adjust samplerate/channels if different
         with sd.InputStream(
-            samplerate=ASR.sample_rate,
+            samplerate=use_samplerate,
             channels=1,
             dtype="float32",
-            blocksize=1024,          # small, steady blocks reduce latency
+            blocksize=(blocksize or 1024),          # small, steady blocks reduce latency
             latency="low",
             callback=sd_callback,
         ):
