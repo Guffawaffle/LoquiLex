@@ -16,6 +16,7 @@ from typing import Any
 import queue
 import sounddevice as sd
 import contextlib
+import math
 
 import numpy as np
 
@@ -73,6 +74,9 @@ async def _run_demo(
     blocksize: int | None = None,
     queue_size: int = 64,
     samplerate: int | None = None,
+    warmup_ms: int = 1500,
+    energy_thresh: float = 0.0,
+    input_device: int | None = None,
 ):
     session_dir = _make_session_dir(session_name)
     events_path = session_dir / "events.jsonl"
@@ -83,6 +87,16 @@ async def _run_demo(
 
     event_queue: asyncio.Queue = asyncio.Queue()
     loop = asyncio.get_running_loop()
+
+    # warmup & RMS helpers
+    start_mono = loop.time()
+    warmup_deadline = start_mono + (warmup_ms / 1000.0)
+
+    def _rms(mono_np: np.ndarray) -> float:
+        # mono_np: float32 numpy array in [-1, 1]
+        if energy_thresh <= 0.0:
+            return 1.0
+        return math.sqrt(float((mono_np.astype("float32") ** 2).mean()))
 
     # Preflight: report input device and optionally countdown before capture
     try:
@@ -108,12 +122,16 @@ async def _run_demo(
     stats = {"partials": 0, "finals": 0, "latencies_ms": []}
 
     def on_partial(ev: ASRPartialEvent) -> None:
-        # push to queue for optional translation/writing
+        # Drop events during warmup window
+        if loop.time() < warmup_deadline:
+            return
         loop.call_soon_threadsafe(event_queue.put_nowait, ("asr.partial", ev))
         if echo and getattr(ev, "text", None):
             print(f"… {ev.text}", flush=True)
 
     def on_final(ev: ASRFinalEvent) -> None:
+        if loop.time() < warmup_deadline:
+            return
         loop.call_soon_threadsafe(event_queue.put_nowait, ("asr.final", ev))
         if echo and getattr(ev, "text", None):
             print(f"✔ asr.final: {ev.text}", flush=True)
@@ -254,6 +272,14 @@ async def _run_demo(
         def sd_callback(indata, frames, time_info, status):
             # keep this ultra-light; never run ASR here
             try:
+                if energy_thresh > 0.0:
+                    # expect shape (frames, channels)
+                    mono = np.asarray(indata, dtype=np.float32)
+                    if mono.ndim > 1:
+                        mono = mono[:, 0]
+                    # cheap RMS check; inline call to avoid heavy ops
+                    if _rms(mono) < energy_thresh:
+                        return
                 audio_q.put_nowait(indata.copy())
             except queue.Full:
                 # drop if overloaded; bounded by design
@@ -280,6 +306,8 @@ async def _run_demo(
         pump_task = asyncio.create_task(pump_audio())
 
         # pick settings your ASR expects; adjust samplerate/channels if different
+        device_param = (input_device, None) if input_device is not None else None
+
         with sd.InputStream(
             samplerate=use_samplerate,
             channels=1,
@@ -287,7 +315,11 @@ async def _run_demo(
             blocksize=(blocksize or 1024),          # small, steady blocks reduce latency
             latency="low",
             callback=sd_callback,
-        ):
+            device=device_param,
+        ) as istream:
+            # Print negotiated params after stream opens
+            actual_rate = getattr(istream, "samplerate", use_samplerate)
+            print(f"🎤 Listening… speak now ({duration}s) [stream @ {actual_rate} Hz]")
             try:
                 await asyncio.sleep(duration)
             finally:
@@ -380,6 +412,18 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--tgt-lang", type=str, default=None)
     p.add_argument("--echo", action="store_true", help="Print asr.partial and mt.final to console while recording")
     p.add_argument("--countdown", type=int, default=2, help="Seconds to count down before starting capture (default: 2)")
+    p.add_argument("--warmup-ms", type=int, default=1500,
+        help="Ignore ASR events for the first N milliseconds after capture starts (default: 1500)")
+    p.add_argument("--energy-thresh", type=float, default=0.0,
+        help="RMS threshold [0..1] below which audio frames are ignored in the audio callback (0 disables)")
+    p.add_argument("--input-device", type=int, default=None,
+        help="Optional input device index for sounddevice")
+    p.add_argument("--blocksize", type=int, default=None,
+        help="Optional input stream blocksize")
+    p.add_argument("--queue-size", type=int, default=64,
+        help="Audio queue max size (frames)")
+    p.add_argument("--samplerate", type=int, default=None,
+        help="Optional override for input stream samplerate")
 
     args = p.parse_args(argv)
 
@@ -397,6 +441,12 @@ def main(argv: list[str] | None = None) -> int:
                 tgt,
                 echo=args.echo,
                 countdown=args.countdown,
+                blocksize=args.blocksize,
+                queue_size=args.queue_size,
+                samplerate=args.samplerate,
+                warmup_ms=args.warmup_ms,
+                energy_thresh=args.energy_thresh,
+                input_device=args.input_device,
             )
         )
     except KeyboardInterrupt:
