@@ -61,7 +61,9 @@ class PathPolicy:
             if not root.is_absolute():
                 raise ValueError(f"allowed root must be absolute: {root}")
 
-    def resolve_under(self, root: Path | str, user_path: str | Path, *, base_dir: Path | None = None) -> Path:
+    def resolve_under(
+        self, root: Path | str, user_path: str | Path, *, base_dir: Path | None = None
+    ) -> Path:
         """Resolve a user path under a specified root with safety checks.
 
         Args:

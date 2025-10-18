@@ -11,7 +11,6 @@ import time
 import uuid
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, TYPE_CHECKING, TextIO, cast
-from dataclasses import dataclass
 import logging
 import asyncio
 
@@ -142,14 +141,19 @@ _EXPORT_SWEEP_INTERVAL_S = int(os.getenv("LX_EXPORT_SWEEP_INTERVAL_S", "300"))
 @app.on_event("startup")
 async def _start_retention_loop():
     """Start background retention sweeper for OUT_ROOT."""
-    policy = RetentionPolicy(ttl_seconds=_EXPORT_TTL_HOURS * 3600, max_bytes=None if _EXPORT_MAX_MB == 0 else _EXPORT_MAX_MB * 1024 * 1024)
+    policy = RetentionPolicy(
+        ttl_seconds=_EXPORT_TTL_HOURS * 3600,
+        max_bytes=None if _EXPORT_MAX_MB == 0 else _EXPORT_MAX_MB * 1024 * 1024,
+    )
 
     async def _retention_loop():
         while True:
             try:
                 deleted, remaining = enforce_retention(OUT_ROOT, policy)
                 if deleted:
-                    logger.info("retention: deleted %d files, remaining bytes=%d", deleted, remaining)
+                    logger.info(
+                        "retention: deleted %d files, remaining bytes=%d", deleted, remaining
+                    )
             except Exception:
                 logger.exception("Retention sweep failed")
             await asyncio.sleep(_EXPORT_SWEEP_INTERVAL_S)
@@ -159,6 +163,7 @@ async def _start_retention_loop():
         asyncio.create_task(_retention_loop())
     except Exception:
         logger.exception("Failed to start retention background task")
+
 
 # UI static files path (mounted later to avoid shadowing API routes)
 UI_DIST_PATH = Path("ui/app/dist").resolve()

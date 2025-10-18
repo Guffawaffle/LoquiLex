@@ -283,7 +283,7 @@ class PathGuard:
             raw_components = re.split(r"[/\\]+", raw_normalized)
 
             # Check for suspicious patterns: reject any path that has .. followed by more components
-# Removed flawed traversal detection logic; rely on stack-based resolution below.
+            # Removed flawed traversal detection logic; rely on stack-based resolution below.
             stack: list[str] = []  # Simulate the path stack
 
             for component in raw_components:
@@ -494,7 +494,11 @@ class PathGuard:
         # will be permitted to proceed to sanitization.
         if isinstance(raw_input, str):
             # Windows drive letter or UNC or Unix absolute start
-            if not (raw_input.startswith("/") or raw_input.startswith("\\\\") or re.match(r"^[A-Za-z]:[/\\]", raw_input)):
+            if not (
+                raw_input.startswith("/")
+                or raw_input.startswith("\\\\")
+                or re.match(r"^[A-Za-z]:[/\\]", raw_input)
+            ):
                 raise PathSecurityError("not absolute")
 
         # CodeQL: ensure sanitization precedes any Path/expanduser usage.

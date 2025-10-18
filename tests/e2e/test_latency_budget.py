@@ -5,8 +5,7 @@ from typing import List
 import numpy as np
 import pytest
 
-from loquilex.config.defaults import ASR, RT
-from loquilex.asr.stream import StreamingASR
+from loquilex.config.defaults import ASR
 
 
 @pytest.mark.anyio

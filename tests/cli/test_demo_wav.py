@@ -37,7 +37,9 @@ def test_demo_wav(tmp_path: Path):
         shutil.rmtree(session_dir)
 
     # Run demo main with wav and short duration
-    demo.main(["--wav", str(wav_path), "--duration", "2", "--session", session_name, "--allow-fallback"])
+    demo.main(
+        ["--wav", str(wav_path), "--duration", "2", "--session", session_name, "--allow-fallback"]
+    )
 
     assert session_dir.exists()
     events = session_dir / "events.jsonl"

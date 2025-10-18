@@ -2,13 +2,13 @@
 
 Usage: python -m loquilex.cli.demo [--duration N] [--wav path.wav] [--no-partials]
 """
+
 from __future__ import annotations
 
 import argparse
 import asyncio
 import json
 import logging
-import sys
 import time
 import uuid
 from pathlib import Path
@@ -18,6 +18,7 @@ import sounddevice as sd
 import contextlib
 import math
 import os
+
 try:
     import soundfile as sf  # optional for --prime-wav
 except Exception:
@@ -168,9 +169,10 @@ async def _run_demo(
 
     async def event_consumer():
         # open files
-        with open(events_path, "a", encoding="utf-8") as events_f, open(
-            transcript_path, "a", encoding="utf-8"
-        ) as tx_f:
+        with (
+            open(events_path, "a", encoding="utf-8") as events_f,
+            open(transcript_path, "a", encoding="utf-8") as tx_f,
+        ):
             try:
                 while True:
                     try:
@@ -181,63 +183,63 @@ async def _run_demo(
                             break
                         continue
 
-            except asyncio.CancelledError:
-                # allow graceful shutdown
-                return
+                    if typ == "asr.partial":
+                        stats["partials"] += 1
+                        data = _asr_event_to_dict(ev)
+                        # Optionally translate partials
+                        if partials:
+                            tr = mt.translate_text(ev.text, src_lang, tgt_lang)
+                            mt_event = {
+                                "type": "mt.partial",
+                                "text_src": ev.text,
+                                "text_tgt": tr.text,
+                                "provider": tr.provider,
+                                "src_lang": tr.src_lang,
+                                "tgt_lang": tr.tgt_lang,
+                                "ts_monotonic": time.monotonic(),
+                            }
+                            events_f.write(json.dumps(data, ensure_ascii=False) + "\n")
+                            events_f.write(json.dumps(mt_event, ensure_ascii=False) + "\n")
+                            events_f.flush()
+                        else:
+                            events_f.write(json.dumps(data, ensure_ascii=False) + "\n")
+                            events_f.flush()
 
-                if typ == "asr.partial":
-                    stats["partials"] += 1
-                    data = _asr_event_to_dict(ev)
-                    # Optionally translate partials
-                    if partials:
+                    elif typ == "asr.final":
+                        stats["finals"] += 1
+                        data = _asr_event_to_dict(ev)
+                        events_f.write(json.dumps(data, ensure_ascii=False) + "\n")
+                        # Translate final
+                        t0 = time.monotonic()
                         tr = mt.translate_text(ev.text, src_lang, tgt_lang)
+                        t1 = time.monotonic()
+                        latency_ms = (t1 - ev.ts_monotonic) * 1000.0
+                        stats["latencies_ms"].append(latency_ms)
+
                         mt_event = {
-                            "type": "mt.partial",
+                            "type": "mt.final",
+                            "seq": stats["finals"],
+                            "segment_id": ev.segment_id,
                             "text_src": ev.text,
                             "text_tgt": tr.text,
                             "provider": tr.provider,
                             "src_lang": tr.src_lang,
                             "tgt_lang": tr.tgt_lang,
-                            "ts_monotonic": time.monotonic(),
+                            "t0_ms": int(ev.ts_monotonic * 1000),
+                            "t1_ms": int(t1 * 1000),
+                            "latency_ms": latency_ms,
                         }
-                        events_f.write(json.dumps(data, ensure_ascii=False) + "\n")
+
                         events_f.write(json.dumps(mt_event, ensure_ascii=False) + "\n")
                         events_f.flush()
-                    else:
-                        events_f.write(json.dumps(data, ensure_ascii=False) + "\n")
-                        events_f.flush()
 
-                elif typ == "asr.final":
-                    stats["finals"] += 1
-                    data = _asr_event_to_dict(ev)
-                    events_f.write(json.dumps(data, ensure_ascii=False) + "\n")
-                    # Translate final
-                    t0 = time.monotonic()
-                    tr = mt.translate_text(ev.text, src_lang, tgt_lang)
-                    t1 = time.monotonic()
-                    latency_ms = (t1 - ev.ts_monotonic) * 1000.0
-                    stats["latencies_ms"].append(latency_ms)
+                        # Append to transcript
+                        tx_f.write(tr.text.strip() + "\n")
+                        tx_f.flush()
 
-                    mt_event = {
-                        "type": "mt.final",
-                        "seq": stats["finals"],
-                        "segment_id": ev.segment_id,
-                        "text_src": ev.text,
-                        "text_tgt": tr.text,
-                        "provider": tr.provider,
-                        "src_lang": tr.src_lang,
-                        "tgt_lang": tr.tgt_lang,
-                        "t0_ms": int(ev.ts_monotonic * 1000),
-                        "t1_ms": int(t1 * 1000),
-                        "latency_ms": latency_ms,
-                    }
-
-                    events_f.write(json.dumps(mt_event, ensure_ascii=False) + "\n")
-                    events_f.flush()
-
-                    # Append to transcript
-                    tx_f.write(tr.text.strip() + "\n")
-                    tx_f.flush()
+            except asyncio.CancelledError:
+                # allow graceful shutdown
+                return
 
     # Audio feeder
     stop_at = time.monotonic() + float(duration)
@@ -361,7 +363,7 @@ async def _run_demo(
             samplerate=target_rate,
             channels=1,
             dtype="float32",
-            blocksize=istream_blocksize,          # small, steady blocks reduce latency
+            blocksize=istream_blocksize,  # small, steady blocks reduce latency
             latency="low",
             callback=sd_callback,
             device=device_param,
@@ -417,7 +419,7 @@ async def _run_demo(
                 return
         elif prime_ms and prime_ms > 0:
             n = int((prime_ms / 1000.0) * samplerate)
-            frames = (np.random.randn(n).astype("float32") * 0.003)
+            frames = np.random.randn(n).astype("float32") * 0.003
         else:
             return
 
@@ -482,9 +484,10 @@ async def _run_demo(
                 "latency_ms": 0.0,
             }
 
-            with open(events_path, "a", encoding="utf-8") as events_f, open(
-                transcript_path, "a", encoding="utf-8"
-            ) as tx_f:
+            with (
+                open(events_path, "a", encoding="utf-8") as events_f,
+                open(transcript_path, "a", encoding="utf-8") as tx_f,
+            ):
                 events_f.write(json.dumps(synth_event, ensure_ascii=False) + "\n")
                 tx_f.write(tr.text.strip() + "\n")
                 tx_f.flush()
@@ -501,6 +504,7 @@ async def _run_demo(
 
     # Summary
     lat = stats["latencies_ms"]
+
     def pctile(p):
         if not lat:
             return None
@@ -524,28 +528,55 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--session", type=str, default=None)
     p.add_argument("--src-lang", type=str, default=None)
     p.add_argument("--tgt-lang", type=str, default=None)
-    p.add_argument("--echo", action="store_true", help="Print asr.partial and mt.final to console while recording")
-    p.add_argument("--countdown", type=int, default=2, help="Seconds to count down before starting capture (default: 2)")
-    p.add_argument("--warmup-ms", type=int, default=1500,
-        help="Ignore ASR events for the first N milliseconds after capture starts (default: 1500)")
-    p.add_argument("--energy-thresh", type=float, default=0.0,
-        help="RMS threshold [0..1] below which audio frames are ignored in the audio callback (0 disables)")
-    p.add_argument("--input-device", type=int, default=None,
-        help="Optional input device index for sounddevice")
-    p.add_argument("--blocksize", type=int, default=None,
-        help="Optional input stream blocksize")
-    p.add_argument("--queue-size", type=int, default=64,
-        help="Audio queue max size (frames)")
-    p.add_argument("--samplerate", type=int, default=None,
-        help="Optional override for input stream samplerate")
-    p.add_argument("--prime-ms", type=int, default=800,
-        help="Pre-roll duration to prime ASR before mic starts (0 disables)")
-    p.add_argument("--prime-wav", type=str, default=None,
-        help="WAV file to prime ASR before mic starts (overrides --prime-ms)")
-    p.add_argument("--prime-mt", action="store_true",
-        help="Prime MT once before capture starts")
-    p.add_argument("--allow-fallback", action="store_true",
-        help="(tests only) emit a synthetic final if no ASR finals were produced")
+    p.add_argument(
+        "--echo",
+        action="store_true",
+        help="Print asr.partial and mt.final to console while recording",
+    )
+    p.add_argument(
+        "--countdown",
+        type=int,
+        default=2,
+        help="Seconds to count down before starting capture (default: 2)",
+    )
+    p.add_argument(
+        "--warmup-ms",
+        type=int,
+        default=1500,
+        help="Ignore ASR events for the first N milliseconds after capture starts (default: 1500)",
+    )
+    p.add_argument(
+        "--energy-thresh",
+        type=float,
+        default=0.0,
+        help="RMS threshold [0..1] below which audio frames are ignored in the audio callback (0 disables)",
+    )
+    p.add_argument(
+        "--input-device", type=int, default=None, help="Optional input device index for sounddevice"
+    )
+    p.add_argument("--blocksize", type=int, default=None, help="Optional input stream blocksize")
+    p.add_argument("--queue-size", type=int, default=64, help="Audio queue max size (frames)")
+    p.add_argument(
+        "--samplerate", type=int, default=None, help="Optional override for input stream samplerate"
+    )
+    p.add_argument(
+        "--prime-ms",
+        type=int,
+        default=800,
+        help="Pre-roll duration to prime ASR before mic starts (0 disables)",
+    )
+    p.add_argument(
+        "--prime-wav",
+        type=str,
+        default=None,
+        help="WAV file to prime ASR before mic starts (overrides --prime-ms)",
+    )
+    p.add_argument("--prime-mt", action="store_true", help="Prime MT once before capture starts")
+    p.add_argument(
+        "--allow-fallback",
+        action="store_true",
+        help="(tests only) emit a synthetic final if no ASR finals were produced",
+    )
     # default False for real usage; tests can opt-in with --allow-fallback
     p.set_defaults(allow_fallback=False)
 

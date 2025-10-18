@@ -3,6 +3,7 @@ from __future__ import annotations
 import queue
 import shutil
 import subprocess
+import sys
 import threading
 import time
 from dataclasses import dataclass
@@ -33,6 +34,22 @@ def _log(msg: str) -> None:
 
 def available(cmd: str) -> bool:
     return shutil.which(cmd) is not None
+
+
+def _call_with_timeout(func: Callable[[], None], timeout: float, name: str) -> None:
+    """Call a function in a thread with a timeout. Log if it times out."""
+    def _wrapper() -> None:
+        try:
+            func()
+        except Exception as e:
+            _log(f"{name} raised: {e}")
+
+    th = threading.Thread(target=_wrapper, daemon=True)
+    th.start()
+    th.join(timeout=timeout)
+    if th.is_alive():
+        _log(f"{name} timed out after {timeout}s (daemon thread will be killed)")
+
 
 
 def capture_stream(callback: Callable[[AudioFrame], None]) -> Callable[[], None]:
@@ -81,14 +98,9 @@ def capture_stream(callback: Callable[[AudioFrame], None]) -> Callable[[], None]
         def stop() -> None:
             stop_flag.set()
             th.join(timeout=1.0)
-            try:
-                stream.stop()
-            except Exception as e:
-                _log(f"stream.stop() failed: {e}")
-            try:
-                stream.close()
-            except Exception as e:
-                _log(f"stream.close() failed: {e}")
+            # Wrap stream.stop() and stream.close() with timeouts since they can block indefinitely
+            _call_with_timeout(lambda: stream.stop(), timeout=0.5, name="stream.stop()")
+            _call_with_timeout(lambda: stream.close(), timeout=0.5, name="stream.close()")
 
         return stop
     except Exception as e:
@@ -154,9 +166,16 @@ def capture_stream(callback: Callable[[AudioFrame], None]) -> Callable[[], None]
                     proc.stdout.close()
             except Exception:
                 pass
-            proc.terminate()
+            # Wrap proc.terminate() with timeout; if it doesn't work, forcefully kill
+            try:
+                proc.terminate()
+                proc.wait(timeout=0.5)
+            except subprocess.TimeoutExpired:
+                _log("proc.terminate() timed out, killing forcefully")
+                proc.kill()
             th.join(timeout=1.0)
 
         return stop
 
     raise RuntimeError("No audio capture path available (sounddevice/ffmpeg)")
+

@@ -1,0 +1,6 @@
+MVP for real time, English to Chinese, and Chinese to English captions.
+Use whisper for STT and local translation only.
+No cloud.
+Either A or B as a local service.
+Target Python in Docker on WSL2.
+for CUDA if available. Thank you.
