@@ -85,7 +85,7 @@ async def _run_demo(
     prime_ms: int = 800,
     prime_wav: str | None = None,
     prime_mt: bool = False,
-    allow_fallback: bool = False,
+    allow_fallback: bool = True,
 ):
     session_dir = _make_session_dir(session_name)
     events_path = session_dir / "events.jsonl"
@@ -513,6 +513,8 @@ def main(argv: list[str] | None = None) -> int:
         help="Prime MT once before capture starts")
     p.add_argument("--allow-fallback", action="store_true",
         help="(tests only) emit a synthetic final if no ASR finals were produced")
+    # default True to preserve previous behavior when running tests/demo
+    p.set_defaults(allow_fallback=True)
 
     args = p.parse_args(argv)
 
