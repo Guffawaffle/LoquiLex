@@ -8,8 +8,10 @@ import sys
 import pathlib
 import pytest
 
-# Adjust import paths to match your package layout.
-# from loquilex.security.path_policy import PathPolicy, PathPolicyConfig, PathSecurityError
+# Ensure tests import the package-level symbols used by the suite. Importing
+# from the loquilex.security package surface keeps tests stable if modules are
+# re-exported there (and mirrors how application code imports these symbols).
+from loquilex.security import PathPolicy, PathPolicyConfig, PathSecurityError
 
 pytestmark = pytest.mark.skipif(
     sys.platform.startswith("win"),
@@ -37,7 +39,10 @@ def test_symlink_escape_rejected(sandbox):
     # Candidate path attempts to walk through the symlink
     candidate = evil_link / "secrets.txt"
 
-    policy = PathPolicy(config=PathPolicyConfig(allow_follow_symlinks=False))
+    config = PathPolicyConfig(allowed_roots=(root,))
+    # Mirror test intent: construct config with same allowed root and symlink policy
+    config = PathPolicyConfig(allowed_roots=(root,), allow_follow_symlinks=False)
+    policy = PathPolicy(config=config)
     with pytest.raises(PathSecurityError):
         policy.resolve_under(root, candidate)
 
@@ -49,7 +54,8 @@ def test_normal_file_allowed(sandbox):
     safe_file = safe_dir / "ok.txt"
     safe_file.write_text("ok")
 
-    policy = PathPolicy(config=PathPolicyConfig(allow_follow_symlinks=False))
+    config = PathPolicyConfig(allowed_roots=(root,), allow_follow_symlinks=False)
+    policy = PathPolicy(config=config)
     resolved = policy.resolve_under(root, safe_file.name, base_dir=safe_dir)
     assert resolved.exists()
     assert resolved.read_text() == "ok"
@@ -63,7 +69,8 @@ def test_commonpath_containment_even_if_following_symlinks(sandbox):
     os.symlink(str(outside), str(evil_link))
     candidate = evil_link / "secrets.txt"
 
-    policy = PathPolicy(config=PathPolicyConfig(allow_follow_symlinks=True))
+    config = PathPolicyConfig(allowed_roots=(root,), allow_follow_symlinks=True)
+    policy = PathPolicy(config=config)
     # Expect rejection because resolved path would escape allowed root
     with pytest.raises(PathSecurityError):
         policy.resolve_under(root, candidate)

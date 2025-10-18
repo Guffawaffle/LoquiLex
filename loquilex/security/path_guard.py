@@ -270,6 +270,15 @@ class PathGuard:
             if re.match(r"^[A-Za-z]:[/\\]", raw_normalized):
                 raise PathSecurityError("drive-prefixed paths are not permitted")
 
+            # Reject various traversal-ish encodings and Windows-style backslashes
+            # which tests treat as suspicious input (e.g., "dir\\..\\file" or
+            # percent-encoded sequences like "%2e%2e"). This preserves the
+            # stricter historical behavior of rejecting traversal-like strings
+            # even if they could be normalized into safe components.
+            lower = raw_normalized.lower()
+            if "\\" in raw_normalized or "%2e" in lower:
+                raise PathSecurityError("path traversal blocked")
+
             # Parse components manually without losing ".." information
             raw_components = re.split(r"[/\\]+", raw_normalized)
 
@@ -458,7 +467,13 @@ class PathGuard:
         """
         try:
             # Convert all sanitizer exceptions to PathSecurityError for backward compatibility
-            return sanitize_path_string(raw)
+            # For storage candidate validation we allow absolute paths (caller will
+            # perform absolute checks). The sanitizer default forbids absolute
+            # forms which would cause callers that expect to accept absolute
+            # candidates to fail early with a misleading message. Pass
+            # forbid_absolute=False here to permit absolute inputs and preserve
+            # the original PathGuard behavior.
+            return sanitize_path_string(raw, forbid_absolute=False)
         except (PathInputError, _PathSecurityError) as e:
             raise PathSecurityError(str(e)) from e
 
@@ -472,6 +487,16 @@ class PathGuard:
             raw_input = os.fspath(p)
         except TypeError as exc:
             raise PathSecurityError("path input must be path-like") from exc
+        # If the caller provided a string that is not absolute, reject early
+        # with the historically expected message "not absolute". This keeps
+        # user-facing error strings stable for callers that pass relative
+        # strings (e.g., UI form validation). Path objects that are absolute
+        # will be permitted to proceed to sanitization.
+        if isinstance(raw_input, str):
+            # Windows drive letter or UNC or Unix absolute start
+            if not (raw_input.startswith("/") or raw_input.startswith("\\\\") or re.match(r"^[A-Za-z]:[/\\]", raw_input)):
+                raise PathSecurityError("not absolute")
+
         # CodeQL: ensure sanitization precedes any Path/expanduser usage.
         safe_input = PathGuard._sanitize_path_input(raw_input)
         candidate = Path(safe_input).expanduser()
@@ -486,8 +511,11 @@ class PathGuard:
         if not resolved.is_absolute():
             raise PathSecurityError("resolved path not absolute")
 
-        forbidden_roots = {
-            Path("/"),
+        # Explicit system roots to reject. Do not include root ('/') here
+        # because every absolute path is under '/' and would cause spurious
+        # rejections (previous behavior bug). Check only the usual system
+        # directories which are considered unsafe for user storage.
+        forbidden_roots = [
             Path("/proc"),
             Path("/sys"),
             Path("/dev"),
@@ -501,16 +529,32 @@ class PathGuard:
             Path("/lib"),
             Path("/lib64"),
             Path("/root"),
-        }
+        ]
 
         for forbidden in forbidden_roots:
-            if resolved == forbidden:
-                raise PathSecurityError("system path not permitted")
             try:
+                if resolved == forbidden:
+                    raise PathSecurityError("system path not permitted")
                 resolved.relative_to(forbidden)
             except ValueError:
                 continue
             else:
+                raise PathSecurityError("system path not permitted")
+
+        # Special-case explicit root path '/' which we treat as a forbidden
+        # system path for storage bootstrap attempts.
+        if str(resolved) == "/":
+            raise PathSecurityError("system path not permitted")
+
+        # Additional robust check for system paths using string prefixes to
+        # ensure entries like '/proc', '/sys', '/dev' and their subtrees are
+        # rejected even if prior relative_to checks miss them due to symlinks
+        # or platform resolution differences.
+        system_paths = ["/", "/proc", "/sys", "/dev", "/run", "/etc", "/boot", "/root"]
+        for sp in system_paths:
+            if sp == "/":
+                continue
+            if str(resolved) == sp or str(resolved).startswith(sp + os.sep):
                 raise PathSecurityError("system path not permitted")
 
         if not resolved.exists():
