@@ -68,6 +68,8 @@ async def _run_demo(
     session_name: str | None,
     src_lang: str,
     tgt_lang: str,
+    echo: bool = False,
+    countdown: int = 2,
 ):
     session_dir = _make_session_dir(session_name)
     events_path = session_dir / "events.jsonl"
@@ -79,14 +81,35 @@ async def _run_demo(
     event_queue: asyncio.Queue = asyncio.Queue()
     loop = asyncio.get_running_loop()
 
+    # Preflight: report input device and optionally countdown before capture
+    try:
+        in_idx = sd.default.device[0]
+        in_dev = sd.query_devices(in_idx, "input")
+        in_name = in_dev.get("name", "default")
+        in_rate = int(in_dev.get("default_samplerate") or ASR.sample_rate)
+    except Exception:
+        in_name, in_rate = "default", ASR.sample_rate
+
+    print(f"📁 Session: {session_dir}")
+    print(f"🎙️  Input: {in_name} @ {in_rate} Hz")
+    if countdown and countdown > 0:
+        for n in range(countdown, 0, -1):
+            print(f"⏳ Starting in {n}…", end="\r", flush=True)
+            time.sleep(1)
+        print(" " * 32, end="\r")
+
     stats = {"partials": 0, "finals": 0, "latencies_ms": []}
 
     def on_partial(ev: ASRPartialEvent) -> None:
         # push to queue for optional translation/writing
         loop.call_soon_threadsafe(event_queue.put_nowait, ("asr.partial", ev))
+        if echo and getattr(ev, "text", None):
+            print(f"… {ev.text}", flush=True)
 
     def on_final(ev: ASRFinalEvent) -> None:
         loop.call_soon_threadsafe(event_queue.put_nowait, ("asr.final", ev))
+        if echo and getattr(ev, "text", None):
+            print(f"✔ asr.final: {ev.text}", flush=True)
 
     async def event_consumer():
         # open files
@@ -350,6 +373,8 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--session", type=str, default=None)
     p.add_argument("--src-lang", type=str, default=None)
     p.add_argument("--tgt-lang", type=str, default=None)
+    p.add_argument("--echo", action="store_true", help="Print asr.partial and mt.final to console while recording")
+    p.add_argument("--countdown", type=int, default=2, help="Seconds to count down before starting capture (default: 2)")
 
     args = p.parse_args(argv)
 
@@ -357,7 +382,18 @@ def main(argv: list[str] | None = None) -> int:
     tgt = args.tgt_lang or "zh_Hans"
 
     try:
-        asyncio.run(_run_demo(args.duration, args.wav, args.partials, args.session, src, tgt))
+        asyncio.run(
+            _run_demo(
+                args.duration,
+                args.wav,
+                args.partials,
+                args.session,
+                src,
+                tgt,
+                echo=args.echo,
+                countdown=args.countdown,
+            )
+        )
     except KeyboardInterrupt:
         print("Interrupted")
         return 0
