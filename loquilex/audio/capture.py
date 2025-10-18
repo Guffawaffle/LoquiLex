@@ -75,14 +75,20 @@ def capture_stream(callback: Callable[[AudioFrame], None]) -> Callable[[], None]
                 mono = block.reshape(-1).astype(np.float32)
                 callback(AudioFrame(mono, t0, t1))
 
-        th = threading.Thread(target=worker)
+        th = threading.Thread(target=worker, daemon=True)
         th.start()
 
         def stop() -> None:
             stop_flag.set()
             th.join(timeout=1.0)
-            stream.stop()
-            stream.close()
+            try:
+                stream.stop()
+            except Exception as e:
+                _log(f"stream.stop() failed: {e}")
+            try:
+                stream.close()
+            except Exception as e:
+                _log(f"stream.close() failed: {e}")
 
         return stop
     except Exception as e:
@@ -138,7 +144,7 @@ def capture_stream(callback: Callable[[AudioFrame], None]) -> Callable[[], None]
                 t0 = t1 - (arr.size / SAMPLE_RATE)
                 callback(AudioFrame(arr, t0, t1))
 
-        th = threading.Thread(target=reader)
+        th = threading.Thread(target=reader, daemon=True)
         th.start()
 
         def stop() -> None:
