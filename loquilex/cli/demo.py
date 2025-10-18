@@ -17,6 +17,11 @@ import queue
 import sounddevice as sd
 import contextlib
 import math
+import os
+try:
+    import soundfile as sf  # optional for --prime-wav
+except Exception:
+    sf = None
 
 import numpy as np
 
@@ -77,6 +82,10 @@ async def _run_demo(
     warmup_ms: int = 1500,
     energy_thresh: float = 0.0,
     input_device: int | None = None,
+    prime_ms: int = 800,
+    prime_wav: str | None = None,
+    prime_mt: bool = False,
+    allow_fallback: bool = False,
 ):
     session_dir = _make_session_dir(session_name)
     events_path = session_dir / "events.jsonl"
@@ -89,14 +98,22 @@ async def _run_demo(
     loop = asyncio.get_running_loop()
 
     # warmup & RMS helpers
-    start_mono = loop.time()
-    warmup_deadline = start_mono + (warmup_ms / 1000.0)
+    # warmup_deadline will be set when the stream opens
+    warmup_deadline = 0.0
 
     def _rms(mono_np: np.ndarray) -> float:
         # mono_np: float32 numpy array in [-1, 1]
         if energy_thresh <= 0.0:
             return 1.0
         return math.sqrt(float((mono_np.astype("float32") ** 2).mean()))
+
+    def _linear_resample(x: np.ndarray, sr_in: int, sr_out: int) -> np.ndarray:
+        if sr_in == sr_out:
+            return x.astype("float32", copy=False)
+        ratio = sr_out / float(sr_in)
+        idx = np.arange(0, int(len(x) * ratio)) / ratio
+        base = np.arange(len(x))
+        return np.interp(idx, base, x.astype("float32")).astype("float32", copy=False)
 
     # Preflight: report input device and optionally countdown before capture
     try:
@@ -123,14 +140,14 @@ async def _run_demo(
 
     def on_partial(ev: ASRPartialEvent) -> None:
         # Drop events during warmup window
-        if loop.time() < warmup_deadline:
+        if warmup_deadline and loop.time() < warmup_deadline:
             return
         loop.call_soon_threadsafe(event_queue.put_nowait, ("asr.partial", ev))
         if echo and getattr(ev, "text", None):
             print(f"… {ev.text}", flush=True)
 
     def on_final(ev: ASRFinalEvent) -> None:
-        if loop.time() < warmup_deadline:
+        if warmup_deadline and loop.time() < warmup_deadline:
             return
         loop.call_soon_threadsafe(event_queue.put_nowait, ("asr.final", ev))
         if echo and getattr(ev, "text", None):
@@ -317,6 +334,9 @@ async def _run_demo(
             callback=sd_callback,
             device=device_param,
         ) as istream:
+            # Start warmup AFTER the stream opens
+            start_mono = asyncio.get_running_loop().time()
+            warmup_deadline = start_mono + (warmup_ms / 1000.0)
             # Print negotiated params after stream opens
             actual_rate = getattr(istream, "samplerate", use_samplerate)
             print(f"🎤 Listening… speak now ({duration}s) [stream @ {actual_rate} Hz]")
@@ -327,6 +347,67 @@ async def _run_demo(
                 pump_task.cancel()
                 with contextlib.suppress(asyncio.CancelledError):
                     await pump_task
+
+    # Priming helpers: run before opening InputStream to warm ASR/MT
+    async def _prime_mt_once():
+        if not prime_mt:
+            return
+        try:
+            _ = mt.translate_text("warmup", src_lang, tgt_lang)
+        except Exception:
+            pass
+
+    async def _prime_asr_once(samplerate: int, blocksize_val: int):
+        # Play low-level noise or WAV into the ASR to warm model caches.
+        seen_final = asyncio.Event()
+
+        def _drop_partial(ev: Any) -> None:
+            return
+
+        def _drop_final(ev: Any) -> None:
+            try:
+                seen_final.set()
+            except Exception:
+                pass
+
+        # prepare frames
+        frames: np.ndarray | None = None
+        if prime_wav:
+            if not sf or not os.path.exists(prime_wav):
+                print("⚠️  prime-wav unavailable; skipping priming", flush=True)
+                return
+            try:
+                data, sr = sf.read(prime_wav, dtype="float32", always_2d=True)
+                frames = _linear_resample(data[:, 0], sr, samplerate)
+            except Exception:
+                print("⚠️  failed to read prime-wav; skipping priming", flush=True)
+                return
+        elif prime_ms and prime_ms > 0:
+            n = int((prime_ms / 1000.0) * samplerate)
+            frames = (np.random.randn(n).astype("float32") * 0.003)
+        else:
+            return
+
+        ptr = 0
+        t0 = time.perf_counter()
+        while frames is not None and ptr < len(frames):
+            chunk = frames[ptr : ptr + blocksize_val].reshape(-1, 1)
+            ptr += blocksize_val
+            asr.process_audio_chunk(chunk, _drop_partial, _drop_final)
+            await asyncio.sleep(blocksize_val / float(samplerate))
+            if seen_final.is_set() or (time.perf_counter() - t0) > 2.0:
+                break
+
+    # Run priming (before opening mic stream)
+    try:
+        # use requested samplerate/blocksize for priming
+        prime_sr = int(samplerate or use_samplerate)
+        prime_bs = int(blocksize or 1024)
+        await _prime_mt_once()
+        await _prime_asr_once(prime_sr, prime_bs)
+    except Exception:
+        # best-effort: priming failure shouldn't stop demo
+        logger.exception("priming failed")
 
     # Start consumer
     consumer_task = asyncio.create_task(event_consumer())
@@ -342,8 +423,8 @@ async def _run_demo(
 
     # allow some time to flush
     await asyncio.sleep(0.5)
-    # If no finals produced (e.g., silent WAV), synthesize a final so demos produce output
-    if stats["finals"] == 0:
+    # If no finals produced (e.g., silent WAV), optionally synthesize a final so demos produce output
+    if stats["finals"] == 0 and allow_fallback:
         try:
             # Derive a fallback source text from wav_path or session id
             fallback_src = "demo utterance"
@@ -424,6 +505,14 @@ def main(argv: list[str] | None = None) -> int:
         help="Audio queue max size (frames)")
     p.add_argument("--samplerate", type=int, default=None,
         help="Optional override for input stream samplerate")
+    p.add_argument("--prime-ms", type=int, default=800,
+        help="Pre-roll duration to prime ASR before mic starts (0 disables)")
+    p.add_argument("--prime-wav", type=str, default=None,
+        help="WAV file to prime ASR before mic starts (overrides --prime-ms)")
+    p.add_argument("--prime-mt", action="store_true",
+        help="Prime MT once before capture starts")
+    p.add_argument("--allow-fallback", action="store_true",
+        help="(tests only) emit a synthetic final if no ASR finals were produced")
 
     args = p.parse_args(argv)
 
@@ -447,6 +536,10 @@ def main(argv: list[str] | None = None) -> int:
                 warmup_ms=args.warmup_ms,
                 energy_thresh=args.energy_thresh,
                 input_device=args.input_device,
+                prime_ms=args.prime_ms,
+                prime_wav=args.prime_wav,
+                prime_mt=args.prime_mt,
+                allow_fallback=args.allow_fallback,
             )
         )
     except KeyboardInterrupt:
