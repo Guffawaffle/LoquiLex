@@ -38,10 +38,10 @@ async def test_latency_budget_p50_ms() -> None:
         asr = FakeStreamingASR()
         start = time.perf_counter()
 
-        def on_partial(evt):
+        def on_partial(_evt):
             partial_latencies.append((time.perf_counter() - start) * 1000.0)
 
-        def on_final(evt):
+        def on_final(_evt):
             final_latencies.append((time.perf_counter() - start) * 1000.0)
 
         chunk = np.zeros(int(ASR.sample_rate // 10), dtype=np.float32)
@@ -53,10 +53,10 @@ async def test_latency_budget_p50_ms() -> None:
         asr = FakeStreamingASR()
         start = time.perf_counter()
 
-        def on_partial(evt):
+        def on_partial(_evt):
             partial_latencies.append((time.perf_counter() - start) * 1000.0)
 
-        def on_final(evt):
+        def on_final(_evt):
             final_latencies.append((time.perf_counter() - start) * 1000.0)
 
         chunk = np.zeros(int(ASR.sample_rate // 10), dtype=np.float32)

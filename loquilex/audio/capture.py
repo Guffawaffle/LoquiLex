@@ -3,7 +3,6 @@ from __future__ import annotations
 import queue
 import shutil
 import subprocess
-import sys
 import threading
 import time
 from dataclasses import dataclass
@@ -38,6 +37,7 @@ def available(cmd: str) -> bool:
 
 def _call_with_timeout(func: Callable[[], None], timeout: float, name: str) -> None:
     """Call a function in a thread with a timeout. Log if it times out."""
+
     def _wrapper() -> None:
         try:
             func()
@@ -49,7 +49,6 @@ def _call_with_timeout(func: Callable[[], None], timeout: float, name: str) -> N
     th.join(timeout=timeout)
     if th.is_alive():
         _log(f"{name} timed out after {timeout}s (daemon thread will be killed)")
-
 
 
 def capture_stream(callback: Callable[[AudioFrame], None]) -> Callable[[], None]:
@@ -178,4 +177,3 @@ def capture_stream(callback: Callable[[AudioFrame], None]) -> Callable[[], None]
         return stop
 
     raise RuntimeError("No audio capture path available (sounddevice/ffmpeg)")
-

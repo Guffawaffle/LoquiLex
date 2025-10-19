@@ -150,7 +150,7 @@ async def _run_demo(
             time.sleep(1)
         print(" " * 32, end="\r")
 
-    stats = {"partials": 0, "finals": 0, "latencies_ms": []}
+    stats: dict[str, int | list[float]] = {"partials": 0, "finals": 0, "latencies_ms": []}
 
     def on_partial(ev: ASRPartialEvent) -> None:
         # Drop events during warmup window
@@ -210,7 +210,6 @@ async def _run_demo(
                         data = _asr_event_to_dict(ev)
                         events_f.write(json.dumps(data, ensure_ascii=False) + "\n")
                         # Translate final
-                        t0 = time.monotonic()
                         tr = mt.translate_text(ev.text, src_lang, tgt_lang)
                         t1 = time.monotonic()
                         latency_ms = (t1 - ev.ts_monotonic) * 1000.0
@@ -312,12 +311,12 @@ async def _run_demo(
         # Use a bounded stdlib queue to transfer raw audio from the PortAudio
         # callback thread into an asyncio-friendly pump. This keeps the
         # PortAudio callback ultra-light and moves ASR processing off-thread.
-        loop = asyncio.get_running_loop()
+        loop = asyncio.get_running_loop()  # noqa: F841 (used in nested callbacks)
 
         audio_q: queue.Queue = queue.Queue(maxsize=queue_size)
         running = True
 
-        def sd_callback(indata, frames, time_info, status):
+        def sd_callback(indata, _frames, _time_info, _status):
             # keep this ultra-light; never run ASR here
             try:
                 if energy_thresh > 0.0:
@@ -371,7 +370,9 @@ async def _run_demo(
             # Start warmup AFTER the stream opens
             start_mono = asyncio.get_running_loop().time()
             # nonlocal warmup_deadline is not necessary; assign into outer var
-            warmup_deadline = start_mono + (warmup_ms / 1000.0)
+            warmup_deadline = start_mono + (  # noqa: F841 (used in nested callbacks)
+                warmup_ms / 1000.0
+            )
             # Print negotiated params after stream opens
             actual_rate = getattr(istream, "samplerate", target_rate)
             print(f"🎤 Listening… speak now ({duration}s) [stream @ {actual_rate} Hz]")
@@ -396,10 +397,10 @@ async def _run_demo(
         # Play low-level noise or WAV into the ASR to warm model caches.
         seen_final = asyncio.Event()
 
-        def _drop_partial(ev: Any) -> None:
+        def _drop_partial(_ev: Any) -> None:
             return
 
-        def _drop_final(ev: Any) -> None:
+        def _drop_final(_ev: Any) -> None:
             try:
                 seen_final.set()
             except Exception:
@@ -492,7 +493,7 @@ async def _run_demo(
                 tx_f.write(tr.text.strip() + "\n")
                 tx_f.flush()
 
-            stats["finals"] += 1
+            stats["finals"] += 1  # type: ignore[operator]
         except Exception:
             logger.exception("Failed to synthesize final event")
     # stop consumer
