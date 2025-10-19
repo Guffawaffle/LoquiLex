@@ -123,10 +123,10 @@ class TestNormalizeFilename:
             normalize_filename("")
 
         with pytest.raises(PathInputError, match="filename must be a string"):
-            normalize_filename(None)  # type: ignore
+            normalize_filename(None)
 
         with pytest.raises(PathInputError, match="filename must be a string"):
-            normalize_filename(123)  # type: ignore
+            normalize_filename(123)
 
         # Empty after normalization
         with pytest.raises(PathInputError, match="empty after normalization"):
@@ -268,7 +268,7 @@ class TestSanitizePathString:
             sanitize_path_string("")
 
         with pytest.raises(PathInputError, match="path must be a string"):
-            sanitize_path_string(None)  # type: ignore
+            sanitize_path_string(None)
 
         # Empty after sanitization
         with pytest.raises(PathInputError, match="empty after sanitization"):
@@ -348,7 +348,7 @@ class TestSplitAndValidateComponents:
     def test_invalid_input(self):
         """Test invalid input handling."""
         with pytest.raises(PathInputError, match="path must be a string"):
-            split_and_validate_components(None)  # type: ignore
+            split_and_validate_components(None)
 
 
 class TestIntegration:

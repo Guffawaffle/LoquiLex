@@ -230,4 +230,5 @@ class PathPolicy:
 __all__ = [
     "PathPolicyConfig",
     "PathPolicy",
+    "PathSecurityError",
 ]

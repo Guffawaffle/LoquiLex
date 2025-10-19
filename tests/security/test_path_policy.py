@@ -28,7 +28,7 @@ class TestPathPolicyConfig:
         """Test that config is immutable (frozen dataclass)."""
         config = PathPolicyConfig()
         with pytest.raises(AttributeError):
-            config.allowed_roots = (Path("/new"),)  # type: ignore
+            config.allowed_roots = (Path("/new"),)
 
 
 class TestPathPolicy:

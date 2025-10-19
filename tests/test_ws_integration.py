@@ -34,11 +34,11 @@ except ImportError:
 # requests (optional)
 requests_mod: Optional[ModuleType] = None
 try:
-    import requests as requests_mod  # type: ignore[import-untyped]
+    import requests  # type: ignore[import-untyped]
+    requests_mod = requests
 
     _REQUESTS_AVAILABLE = True
 except ImportError:
-    requests_mod = None
     _REQUESTS_AVAILABLE = False
 
 # Build the exception tuple used in the except-block dynamically so the
