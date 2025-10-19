@@ -11,6 +11,8 @@ import time
 import uuid
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, TYPE_CHECKING, TextIO, cast
+import logging
+import asyncio
 
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
@@ -23,6 +25,7 @@ from loquilex.hardware.detection import get_hardware_snapshot
 from loquilex.config.model_defaults import get_model_defaults_manager
 from loquilex.security import PathGuard, PathSecurityError
 from .supervisor import SessionConfig, SessionManager, StreamingSession
+from loquilex.storage.retention import RetentionPolicy, enforce_retention
 
 if TYPE_CHECKING:  # pragma: no cover - type-only import
     from loquilex.security import CanonicalPath
@@ -129,6 +132,39 @@ if DEV_MODE:
 OUT_ROOT = Path(os.getenv("LLX_OUT_DIR", "loquilex/out")).resolve()
 OUT_ROOT.mkdir(parents=True, exist_ok=True)
 
+# Retention env knobs
+_EXPORT_TTL_HOURS = int(os.getenv("LX_EXPORT_TTL_HOURS", "72"))
+_EXPORT_MAX_MB = int(os.getenv("LX_EXPORT_MAX_MB", "0"))
+_EXPORT_SWEEP_INTERVAL_S = int(os.getenv("LX_EXPORT_SWEEP_INTERVAL_S", "300"))
+
+
+@app.on_event("startup")
+async def _start_retention_loop():
+    """Start background retention sweeper for OUT_ROOT."""
+    policy = RetentionPolicy(
+        ttl_seconds=_EXPORT_TTL_HOURS * 3600,
+        max_bytes=None if _EXPORT_MAX_MB == 0 else _EXPORT_MAX_MB * 1024 * 1024,
+    )
+
+    async def _retention_loop():
+        while True:
+            try:
+                deleted, remaining = enforce_retention(OUT_ROOT, policy)
+                if deleted:
+                    logger.info(
+                        "retention: deleted %d files, remaining bytes=%d", deleted, remaining
+                    )
+            except Exception:
+                logger.exception("Retention sweep failed")
+            await asyncio.sleep(_EXPORT_SWEEP_INTERVAL_S)
+
+    # schedule background task but don't await it
+    try:
+        asyncio.create_task(_retention_loop())
+    except Exception:
+        logger.exception("Failed to start retention background task")
+
+
 # UI static files path (mounted later to avoid shadowing API routes)
 UI_DIST_PATH = Path("ui/app/dist").resolve()
 
@@ -181,9 +217,11 @@ _root_map: Dict[str, Path] = {
     "exports": OUT_ROOT / "exports",
     "profiles": Path("loquilex/ui/profiles").resolve(),
 }
-for p in _EXTRA_ALLOWED_ROOTS:
+# Register all extra roots with unique keys instead of overwriting
+for i, p in enumerate(_EXTRA_ALLOWED_ROOTS):
     try:
-        _root_map.setdefault("extra", Path(p).resolve())
+        root_key = f"extra_{i}" if i > 0 else "extra"
+        _root_map[root_key] = Path(p).resolve()
     except Exception:
         pass
 
@@ -289,8 +327,12 @@ class BaseDirectoryResp(BaseModel):
     message: str
 
 
-def _resolve_storage_dir(candidate: Optional[str]) -> Path:
+def _resolve_storage_dir(candidate: Optional[str]) -> tuple[Path, bool]:
     """Resolve a candidate path for storage/info and validation.
+
+    Returns a tuple of (resolved_path, is_bootstrap_candidate).
+    is_bootstrap_candidate is True if the path was validated via validate_storage_candidate
+    rather than being found in existing roots.
 
     Compatibility behavior retained for API stability:
     - None -> default OUT_ROOT
@@ -299,20 +341,26 @@ def _resolve_storage_dir(candidate: Optional[str]) -> Path:
     - Other relative forms -> rejected
     """
     if candidate is None:
-        return OUT_ROOT
+        return OUT_ROOT, False
     if _is_abs_like(candidate):
-        # Absolute: delegate to guard without resolving user input
+        # Absolute: first try existing roots, then validate as bootstrap candidate
         try:
             cp = PATH_GUARD.wrap_absolute(candidate)
-            return cp.as_path()
-        except PathSecurityError as exc:
-            raise PathSecurityError("path not permitted") from exc
+            return cp.as_path(), False
+        except PathSecurityError:
+            # Not in existing roots - validate as storage bootstrap candidate
+            try:
+                validated_path = PATH_GUARD.validate_storage_candidate(candidate)
+                return validated_path, True
+            except PathSecurityError as second_exc:
+                # If bootstrap validation also fails, use that error message
+                raise PathSecurityError(f"path not permitted: {second_exc}") from second_exc
     # For relative inputs, only accept a single-segment leaf and map under 'storage'
     try:
         leaf = PATH_GUARD.canonicalize_leaf(candidate)
         cp = PATH_GUARD.safe_join("storage", leaf)
         # Return the underlying Path for existing call sites that expect Path
-        return cp.as_path()
+        return cp.as_path(), False
     except Exception as exc:
         raise PathSecurityError("invalid relative path") from exc
 
@@ -429,24 +477,44 @@ async def get_storage_info(path: Optional[str] = None) -> StorageInfoResp:
 
     # Fallback: None or absolute path -> guarded absolute handling (CanonicalPath only)
     try:
-        target_path = _resolve_storage_dir(path)
+        target_path, is_bootstrap = _resolve_storage_dir(path)
         # At this point, target_path is OUT_ROOT (None) or an absolute candidate.
-        cp = PATH_GUARD.wrap_absolute(target_path)
-        PATH_GUARD.ensure_dir(cp.as_path())
-        stat = PATH_GUARD.disk_usage_cp(cp)
-        total_bytes = stat.total
-        free_bytes = stat.free
-        used_bytes = total_bytes - free_bytes
-        percent_used = (used_bytes / total_bytes * 100) if total_bytes > 0 else 0
-        writable = os.access(os.fspath(cp), os.W_OK)
-        return StorageInfoResp(
-            path=str(cp),
-            total_bytes=total_bytes,
-            free_bytes=free_bytes,
-            used_bytes=used_bytes,
-            percent_used=percent_used,
-            writable=writable,
-        )
+        if is_bootstrap:
+            # This is a validated bootstrap candidate - access directly
+            if not target_path.exists():
+                target_path.mkdir(parents=True, exist_ok=True, mode=0o750)
+            stat = shutil.disk_usage(target_path)
+            total_bytes = stat.total
+            free_bytes = stat.free
+            used_bytes = total_bytes - free_bytes
+            percent_used = (used_bytes / total_bytes * 100) if total_bytes > 0 else 0
+            writable = os.access(target_path, os.W_OK)
+            return StorageInfoResp(
+                path=str(target_path),
+                total_bytes=total_bytes,
+                free_bytes=free_bytes,
+                used_bytes=used_bytes,
+                percent_used=percent_used,
+                writable=writable,
+            )
+        else:
+            # This is under an existing root - use guard
+            cp = PATH_GUARD.wrap_absolute(target_path)
+            PATH_GUARD.ensure_dir(cp.as_path())
+            stat = PATH_GUARD.disk_usage_cp(cp)
+            total_bytes = stat.total
+            free_bytes = stat.free
+            used_bytes = total_bytes - free_bytes
+            percent_used = (used_bytes / total_bytes * 100) if total_bytes > 0 else 0
+            writable = os.access(os.fspath(cp), os.W_OK)
+            return StorageInfoResp(
+                path=str(cp),
+                total_bytes=total_bytes,
+                free_bytes=free_bytes,
+                used_bytes=used_bytes,
+                percent_used=percent_used,
+                writable=writable,
+            )
     except PathSecurityError as exc:
         raise HTTPException(status_code=400, detail="Cannot access path") from exc
     except Exception as exc:
@@ -530,13 +598,21 @@ async def admin_cache_clear(request: Request) -> Dict[str, Any]:
 async def set_base_directory(req: BaseDirectoryReq) -> BaseDirectoryResp:
     """Set and validate a new base directory for storage."""
     # Require absolute path input (UI contract)
+    target_path = None
+    is_bootstrap = False
+
     try:
         if not req.path or not _is_abs_like(req.path):
             return BaseDirectoryResp(path=req.path, valid=False, message="Path must be absolute")
-        target_path = _resolve_storage_dir(req.path)
+        target_path, is_bootstrap = _resolve_storage_dir(req.path)
         # target_path may be absolute (allowed) or a CanonicalPath.as_path return.
-        # Ensure directory using guard; for absolute paths, guard verifies containment.
-        PATH_GUARD.ensure_dir(target_path)
+        # For paths under existing roots, use guard. For validated bootstrap candidates, create manually.
+        if is_bootstrap:
+            # This is a validated bootstrap candidate - create directory manually
+            target_path.mkdir(parents=True, exist_ok=True, mode=0o750)
+        else:
+            # This is under an existing root - use guard to ensure directory
+            PATH_GUARD.ensure_dir(target_path)
     except PathSecurityError as exc:
         detail = str(exc)
         message = f"Invalid path: {detail}"
@@ -551,12 +627,14 @@ async def set_base_directory(req: BaseDirectoryReq) -> BaseDirectoryResp:
                 path=str(target_path), valid=False, message="Directory is not writable"
             )
 
-        # Check disk space (warn if less than 1GB free) using guarded path
-        cp = PATH_GUARD.wrap_absolute(target_path) if _is_abs_like(target_path) else None
-        if cp is not None:
-            stat = PATH_GUARD.disk_usage_cp(cp)
-        else:
+        # Check disk space (warn if less than 1GB free)
+        if is_bootstrap:
+            # For bootstrap candidates, use direct disk usage
             stat = shutil.disk_usage(target_path)
+        else:
+            # For paths under existing roots, use guarded path
+            cp = PATH_GUARD.wrap_absolute(target_path)
+            stat = PATH_GUARD.disk_usage_cp(cp)
         if stat.free < 1024 * 1024 * 1024:  # 1GB
             return BaseDirectoryResp(
                 path=str(target_path),

@@ -436,7 +436,7 @@ def main() -> int:
             except Exception:
                 pass
 
-    th_mt = threading.Thread(target=mt_worker)
+    th_mt = threading.Thread(target=mt_worker, daemon=True)
     th_mt.start()
 
     # Graceful shutdown handling

@@ -35,6 +35,22 @@ def available(cmd: str) -> bool:
     return shutil.which(cmd) is not None
 
 
+def _call_with_timeout(func: Callable[[], None], timeout: float, name: str) -> None:
+    """Call a function in a thread with a timeout. Log if it times out."""
+
+    def _wrapper() -> None:
+        try:
+            func()
+        except Exception as e:
+            _log(f"{name} raised: {e}")
+
+    th = threading.Thread(target=_wrapper, daemon=True)
+    th.start()
+    th.join(timeout=timeout)
+    if th.is_alive():
+        _log(f"{name} timed out after {timeout}s (daemon thread will be killed)")
+
+
 def capture_stream(callback: Callable[[AudioFrame], None]) -> Callable[[], None]:
     """Start capturing audio and call callback for each frame.
 
@@ -75,14 +91,15 @@ def capture_stream(callback: Callable[[AudioFrame], None]) -> Callable[[], None]
                 mono = block.reshape(-1).astype(np.float32)
                 callback(AudioFrame(mono, t0, t1))
 
-        th = threading.Thread(target=worker)
+        th = threading.Thread(target=worker, daemon=True)
         th.start()
 
         def stop() -> None:
             stop_flag.set()
             th.join(timeout=1.0)
-            stream.stop()
-            stream.close()
+            # Wrap stream.stop() and stream.close() with timeouts since they can block indefinitely
+            _call_with_timeout(lambda: stream.stop(), timeout=0.5, name="stream.stop()")
+            _call_with_timeout(lambda: stream.close(), timeout=0.5, name="stream.close()")
 
         return stop
     except Exception as e:
@@ -138,7 +155,7 @@ def capture_stream(callback: Callable[[AudioFrame], None]) -> Callable[[], None]
                 t0 = t1 - (arr.size / SAMPLE_RATE)
                 callback(AudioFrame(arr, t0, t1))
 
-        th = threading.Thread(target=reader)
+        th = threading.Thread(target=reader, daemon=True)
         th.start()
 
         def stop() -> None:
@@ -148,7 +165,13 @@ def capture_stream(callback: Callable[[AudioFrame], None]) -> Callable[[], None]
                     proc.stdout.close()
             except Exception:
                 pass
-            proc.terminate()
+            # Wrap proc.terminate() with timeout; if it doesn't work, forcefully kill
+            try:
+                proc.terminate()
+                proc.wait(timeout=0.5)
+            except subprocess.TimeoutExpired:
+                _log("proc.terminate() timed out, killing forcefully")
+                proc.kill()
             th.join(timeout=1.0)
 
         return stop
