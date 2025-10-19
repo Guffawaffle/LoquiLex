@@ -18,8 +18,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Tuple
 
-from .path_guard import PathSecurityError
 from .path_sanitizer import (
+    PathSecurityError,
     sanitize_path_string,
     split_and_validate_components,
 )
@@ -36,10 +36,6 @@ class PathPolicyConfig:
     """
 
     allowed_roots: Tuple[Path, ...] = ()
-    # If True, allow following symlinks when resolving user paths. When False,
-    # resolution must still ensure containment within allowed roots but callers
-    # may opt out of following symlinks for stricter behavior.
-    allow_follow_symlinks: bool = False
 
 
 class PathPolicy:
@@ -61,9 +57,7 @@ class PathPolicy:
             if not root.is_absolute():
                 raise ValueError(f"allowed root must be absolute: {root}")
 
-    def resolve_under(
-        self, root: Path | str, user_path: str | Path, *, base_dir: Path | None = None
-    ) -> Path:
+    def resolve_under(self, root: Path | str, user_path: str) -> Path:
         """Resolve a user path under a specified root with safety checks.
 
         Args:
@@ -90,10 +84,7 @@ class PathPolicy:
         if not root_path.is_absolute():
             raise PathSecurityError("root must be absolute")
 
-        # Check if root is in our allowed list. If no allowed roots are
-        # configured, the policy should reject all roots (caller must provide
-        # explicit allowed roots via the config). This matches historical
-        # expectations in the test-suite.
+        # Check if root is in our allowed list
         root_resolved = root_path.resolve()
         allowed = False
         for allowed_root in self.config.allowed_roots:
@@ -105,7 +96,7 @@ class PathPolicy:
             except ValueError:
                 try:
                     # Or if any allowed root is within our root
-                    allowed_root.resolve().relative_to(root_resolved)
+                    root_resolved.relative_to(allowed_root.resolve())
                     allowed = True
                     break
                 except ValueError:
@@ -115,28 +106,21 @@ class PathPolicy:
             raise PathSecurityError("root not in allowed roots")
 
         # Step 1: Handle empty path case (resolves to root itself)
-        if isinstance(user_path, Path):
-            # If a Path was provided and it's absolute, use it directly.
-            if user_path.is_absolute():
-                candidate = user_path
-            else:
-                # Relative Path: sanitize its string form and join with base
-                sanitized = sanitize_path_string(str(user_path))
-                components = split_and_validate_components(sanitized)
-                base = base_dir if base_dir is not None else root_path
-                candidate = base if not components else base.joinpath(*components)
+        if not user_path.strip():
+            # Empty path resolves to root itself
+            candidate = root_path
         else:
-            # user_path is a string
-            if not user_path.strip():
+            # Sanitize the user path (no filesystem operations)
+            sanitized = sanitize_path_string(user_path)
+
+            # Step 2: Split into validated components
+            components = split_and_validate_components(sanitized)
+
+            # Step 3: Join with root
+            if not components:
                 candidate = root_path
             else:
-                # Sanitize the user path (no filesystem operations)
-                sanitized = sanitize_path_string(user_path)
-                # Step 2: Split into validated components
-                components = split_and_validate_components(sanitized)
-                # Step 3: Join with root or optional base_dir
-                base = base_dir if base_dir is not None else root_path
-                candidate = base if not components else base.joinpath(*components)
+                candidate = root_path.joinpath(*components)
 
         # Step 4: Resolve to handle any symlinks or relative components
         resolved = candidate.resolve(strict=False)
