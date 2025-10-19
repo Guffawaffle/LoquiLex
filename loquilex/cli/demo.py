@@ -14,7 +14,6 @@ import uuid
 from pathlib import Path
 from typing import Any
 import queue
-import sounddevice as sd
 import contextlib
 import math
 import os
@@ -129,6 +128,8 @@ async def _run_demo(
         src_name = f"wav {wav_path}"
     else:
         try:
+            import sounddevice as sd
+
             in_idx = sd.default.device[0]
             in_dev = sd.query_devices(in_idx, "input")
             src_name = in_dev.get("name", "default")
