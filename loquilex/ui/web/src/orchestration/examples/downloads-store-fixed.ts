@@ -82,12 +82,24 @@ const concurrencyLimiter = createConcurrencyLimiter({
   queueLimit: 10 
 })
 
-// Mock API function (in real implementation, this would call the actual API)
+// Real API function to call the backend
 async function apiStartDownload(request: DownloadRequest): Promise<{ job_id: string }> {
-  // Simulate API call delay
-  await new Promise(resolve => setTimeout(resolve, 100))
-  // Fixed: Replace deprecated substr() with slice()
-  return { job_id: `job_${Date.now()}_${Math.random().toString(36).slice(2, 11)}` }
+  const response = await fetch('/models/download', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      repo_id: request.repoId,
+      type: request.type
+    })
+  })
+  
+  if (!response.ok) {
+    throw new Error(`Failed to start download: ${response.statusText}`)
+  }
+  
+  return await response.json()
 }
 
 export const useDownloadsStore = create<DownloadsStore>((set, get) => ({

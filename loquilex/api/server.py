@@ -280,6 +280,26 @@ class DownloadCancelResp(BaseModel):
     cancelled: bool
 
 
+class BandwidthConfigReq(BaseModel):
+    """Bandwidth configuration request."""
+    limit_mbps: int = Field(ge=0, description="Bandwidth limit in MB/s, 0 = unlimited")
+
+
+class BandwidthConfigResp(BaseModel):
+    """Bandwidth configuration response."""
+    limit_mbps: int
+    active: bool
+
+
+class DownloadQueueResp(BaseModel):
+    """Download queue status response."""
+    jobs: List[Dict[str, Any]]
+    active_count: int
+    queued_count: int
+    completed_count: int
+    total_count: int
+
+
 class SelfTestReq(BaseModel):
     """Device self-test request.
 
@@ -756,6 +776,80 @@ async def post_download(req: DownloadReq) -> Dict[str, Any]:
 async def delete_download(job_id: str) -> DownloadCancelResp:
     ok = MANAGER.cancel_download(job_id)
     return DownloadCancelResp(cancelled=ok)
+
+
+@app.get("/models/downloads", response_model=DownloadQueueResp)
+async def get_downloads() -> DownloadQueueResp:
+    """Get all download jobs with status."""
+    downloads = MANAGER.get_download_status()
+    jobs = []
+    active_count = 0
+    queued_count = 0
+    completed_count = 0
+    
+    for job_id, info in downloads.items():
+        status = info.get('status', 'unknown')
+        job_data = {
+            'job_id': job_id,
+            'repo_id': info.get('repo_id', ''),
+            'type': info.get('type', ''),
+            'status': status,
+            'progress': info.get('progress', 0),
+            'created_at': info.get('created_at', ''),
+            'started_at': info.get('started_at'),
+            'completed_at': info.get('completed_at'),
+            'error_message': info.get('error_message')
+        }
+        jobs.append(job_data)
+        
+        if status in ['downloading', 'active']:
+            active_count += 1
+        elif status in ['queued', 'pending']:
+            queued_count += 1
+        elif status in ['completed', 'success']:
+            completed_count += 1
+    
+    return DownloadQueueResp(
+        jobs=jobs,
+        active_count=active_count,
+        queued_count=queued_count,
+        completed_count=completed_count,
+        total_count=len(jobs)
+    )
+
+
+@app.post("/models/downloads/bandwidth", response_model=BandwidthConfigResp)
+async def set_bandwidth_limit(req: BandwidthConfigReq) -> BandwidthConfigResp:
+    """Set bandwidth limit for downloads."""
+    MANAGER.set_bandwidth_limit(req.limit_mbps)
+    return BandwidthConfigResp(
+        limit_mbps=req.limit_mbps,
+        active=req.limit_mbps > 0
+    )
+
+
+@app.get("/models/downloads/bandwidth", response_model=BandwidthConfigResp)
+async def get_bandwidth_limit() -> BandwidthConfigResp:
+    """Get current bandwidth limit."""
+    limit = MANAGER.get_bandwidth_limit()
+    return BandwidthConfigResp(
+        limit_mbps=limit,
+        active=limit > 0
+    )
+
+
+@app.post("/models/downloads/pause-all")
+async def pause_all_downloads() -> Dict[str, Any]:
+    """Pause all active downloads."""
+    count = MANAGER.pause_all_downloads()
+    return {"paused_count": count}
+
+
+@app.post("/models/downloads/resume-all")
+async def resume_all_downloads() -> Dict[str, Any]:
+    """Resume all paused downloads."""
+    count = MANAGER.resume_all_downloads()
+    return {"resumed_count": count}
 
 
 @app.post("/sessions", response_model=CreateSessionResp)
