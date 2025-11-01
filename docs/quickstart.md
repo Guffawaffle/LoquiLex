@@ -113,7 +113,8 @@ Perfect for:
 
 - **[MVP User Guide](./mvp-user-guide.md)** - Complete workflows and advanced usage
 - **[Architecture Guide](./architecture/js-first.md)** - Technical deep-dive
-- **[API Contracts](./contracts/README.md)** - WebSocket and REST API reference
+- **[API Contract](./API_CONTRACT.md)** - Complete REST + WebSocket API reference
+- **[API Contracts](./contracts/README.md)** - Detailed protocol specifications
 
 ## Getting Help
 
