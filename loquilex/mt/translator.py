@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import contextlib
+import warnings
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Optional
 
@@ -90,6 +91,240 @@ class Translator:
             cuda_available=is_cuda,
         )
 
+    def translate(
+        self,
+        text: str,
+        src_lang: str = "en",
+        tgt_lang: str = "zh",
+        quality: str = "final",
+    ) -> TranslationResult:
+        """Generic translation method supporting any language pair.
+
+        Args:
+            text: Text to translate
+            src_lang: Source language code (e.g., 'en', 'zh', 'es')
+            tgt_lang: Target language code (e.g., 'zh', 'en', 'es')
+            quality: Translation quality mode ('final' or 'realtime'/'draft')
+
+        Returns:
+            TranslationResult with translated text and metadata
+
+        Example:
+            tr = Translator()
+            result = tr.translate("Hello", src_lang="en", tgt_lang="zh", quality="final")
+            result = tr.translate("你好", src_lang="zh", tgt_lang="en", quality="draft")
+        """
+        text = text.strip()
+        if not text:
+            return TranslationResult(
+                "",
+                "echo",
+                src_lang=src_lang,
+                tgt_lang=tgt_lang,
+                duration_ms=0.0,
+            )
+
+        self.logger.debug(
+            "Starting generic translation",
+            text_length=len(text),
+            src_lang=src_lang,
+            tgt_lang=tgt_lang,
+            quality=quality,
+        )
+
+        self.metrics.start_timer("translation_latency")
+
+        # Normalize language codes (map "zh" → "zh-Hans" based on variant config)
+        from loquilex.mt.core.util import normalize_lang
+
+        try:
+            src = normalize_lang(src_lang)
+            tgt = normalize_lang(tgt_lang)
+        except ValueError as e:
+            self.logger.error(f"Unsupported language: {e}")
+            # Echo fallback
+            return TranslationResult(
+                text,
+                "echo",
+                src_lang=src_lang,
+                tgt_lang=tgt_lang,
+                duration_ms=0.0,
+            )
+
+        # Determine translation strategy based on quality and language pair
+        is_draft = quality in ("realtime", "draft")
+
+        # For EN→ZH, use existing optimized methods (for now, during transition)
+        if src == "en" and tgt in ("zh-Hans", "zh-Hant"):
+            if is_draft:
+                legacy_result = self.translate_en_to_zh_draft(text)
+            else:
+                legacy_result = self.translate_en_to_zh(text)
+            # Update lang codes to match request
+            return TranslationResult(
+                legacy_result.text,
+                legacy_result.model,
+                src_lang=src,
+                tgt_lang=tgt,
+                duration_ms=legacy_result.duration_ms,
+                confidence=legacy_result.confidence,
+            )
+
+        # For other pairs, use generic provider-based translation
+        # Try NLLB first (supports more language pairs)
+        try:
+            tok, model = self._load_nllb()
+
+            # Map language codes to NLLB FLORES codes
+            flores_map = {
+                "en": "eng_Latn",
+                "zh-Hans": "zho_Hans",
+                "zh-Hant": "zho_Hant",
+                "es": "spa_Latn",
+                "fr": "fra_Latn",
+                "de": "deu_Latn",
+                "ja": "jpn_Jpan",
+                "ko": "kor_Hang",
+                "ru": "rus_Cyrl",
+                "ar": "arb_Arab",
+            }
+
+            src_flores = flores_map.get(src, "eng_Latn")
+            tgt_flores = flores_map.get(tgt, "zho_Hans")
+
+            tok.src_lang = src_flores
+            inputs = tok(text, return_tensors="pt", truncation=True, max_length=MT.max_input_tokens)
+            inputs = {k: v.to(self.torch_device) for k, v in inputs.items()}
+            cm = torch.no_grad() if torch is not None else contextlib.nullcontext()
+
+            # Adjust generation params based on quality
+            beam_size = 1 if is_draft else MT.num_beams
+            max_tokens = min(48, MT.max_new_tokens) if is_draft else MT.max_new_tokens
+
+            with cm:
+                gen = model.generate(
+                    **inputs,
+                    forced_bos_token_id=tok.convert_tokens_to_ids(tgt_flores),
+                    num_beams=beam_size,
+                    no_repeat_ngram_size=MT.no_repeat_ngram_size if not is_draft else 0,
+                    max_new_tokens=max_tokens,
+                )
+            out = tok.batch_decode(gen, skip_special_tokens=True)[0]
+
+            duration_ms = self.metrics.end_timer("translation_latency")
+            self.metrics.increment_counter("translations_success")
+
+            result = TranslationResult(
+                out,
+                f"{MT.nllb_model}:{quality}",
+                src_lang=src,
+                tgt_lang=tgt,
+                duration_ms=duration_ms,
+            )
+
+            self.logger.info(
+                "Translation completed successfully",
+                method="nllb",
+                src_lang=src,
+                tgt_lang=tgt,
+                quality=quality,
+                input_length=len(text),
+                output_length=len(out),
+                duration_ms=duration_ms,
+            )
+
+            return result
+
+        except Exception as e:
+            self.logger.warning(
+                "NLLB translation failed, trying M2M",
+                error=str(e),
+                src_lang=src,
+                tgt_lang=tgt,
+            )
+
+        # Try M2M fallback
+        try:
+            tok, model = self._load_m2m()
+
+            # M2M uses simpler language codes
+            m2m_lang_map = {
+                "en": "en",
+                "zh-Hans": "zh",
+                "zh-Hant": "zh",
+                "es": "es",
+                "fr": "fr",
+                "de": "de",
+                "ja": "ja",
+                "ko": "ko",
+                "ru": "ru",
+                "ar": "ar",
+            }
+
+            src_m2m = m2m_lang_map.get(src, "en")
+            tgt_m2m = m2m_lang_map.get(tgt, "zh")
+
+            tok.src_lang = src_m2m
+            inputs = tok(text, return_tensors="pt", truncation=True, max_length=MT.max_input_tokens)
+            inputs = {k: v.to(self.torch_device) for k, v in inputs.items()}
+            cm = torch.no_grad() if torch is not None else contextlib.nullcontext()
+
+            beam_size = 1 if is_draft else MT.num_beams
+            max_tokens = min(48, MT.max_new_tokens) if is_draft else MT.max_new_tokens
+
+            with cm:
+                gen = model.generate(
+                    **inputs,
+                    forced_bos_token_id=tok.get_lang_id(tgt_m2m),
+                    num_beams=beam_size,
+                    max_new_tokens=max_tokens,
+                    pad_token_id=getattr(tok, "pad_token_id", None),
+                )
+            out = tok.batch_decode(gen, skip_special_tokens=True)[0]
+
+            duration_ms = self.metrics.end_timer("translation_latency")
+            self.metrics.increment_counter("translations_success")
+
+            result = TranslationResult(
+                out,
+                f"{MT.m2m_model}:{quality}",
+                src_lang=src,
+                tgt_lang=tgt,
+                duration_ms=duration_ms,
+            )
+
+            self.logger.info(
+                "Translation completed successfully",
+                method="m2m",
+                src_lang=src,
+                tgt_lang=tgt,
+                quality=quality,
+                input_length=len(text),
+                output_length=len(out),
+                duration_ms=duration_ms,
+            )
+
+            return result
+
+        except Exception as e:
+            self.logger.error(
+                "Both NLLB and M2M translation failed",
+                error=str(e),
+                src_lang=src,
+                tgt_lang=tgt,
+            )
+            self.metrics.increment_counter("translations_failed")
+            duration_ms = self.metrics.end_timer("translation_latency")
+
+        # Echo fallback
+        return TranslationResult(
+            text,
+            "echo",
+            src_lang=src,
+            tgt_lang=tgt,
+            duration_ms=duration_ms,
+        )
+
     def _load_nllb(self):
         if self._nllb is None:
             self.logger.info("Loading NLLB model", model=MT.nllb_model)
@@ -161,6 +396,17 @@ class Translator:
         return self._m2m
 
     def translate_en_to_zh(self, text: str) -> TranslationResult:
+        """DEPRECATED: Use translate(text, src_lang='en', tgt_lang='zh', quality='final') instead.
+
+        This method is maintained for backward compatibility but will be removed in a future version.
+        """
+        warnings.warn(
+            "translate_en_to_zh() is deprecated. "
+            "Use translate(text, src_lang='en', tgt_lang='zh', quality='final') instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+
         text = text.strip()
         if not text:
             return TranslationResult(
@@ -172,7 +418,7 @@ class Translator:
             )
 
         self.logger.debug(
-            "Starting translation",
+            "Starting translation (deprecated method)",
             text_length=len(text),
             src_lang="en",
             tgt_lang="zh",
@@ -283,11 +529,18 @@ class Translator:
         )
 
     def translate_en_to_zh_draft(self, text: str) -> TranslationResult:
-        """Low-latency 'draft' translation for live partials.
+        """DEPRECATED: Use translate(text, src_lang='en', tgt_lang='zh', quality='draft') instead.
 
-        Prioritize speed: beam_size=1, shorter max_new_tokens, minimal constraints.
-        Try M2M first (often faster on CPU), then NLLB, then echo.
+        Low-latency 'draft' translation for live partials.
+        This method is maintained for backward compatibility but will be removed in a future version.
         """
+        warnings.warn(
+            "translate_en_to_zh_draft() is deprecated. "
+            "Use translate(text, src_lang='en', tgt_lang='zh', quality='draft') instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+
         text = text.strip()
         if not text:
             return TranslationResult(

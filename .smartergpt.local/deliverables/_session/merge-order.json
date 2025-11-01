@@ -1,0 +1,47 @@
+{
+  "mergeSequence": [
+    {
+      "level": 0,
+      "order": [
+        {
+          "step": 1,
+          "pr": 158,
+          "branch": "copilot/add-centralized-config-module",
+          "reason": "Foundation: centralized config Settings module"
+        },
+        {
+          "step": 2,
+          "pr": 161,
+          "branch": "copilot/cleanup-remove-legacy-orchestration",
+          "reason": "Independent deprecation; can run in parallel with PR-158"
+        }
+      ]
+    },
+    {
+      "level": 1,
+      "order": [
+        {
+          "step": 3,
+          "pr": 159,
+          "branch": "copilot/fix-base-directory-path",
+          "reason": "Depends on centralized config from PR-158; applies path resolution"
+        }
+      ]
+    },
+    {
+      "level": 2,
+      "order": [
+        {
+          "step": 4,
+          "pr": 160,
+          "branch": "copilot/fix-hard-coded-path-in-tests",
+          "reason": "Depends on path fixes from PR-159; final integration test"
+        }
+      ]
+    }
+  ],
+  "totalPRs": 4,
+  "parallelOpportunities": 1,
+  "estimatedTotalMergeTime": "~30 minutes (gates take ~10 min each level)",
+  "blockersExpected": "None identified; all PRs are targeted fixes"
+}

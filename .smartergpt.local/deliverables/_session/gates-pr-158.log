@@ -1,0 +1,154 @@
+>> Ensuring Python environment is ready
+Requirement already satisfied: pip in ./.venv/lib/python3.12/site-packages (25.3)
+Requirement already satisfied: setuptools in ./.venv/lib/python3.12/site-packages (80.9.0)
+Requirement already satisfied: wheel in ./.venv/lib/python3.12/site-packages (0.45.1)
+>> Installing base dev/test dependencies
+Requirement already satisfied: loguru==0.7.2 in ./.venv/lib/python3.12/site-packages (from -r requirements-ci.txt (line 6)) (0.7.2)
+Requirement already satisfied: numpy==1.26.4 in ./.venv/lib/python3.12/site-packages (from -r requirements-ci.txt (line 7)) (1.26.4)
+Requirement already satisfied: rich==13.9.2 in ./.venv/lib/python3.12/site-packages (from -r requirements-ci.txt (line 8)) (13.9.2)
+Requirement already satisfied: webvtt-py==0.5.1 in ./.venv/lib/python3.12/site-packages (from -r requirements-ci.txt (line 9)) (0.5.1)
+Requirement already satisfied: pytest==8.4.2 in ./.venv/lib/python3.12/site-packages (from -r requirements-ci.txt (line 10)) (8.4.2)
+Requirement already satisfied: fastapi==0.109.2 in ./.venv/lib/python3.12/site-packages (from -r requirements-ci.txt (line 13)) (0.109.2)
+Requirement already satisfied: uvicorn==0.27.1 in ./.venv/lib/python3.12/site-packages (from -r requirements-ci.txt (line 14)) (0.27.1)
+Requirement already satisfied: websockets==12.0 in ./.venv/lib/python3.12/site-packages (from -r requirements-ci.txt (line 15)) (12.0)
+Requirement already satisfied: httpx==0.27.2 in ./.venv/lib/python3.12/site-packages (from -r requirements-ci.txt (line 18)) (0.27.2)
+Requirement already satisfied: pytest-asyncio>=0.23 in ./.venv/lib/python3.12/site-packages (from -r requirements-ci.txt (line 19)) (0.26.0)
+Requirement already satisfied: types-psutil>=5.9.5.20240516 in ./.venv/lib/python3.12/site-packages (from -r requirements-ci.txt (line 22)) (7.0.0.20250822)
+Requirement already satisfied: pytest-cov==7.0.0 in ./.venv/lib/python3.12/site-packages (from -r requirements-dev.txt (line 3)) (7.0.0)
+Requirement already satisfied: pytest-timeout==2.4.0 in ./.venv/lib/python3.12/site-packages (from -r requirements-dev.txt (line 4)) (2.4.0)
+Requirement already satisfied: pytest-mock==3.15.0 in ./.venv/lib/python3.12/site-packages (from -r requirements-dev.txt (line 5)) (3.15.0)
+Requirement already satisfied: pytest-deadfixtures>=2.0.0 in ./.venv/lib/python3.12/site-packages (from -r requirements-dev.txt (line 7)) (2.2.1)
+Requirement already satisfied: freezegun<2,>=1.5 in ./.venv/lib/python3.12/site-packages (from -r requirements-dev.txt (line 8)) (1.5.5)
+Requirement already satisfied: mypy==1.18.1 in ./.venv/lib/python3.12/site-packages (from -r requirements-dev.txt (line 15)) (1.18.1)
+Requirement already satisfied: ruff==0.13.0 in ./.venv/lib/python3.12/site-packages (from -r requirements-dev.txt (line 16)) (0.13.0)
+Requirement already satisfied: black==24.10.0 in ./.venv/lib/python3.12/site-packages (from -r requirements-dev.txt (line 17)) (24.10.0)
+Requirement already satisfied: vulture>=2.7 in ./.venv/lib/python3.12/site-packages (from -r requirements-dev.txt (line 18)) (2.14)
+Requirement already satisfied: trio==0.25.0 in ./.venv/lib/python3.12/site-packages (from -r requirements-dev.txt (line 22)) (0.25.0)
+Requirement already satisfied: markdown-it-py>=2.2.0 in ./.venv/lib/python3.12/site-packages (from rich==13.9.2->-r requirements-ci.txt (line 8)) (4.0.0)
+Requirement already satisfied: pygments<3.0.0,>=2.13.0 in ./.venv/lib/python3.12/site-packages (from rich==13.9.2->-r requirements-ci.txt (line 8)) (2.19.2)
+Requirement already satisfied: iniconfig>=1 in ./.venv/lib/python3.12/site-packages (from pytest==8.4.2->-r requirements-ci.txt (line 10)) (2.1.0)
+Requirement already satisfied: packaging>=20 in ./.venv/lib/python3.12/site-packages (from pytest==8.4.2->-r requirements-ci.txt (line 10)) (25.0)
+Requirement already satisfied: pluggy<2,>=1.5 in ./.venv/lib/python3.12/site-packages (from pytest==8.4.2->-r requirements-ci.txt (line 10)) (1.6.0)
+Requirement already satisfied: pydantic!=1.8,!=1.8.1,!=2.0.0,!=2.0.1,!=2.1.0,<3.0.0,>=1.7.4 in ./.venv/lib/python3.12/site-packages (from fastapi==0.109.2->-r requirements-ci.txt (line 13)) (2.11.9)
+Requirement already satisfied: starlette<0.37.0,>=0.36.3 in ./.venv/lib/python3.12/site-packages (from fastapi==0.109.2->-r requirements-ci.txt (line 13)) (0.36.3)
+Requirement already satisfied: typing-extensions>=4.8.0 in ./.venv/lib/python3.12/site-packages (from fastapi==0.109.2->-r requirements-ci.txt (line 13)) (4.15.0)
+Requirement already satisfied: click>=7.0 in ./.venv/lib/python3.12/site-packages (from uvicorn==0.27.1->-r requirements-ci.txt (line 14)) (8.2.1)
+Requirement already satisfied: h11>=0.8 in ./.venv/lib/python3.12/site-packages (from uvicorn==0.27.1->-r requirements-ci.txt (line 14)) (0.16.0)
+Requirement already satisfied: anyio in ./.venv/lib/python3.12/site-packages (from httpx==0.27.2->-r requirements-ci.txt (line 18)) (4.10.0)
+Requirement already satisfied: certifi in ./.venv/lib/python3.12/site-packages (from httpx==0.27.2->-r requirements-ci.txt (line 18)) (2025.8.3)
+Requirement already satisfied: httpcore==1.* in ./.venv/lib/python3.12/site-packages (from httpx==0.27.2->-r requirements-ci.txt (line 18)) (1.0.9)
+Requirement already satisfied: idna in ./.venv/lib/python3.12/site-packages (from httpx==0.27.2->-r requirements-ci.txt (line 18)) (3.10)
+Requirement already satisfied: sniffio in ./.venv/lib/python3.12/site-packages (from httpx==0.27.2->-r requirements-ci.txt (line 18)) (1.3.1)
+Requirement already satisfied: coverage>=7.10.6 in ./.venv/lib/python3.12/site-packages (from coverage[toml]>=7.10.6->pytest-cov==7.0.0->-r requirements-dev.txt (line 3)) (7.10.6)
+Requirement already satisfied: mypy_extensions>=1.0.0 in ./.venv/lib/python3.12/site-packages (from mypy==1.18.1->-r requirements-dev.txt (line 15)) (1.1.0)
+Requirement already satisfied: pathspec>=0.9.0 in ./.venv/lib/python3.12/site-packages (from mypy==1.18.1->-r requirements-dev.txt (line 15)) (0.12.1)
+Requirement already satisfied: platformdirs>=2 in ./.venv/lib/python3.12/site-packages (from black==24.10.0->-r requirements-dev.txt (line 17)) (4.4.0)
+Requirement already satisfied: attrs>=23.2.0 in ./.venv/lib/python3.12/site-packages (from trio==0.25.0->-r requirements-dev.txt (line 22)) (25.3.0)
+Requirement already satisfied: sortedcontainers in ./.venv/lib/python3.12/site-packages (from trio==0.25.0->-r requirements-dev.txt (line 22)) (2.4.0)
+Requirement already satisfied: outcome in ./.venv/lib/python3.12/site-packages (from trio==0.25.0->-r requirements-dev.txt (line 22)) (1.3.0.post0)
+Requirement already satisfied: python-dateutil>=2.7 in ./.venv/lib/python3.12/site-packages (from freezegun<2,>=1.5->-r requirements-dev.txt (line 8)) (2.9.0.post0)
+Requirement already satisfied: annotated-types>=0.6.0 in ./.venv/lib/python3.12/site-packages (from pydantic!=1.8,!=1.8.1,!=2.0.0,!=2.0.1,!=2.1.0,<3.0.0,>=1.7.4->fastapi==0.109.2->-r requirements-ci.txt (line 13)) (0.7.0)
+Requirement already satisfied: pydantic-core==2.33.2 in ./.venv/lib/python3.12/site-packages (from pydantic!=1.8,!=1.8.1,!=2.0.0,!=2.0.1,!=2.1.0,<3.0.0,>=1.7.4->fastapi==0.109.2->-r requirements-ci.txt (line 13)) (2.33.2)
+Requirement already satisfied: typing-inspection>=0.4.0 in ./.venv/lib/python3.12/site-packages (from pydantic!=1.8,!=1.8.1,!=2.0.0,!=2.0.1,!=2.1.0,<3.0.0,>=1.7.4->fastapi==0.109.2->-r requirements-ci.txt (line 13)) (0.4.1)
+Requirement already satisfied: mdurl~=0.1 in ./.venv/lib/python3.12/site-packages (from markdown-it-py>=2.2.0->rich==13.9.2->-r requirements-ci.txt (line 8)) (0.1.2)
+Requirement already satisfied: six>=1.5 in ./.venv/lib/python3.12/site-packages (from python-dateutil>=2.7->freezegun<2,>=1.5->-r requirements-dev.txt (line 8)) (1.17.0)
+.venv/bin/python -m ruff check loquilex tests
+All checks passed!
+>> Ensuring Python environment is ready
+Requirement already satisfied: pip in ./.venv/lib/python3.12/site-packages (25.3)
+Requirement already satisfied: setuptools in ./.venv/lib/python3.12/site-packages (80.9.0)
+Requirement already satisfied: wheel in ./.venv/lib/python3.12/site-packages (0.45.1)
+>> Installing base dev/test dependencies
+Requirement already satisfied: loguru==0.7.2 in ./.venv/lib/python3.12/site-packages (from -r requirements-ci.txt (line 6)) (0.7.2)
+Requirement already satisfied: numpy==1.26.4 in ./.venv/lib/python3.12/site-packages (from -r requirements-ci.txt (line 7)) (1.26.4)
+Requirement already satisfied: rich==13.9.2 in ./.venv/lib/python3.12/site-packages (from -r requirements-ci.txt (line 8)) (13.9.2)
+Requirement already satisfied: webvtt-py==0.5.1 in ./.venv/lib/python3.12/site-packages (from -r requirements-ci.txt (line 9)) (0.5.1)
+Requirement already satisfied: pytest==8.4.2 in ./.venv/lib/python3.12/site-packages (from -r requirements-ci.txt (line 10)) (8.4.2)
+Requirement already satisfied: fastapi==0.109.2 in ./.venv/lib/python3.12/site-packages (from -r requirements-ci.txt (line 13)) (0.109.2)
+Requirement already satisfied: uvicorn==0.27.1 in ./.venv/lib/python3.12/site-packages (from -r requirements-ci.txt (line 14)) (0.27.1)
+Requirement already satisfied: websockets==12.0 in ./.venv/lib/python3.12/site-packages (from -r requirements-ci.txt (line 15)) (12.0)
+Requirement already satisfied: httpx==0.27.2 in ./.venv/lib/python3.12/site-packages (from -r requirements-ci.txt (line 18)) (0.27.2)
+Requirement already satisfied: pytest-asyncio>=0.23 in ./.venv/lib/python3.12/site-packages (from -r requirements-ci.txt (line 19)) (0.26.0)
+Requirement already satisfied: types-psutil>=5.9.5.20240516 in ./.venv/lib/python3.12/site-packages (from -r requirements-ci.txt (line 22)) (7.0.0.20250822)
+Requirement already satisfied: pytest-cov==7.0.0 in ./.venv/lib/python3.12/site-packages (from -r requirements-dev.txt (line 3)) (7.0.0)
+Requirement already satisfied: pytest-timeout==2.4.0 in ./.venv/lib/python3.12/site-packages (from -r requirements-dev.txt (line 4)) (2.4.0)
+Requirement already satisfied: pytest-mock==3.15.0 in ./.venv/lib/python3.12/site-packages (from -r requirements-dev.txt (line 5)) (3.15.0)
+Requirement already satisfied: pytest-deadfixtures>=2.0.0 in ./.venv/lib/python3.12/site-packages (from -r requirements-dev.txt (line 7)) (2.2.1)
+Requirement already satisfied: freezegun<2,>=1.5 in ./.venv/lib/python3.12/site-packages (from -r requirements-dev.txt (line 8)) (1.5.5)
+Requirement already satisfied: mypy==1.18.1 in ./.venv/lib/python3.12/site-packages (from -r requirements-dev.txt (line 15)) (1.18.1)
+Requirement already satisfied: ruff==0.13.0 in ./.venv/lib/python3.12/site-packages (from -r requirements-dev.txt (line 16)) (0.13.0)
+Requirement already satisfied: black==24.10.0 in ./.venv/lib/python3.12/site-packages (from -r requirements-dev.txt (line 17)) (24.10.0)
+Requirement already satisfied: vulture>=2.7 in ./.venv/lib/python3.12/site-packages (from -r requirements-dev.txt (line 18)) (2.14)
+Requirement already satisfied: trio==0.25.0 in ./.venv/lib/python3.12/site-packages (from -r requirements-dev.txt (line 22)) (0.25.0)
+Requirement already satisfied: markdown-it-py>=2.2.0 in ./.venv/lib/python3.12/site-packages (from rich==13.9.2->-r requirements-ci.txt (line 8)) (4.0.0)
+Requirement already satisfied: pygments<3.0.0,>=2.13.0 in ./.venv/lib/python3.12/site-packages (from rich==13.9.2->-r requirements-ci.txt (line 8)) (2.19.2)
+Requirement already satisfied: iniconfig>=1 in ./.venv/lib/python3.12/site-packages (from pytest==8.4.2->-r requirements-ci.txt (line 10)) (2.1.0)
+Requirement already satisfied: packaging>=20 in ./.venv/lib/python3.12/site-packages (from pytest==8.4.2->-r requirements-ci.txt (line 10)) (25.0)
+Requirement already satisfied: pluggy<2,>=1.5 in ./.venv/lib/python3.12/site-packages (from pytest==8.4.2->-r requirements-ci.txt (line 10)) (1.6.0)
+Requirement already satisfied: pydantic!=1.8,!=1.8.1,!=2.0.0,!=2.0.1,!=2.1.0,<3.0.0,>=1.7.4 in ./.venv/lib/python3.12/site-packages (from fastapi==0.109.2->-r requirements-ci.txt (line 13)) (2.11.9)
+Requirement already satisfied: starlette<0.37.0,>=0.36.3 in ./.venv/lib/python3.12/site-packages (from fastapi==0.109.2->-r requirements-ci.txt (line 13)) (0.36.3)
+Requirement already satisfied: typing-extensions>=4.8.0 in ./.venv/lib/python3.12/site-packages (from fastapi==0.109.2->-r requirements-ci.txt (line 13)) (4.15.0)
+Requirement already satisfied: click>=7.0 in ./.venv/lib/python3.12/site-packages (from uvicorn==0.27.1->-r requirements-ci.txt (line 14)) (8.2.1)
+Requirement already satisfied: h11>=0.8 in ./.venv/lib/python3.12/site-packages (from uvicorn==0.27.1->-r requirements-ci.txt (line 14)) (0.16.0)
+Requirement already satisfied: anyio in ./.venv/lib/python3.12/site-packages (from httpx==0.27.2->-r requirements-ci.txt (line 18)) (4.10.0)
+Requirement already satisfied: certifi in ./.venv/lib/python3.12/site-packages (from httpx==0.27.2->-r requirements-ci.txt (line 18)) (2025.8.3)
+Requirement already satisfied: httpcore==1.* in ./.venv/lib/python3.12/site-packages (from httpx==0.27.2->-r requirements-ci.txt (line 18)) (1.0.9)
+Requirement already satisfied: idna in ./.venv/lib/python3.12/site-packages (from httpx==0.27.2->-r requirements-ci.txt (line 18)) (3.10)
+Requirement already satisfied: sniffio in ./.venv/lib/python3.12/site-packages (from httpx==0.27.2->-r requirements-ci.txt (line 18)) (1.3.1)
+Requirement already satisfied: coverage>=7.10.6 in ./.venv/lib/python3.12/site-packages (from coverage[toml]>=7.10.6->pytest-cov==7.0.0->-r requirements-dev.txt (line 3)) (7.10.6)
+Requirement already satisfied: mypy_extensions>=1.0.0 in ./.venv/lib/python3.12/site-packages (from mypy==1.18.1->-r requirements-dev.txt (line 15)) (1.1.0)
+Requirement already satisfied: pathspec>=0.9.0 in ./.venv/lib/python3.12/site-packages (from mypy==1.18.1->-r requirements-dev.txt (line 15)) (0.12.1)
+Requirement already satisfied: platformdirs>=2 in ./.venv/lib/python3.12/site-packages (from black==24.10.0->-r requirements-dev.txt (line 17)) (4.4.0)
+Requirement already satisfied: attrs>=23.2.0 in ./.venv/lib/python3.12/site-packages (from trio==0.25.0->-r requirements-dev.txt (line 22)) (25.3.0)
+Requirement already satisfied: sortedcontainers in ./.venv/lib/python3.12/site-packages (from trio==0.25.0->-r requirements-dev.txt (line 22)) (2.4.0)
+Requirement already satisfied: outcome in ./.venv/lib/python3.12/site-packages (from trio==0.25.0->-r requirements-dev.txt (line 22)) (1.3.0.post0)
+Requirement already satisfied: python-dateutil>=2.7 in ./.venv/lib/python3.12/site-packages (from freezegun<2,>=1.5->-r requirements-dev.txt (line 8)) (2.9.0.post0)
+Requirement already satisfied: annotated-types>=0.6.0 in ./.venv/lib/python3.12/site-packages (from pydantic!=1.8,!=1.8.1,!=2.0.0,!=2.0.1,!=2.1.0,<3.0.0,>=1.7.4->fastapi==0.109.2->-r requirements-ci.txt (line 13)) (0.7.0)
+Requirement already satisfied: pydantic-core==2.33.2 in ./.venv/lib/python3.12/site-packages (from pydantic!=1.8,!=1.8.1,!=2.0.0,!=2.0.1,!=2.1.0,<3.0.0,>=1.7.4->fastapi==0.109.2->-r requirements-ci.txt (line 13)) (2.33.2)
+Requirement already satisfied: typing-inspection>=0.4.0 in ./.venv/lib/python3.12/site-packages (from pydantic!=1.8,!=1.8.1,!=2.0.0,!=2.0.1,!=2.1.0,<3.0.0,>=1.7.4->fastapi==0.109.2->-r requirements-ci.txt (line 13)) (0.4.1)
+Requirement already satisfied: mdurl~=0.1 in ./.venv/lib/python3.12/site-packages (from markdown-it-py>=2.2.0->rich==13.9.2->-r requirements-ci.txt (line 8)) (0.1.2)
+Requirement already satisfied: six>=1.5 in ./.venv/lib/python3.12/site-packages (from python-dateutil>=2.7->freezegun<2,>=1.5->-r requirements-dev.txt (line 8)) (1.17.0)
+.venv/bin/python -m mypy loquilex
+loquilex/cli/live_en_to_zh.py:424: note: By default the bodies of untyped functions are not checked, consider using --check-untyped-defs  [annotation-unchecked]
+loquilex/cli/demo.py:317: note: By default the bodies of untyped functions are not checked, consider using --check-untyped-defs  [annotation-unchecked]
+Success: no issues found in 65 source files
+LX_OFFLINE= HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 HF_HUB_DISABLE_TELEMETRY=1 .venv/bin/python -m pytest -q
+........................................................................ [ 17%]
+........................................................................ [ 35%]
+........................................................................ [ 53%]
+....s...............ss.................................................. [ 71%]
+........................................................................ [ 89%]
+...........................................                              [100%]
+=============================== warnings summary ===============================
+loquilex/api/server.py:149
+tests/test_issue_137_directory_rejections.py::TestMultipleExtraRoots::test_registers_multiple_extra_roots
+tests/test_issue_137_directory_rejections.py::TestStorageAPIIntegration::test_accepts_user_directory
+tests/test_issue_137_directory_rejections.py::TestStorageAPIIntegration::test_rejects_system_directories
+tests/test_issue_137_directory_rejections.py::TestStorageAPIIntegration::test_storage_info_with_bootstrap_candidates
+  /home/guff/LoquiLex/loquilex/api/server.py:149: DeprecationWarning: 
+          on_event is deprecated, use lifespan event handlers instead.
+  
+          Read more about it in the
+          [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+          
+    @app.on_event("startup")
+
+.venv/lib/python3.12/site-packages/fastapi/applications.py:4495
+tests/test_issue_137_directory_rejections.py::TestMultipleExtraRoots::test_registers_multiple_extra_roots
+tests/test_issue_137_directory_rejections.py::TestStorageAPIIntegration::test_accepts_user_directory
+tests/test_issue_137_directory_rejections.py::TestStorageAPIIntegration::test_rejects_system_directories
+tests/test_issue_137_directory_rejections.py::TestStorageAPIIntegration::test_storage_info_with_bootstrap_candidates
+  /home/guff/LoquiLex/.venv/lib/python3.12/site-packages/fastapi/applications.py:4495: DeprecationWarning: 
+          on_event is deprecated, use lifespan event handlers instead.
+  
+          Read more about it in the
+          [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+          
+    return self.router.on_event(event_type)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+SKIPPED [1] tests/test_offline_isolation.py:58: LX_OFFLINE is not '1'; skipping offline env var test.
+SKIPPED [1] tests/test_resilient_comms.py:169: System heartbeat causes infinite loop in tests
+SKIPPED [1] tests/test_resilient_comms.py:215: Need to fix ReplayBuffer TTL setup
+400 passed, 3 skipped, 10 warnings in 128.15s (0:02:08)
