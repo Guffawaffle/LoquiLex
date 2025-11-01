@@ -37,13 +37,25 @@ def test_cli_runs_with_fake_capture_and_translator(monkeypatch, tmp_path: Path):
         def __init__(self):
             pass
 
+        def translate(self, text, src_lang="en", tgt_lang="zh", quality="final"):
+            """Generic translate method (new API)."""
+            return tr.TranslationResult(
+                text=text, model=f"echo:{quality}", src_lang=src_lang, tgt_lang=tgt_lang, duration_ms=0.0
+            )
+
         def translate_en_to_zh(self, text):
-            return tr.TranslationResult(text, "echo")
+            return tr.TranslationResult(
+                text=text, model="echo", src_lang="en", tgt_lang="zh", duration_ms=0.0
+            )
 
         def translate_en_to_zh_draft(self, text):
-            return tr.TranslationResult(text, "echo:draft")
+            return tr.TranslationResult(
+                text=text, model="echo:draft", src_lang="en", tgt_lang="zh", duration_ms=0.0
+            )
 
+    # Patch both the module and the CLI's imported Translator
     monkeypatch.setattr(tr, "Translator", Echo)
+    monkeypatch.setattr(cli, "Translator", Echo)
 
     # Run CLI main with short seconds and custom output dir
     outdir = tmp_path / "out"

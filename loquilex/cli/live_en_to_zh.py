@@ -37,7 +37,7 @@ import numpy as np
 from loquilex.api.vu import EmaVu, rms_peak
 from loquilex.asr.whisper_engine import Segment, WhisperEngine
 from loquilex.audio.capture import capture_stream
-from loquilex.config.defaults import ASR, RT
+from loquilex.config.defaults import ASR, MT, RT
 from loquilex.mt.translator import Translator
 from loquilex.output.srt import append_srt_cue
 from loquilex.output.text_io import RollingTextFile
@@ -55,10 +55,34 @@ def main() -> int:
         stacklevel=2
     )
     ap = argparse.ArgumentParser()
+
+    # Language pair selection (new generic flags)
+    ap.add_argument(
+        "--src-lang",
+        default=MT.src_lang,
+        help="Source language code (e.g., 'en', 'zh', 'es'). Default: LX_SRC_LANG or 'en'",
+    )
+    ap.add_argument(
+        "--tgt-lang",
+        default=MT.tgt_lang,
+        help="Target language code (e.g., 'zh', 'en', 'es'). Default: LX_TGT_LANG or 'zh'",
+    )
+
     # Legacy flags (kept for compatibility with older docs)
     ap.add_argument("--out-prefix", default=f"{RT.out_dir}/live")
     ap.add_argument("--stream-zh", action="store_true", default=False)
-    ap.add_argument("--zh-partial-debounce-sec", type=float, default=0.5)
+    ap.add_argument(
+        "--zh-partial-debounce-sec",
+        type=float,
+        default=None,
+        help="DEPRECATED: Use --tgt-partial-debounce-sec instead",
+    )
+    ap.add_argument(
+        "--tgt-partial-debounce-sec",
+        type=float,
+        default=RT.tgt_partial_debounce_sec,
+        help="Debounce interval for target language partial translations (default: 0.5s)",
+    )
     ap.add_argument("--combined-vtt", action="store_true", default=False)
     ap.add_argument(
         "--live-window-words",
@@ -101,51 +125,64 @@ def main() -> int:
     ap.add_argument("--partial-word-cap", type=int, default=RT.partial_word_cap)
     args = ap.parse_args()
 
+    # Backward compatibility: --zh-partial-debounce-sec overrides --tgt-partial-debounce-sec
+    if args.zh_partial_debounce_sec is not None:
+        warnings.warn(
+            "--zh-partial-debounce-sec is deprecated. Use --tgt-partial-debounce-sec instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        args.tgt_partial_debounce_sec = args.zh_partial_debounce_sec
+
+    # Normalize language codes
+    src_lang = args.src_lang
+    tgt_lang = args.tgt_lang
+
     out_vtt = args.out_prefix + ".vtt"  # legacy combined if used
-    out_live_en = args.out_prefix + "_live_en.txt"  # legacy
-    out_live_zh = args.out_prefix + "_live_zh.txt"  # legacy
+    out_live_src = args.out_prefix + f"_live_{src_lang}.txt"
+    out_live_tgt = args.out_prefix + f"_live_{tgt_lang}.txt"
     os.makedirs(os.path.dirname(args.partial_en), exist_ok=True)
 
     # Initialize MT first so models are loaded before we start capturing audio
     tr = Translator()
     agg = Aggregator()
     # Prime MT with a tiny draft translation to load weights/caches
-    warmup_text_en = "Starting service"
+    warmup_text_src = "Starting service"
     try:
-        zh_warm = tr.translate_en_to_zh_draft(warmup_text_en).text
-        zh_warm = post_process(zh_warm)
+        tgt_warm = tr.translate(warmup_text_src, src_lang=src_lang, tgt_lang=tgt_lang, quality="draft").text
+        tgt_warm = post_process(tgt_warm)
     except Exception:
-        zh_warm = ""
+        tgt_warm = ""
     # Emit initial drafts to files if requested and print once
     if args.live_draft_files:
         try:
-            with open(out_live_en, "w", encoding="utf-8") as f:
-                f.write(warmup_text_en + "\n")
-            if zh_warm:
-                with open(out_live_zh, "w", encoding="utf-8") as f:
-                    f.write(zh_warm + "\n")
+            with open(out_live_src, "w", encoding="utf-8") as f:
+                f.write(warmup_text_src + "\n")
+            if tgt_warm:
+                with open(out_live_tgt, "w", encoding="utf-8") as f:
+                    f.write(tgt_warm + "\n")
         except Exception:
             pass
-    print(f"EN ≫ {warmup_text_en}")
-    if zh_warm:
-        print(f"ZH* ≫ {zh_warm}")
+    print(f"{src_lang.upper()} ≫ {warmup_text_src}")
+    if tgt_warm:
+        print(f"{tgt_lang.upper()}* ≫ {tgt_warm}")
     # Then initialize ASR
     eng = WhisperEngine()
     eng.warmup()
     # Bounded queue to provide backpressure if MT lags behind ASR
     translate_q: "queue.Queue[tuple[float,float,str]]" = queue.Queue(maxsize=32)
 
-    cues: List[Tuple[float, float, str]] = []  # EN finalized cues
-    zh_cues: List[Tuple[float, float, str]] = []  # ZH finalized cues
-    last_zh_partial_emit = 0.0
-    last_en_partial_print = 0.0
-    last_zh_partial_text = ""
-    last_en_partial_text = ""
+    cues: List[Tuple[float, float, str]] = []  # Source finalized cues
+    tgt_cues: List[Tuple[float, float, str]] = []  # Target finalized cues
+    last_tgt_partial_emit = 0.0
+    last_src_partial_print = 0.0
+    last_tgt_partial_text = ""
+    last_src_partial_text = ""
     # Live word-window state
     word_window: deque[str] = deque(maxlen=max(0, args.live_window_words))
     last_live_emit = 0.0
-    last_en_live = ""
-    last_zh_live = ""
+    last_src_live = ""
+    last_tgt_live = ""
 
     def write_atomic(path: str, text: str) -> None:
         tmp = path + ".tmp"
@@ -154,10 +191,10 @@ def main() -> int:
         os.replace(tmp, path)
 
     # New writers
-    p_en = RollingTextFile(args.partial_en)
-    p_zh = RollingTextFile(args.partial_zh)
-    f_en = RollingTextFile(args.final_en, max_lines=args.max_lines)
-    f_zh = RollingTextFile(args.final_zh, max_lines=args.max_lines)
+    p_src = RollingTextFile(args.partial_en)
+    p_tgt = RollingTextFile(args.partial_zh)
+    f_src = RollingTextFile(args.final_en, max_lines=args.max_lines)
+    f_tgt = RollingTextFile(args.final_zh, max_lines=args.max_lines)
 
     def _io_log(msg: str) -> None:
         if args.verbose or args.log_io:
@@ -165,7 +202,7 @@ def main() -> int:
 
     # Overwrite behavior
     if args.overwrite_run:
-        for w in (p_en, p_zh, f_en, f_zh):
+        for w in (p_src, p_tgt, f_src, f_tgt):
             try:
                 w.reset()
                 _io_log(f"[io] reset path={w.path}")
@@ -178,8 +215,8 @@ def main() -> int:
                 _io_log(f"[io] removed path={pth}")
             except Exception:
                 pass
-    # Track next SRT index for ZH
-    srt_index_zh = 1
+    # Track next SRT index for target language
+    srt_index_tgt = 1
     # Start timing AFTER warmup and just before capture begins
     session_t0_mono: float | None = None  # will set once first audio frame arrives (monotonic)
     last_t1_mono: float | None = None  # monotonic time of latest captured audio end
@@ -187,45 +224,45 @@ def main() -> int:
     mt_dropped = 0  # Count of dropped translation requests due to backlog
 
     def on_partial(txt: str) -> None:
-        nonlocal last_zh_partial_emit, last_zh_partial_text, last_en_partial_text
+        nonlocal last_tgt_partial_emit, last_tgt_partial_text, last_src_partial_text
         now = time.monotonic()
 
         def emit(s: str) -> None:
-            nonlocal last_en_partial_print
-            if now - last_en_partial_print >= RT.partial_debounce_sec:
-                print(f"EN ≫ {s}")
-                last_en_partial_print = now
+            nonlocal last_src_partial_print
+            if now - last_src_partial_print >= RT.partial_debounce_sec:
+                print(f"{src_lang.upper()} ≫ {s}")
+                last_src_partial_print = now
 
         agg.on_partial(txt, emit)
-        # Write partial EN line (single line)
+        # Write partial source line (single line)
         part = txt.strip()
-        last_en_partial_text = part
+        last_src_partial_text = part
         if args.partial_word_cap and args.partial_word_cap > 0:
             words = part.split()
             part = " ".join(words[: args.partial_word_cap])
         try:
-            p_en.rewrite_current_line(part)
-            _io_log(f"[io] partial rewrite lang=en path={p_en.path} chars={len(part)}")
+            p_src.rewrite_current_line(part)
+            _io_log(f"[io] partial rewrite lang={src_lang} path={p_src.path} chars={len(part)}")
         except Exception:
             pass
-        # Live ZH partial (debounced), independent of word-window
+        # Live target language partial (debounced), independent of word-window
         use_word_window = ASR.word_timestamps and args.live_window_words > 0
         if (
             not use_word_window
-            and (now - last_zh_partial_emit) >= args.zh_partial_debounce_sec
+            and (now - last_tgt_partial_emit) >= args.tgt_partial_debounce_sec
             and part
         ):
-            draft = tr.translate_en_to_zh_draft(part).text
-            draft = post_process(draft)
-            if draft and draft != last_zh_partial_text:
-                print(f"ZH* ≫ {draft}")
+            draft = tr.translate(part, src_lang=src_lang, tgt_lang=tgt_lang, quality="draft").text
+            draft = post_process(draft, tgt_lang)
+            if draft and draft != last_tgt_partial_text:
+                print(f"{tgt_lang.upper()}* ≫ {draft}")
                 try:
-                    p_zh.rewrite_current_line(draft)
-                    _io_log(f"[io] partial rewrite lang=zh path={p_zh.path} chars={len(draft)}")
+                    p_tgt.rewrite_current_line(draft)
+                    _io_log(f"[io] partial rewrite lang={tgt_lang} path={p_tgt.path} chars={len(draft)}")
                 except Exception:
                     pass
-                last_zh_partial_text = draft
-                last_zh_partial_emit = now
+                last_tgt_partial_text = draft
+                last_tgt_partial_emit = now
 
     def on_final(a: float, b: float, txt: str) -> None:
         if session_t0_mono is None:
@@ -233,19 +270,19 @@ def main() -> int:
         rel_a = a - session_t0_mono
         rel_b = b - session_t0_mono
         cues.append((rel_a, rel_b, txt))
-        # Clear partial EN line after finalization
+        # Clear partial source line after finalization
         try:
-            p_en.rewrite_current_line("")
-            _io_log(f"[io] partial clear lang=en path={p_en.path}")
+            p_src.rewrite_current_line("")
+            _io_log(f"[io] partial clear lang={src_lang} path={p_src.path}")
         except Exception:
             pass
-        # Append EN final line
+        # Append source final line
         try:
-            f_en.append_final_line(txt)
-            _io_log(f"[io] final append lang=en path={f_en.path} chars={len(txt)}")
+            f_src.append_final_line(txt)
+            _io_log(f"[io] final append lang={src_lang} path={f_src.path} chars={len(txt)}")
         except Exception:
             pass
-        # Append timed EN cue if enabled
+        # Append timed source cue if enabled
         if not args.no_final_vtt_en:
             try:
                 append_vtt_cue(args.final_vtt_en, rel_a, rel_b, txt)
@@ -280,7 +317,7 @@ def main() -> int:
     def on_words(words: List) -> None:  # words are Word objects, but avoid tight coupling in import
         if not (ASR.word_timestamps and args.live_window_words > 0):
             return
-        nonlocal last_live_emit, last_en_live, last_zh_live
+        nonlocal last_live_emit, last_src_live, last_tgt_live
         now = time.monotonic()
         for w in words:
             txt = getattr(w, "text", None) or getattr(w, "word", None) or ""
@@ -288,23 +325,23 @@ def main() -> int:
             if t:
                 word_window.append(t)
         if (now - last_live_emit) >= args.live_update_debounce_sec and len(word_window) > 0:
-            en_chunk = " ".join(word_window)
-            if en_chunk != last_en_live:
+            src_chunk = " ".join(word_window)
+            if src_chunk != last_src_live:
                 if args.live_draft_files:
-                    write_atomic(out_live_en, en_chunk + "\n")
-                zh_draft = tr.translate_en_to_zh_draft(en_chunk).text
-                zh_draft = post_process(zh_draft)
-                if zh_draft and zh_draft != last_zh_live:
-                    print(f"ZH* ≫ {zh_draft}")
-                    # Update the live ZH partial file as well
+                    write_atomic(out_live_src, src_chunk + "\n")
+                tgt_draft = tr.translate(src_chunk, src_lang=src_lang, tgt_lang=tgt_lang, quality="draft").text
+                tgt_draft = post_process(tgt_draft, tgt_lang)
+                if tgt_draft and tgt_draft != last_tgt_live:
+                    print(f"{tgt_lang.upper()}* ≫ {tgt_draft}")
+                    # Update the live target partial file as well
                     try:
-                        p_zh.rewrite_current_line(zh_draft)
+                        p_tgt.rewrite_current_line(tgt_draft)
                     except Exception:
                         pass
                     if args.live_draft_files:
-                        write_atomic(out_live_zh, zh_draft + "\n")
-                    last_zh_live = zh_draft
-                last_en_live = en_chunk
+                        write_atomic(out_live_tgt, tgt_draft + "\n")
+                    last_tgt_live = tgt_draft
+                last_src_live = src_chunk
                 last_live_emit = now
 
     # Proper capture loop; start capture and set start time on first frame
@@ -418,46 +455,46 @@ def main() -> int:
                 a, b, txt = translate_q.get(timeout=0.2)
             except queue.Empty:
                 continue
-            zh = tr.translate_en_to_zh(txt)
-            zh_txt = post_process(zh.text)
+            tgt_result = tr.translate(txt, src_lang=src_lang, tgt_lang=tgt_lang, quality="final")
+            tgt_txt = post_process(tgt_result.text, tgt_lang)
             assert session_t0_mono is not None
             rel_a = a - session_t0_mono
             rel_b = b - session_t0_mono
-            zh_cues.append((rel_a, rel_b, zh_txt))
-            # Clear partial ZH line and append final ZH TXT
+            tgt_cues.append((rel_a, rel_b, tgt_txt))
+            # Clear partial target line and append final target TXT
             try:
-                p_zh.rewrite_current_line("")
-                print(f"[io] partial clear lang=zh path={p_zh.path}")
+                p_tgt.rewrite_current_line("")
+                print(f"[io] partial clear lang={tgt_lang} path={p_tgt.path}")
             except Exception:
                 pass
             try:
-                f_zh.append_final_line(zh_txt)
-                print(f"[io] final append lang=zh path={f_zh.path} chars={len(zh_txt)}")
+                f_tgt.append_final_line(tgt_txt)
+                print(f"[io] final append lang={tgt_lang} path={f_tgt.path} chars={len(tgt_txt)}")
             except Exception:
                 pass
-            # Timed outputs for ZH
-            nonlocal srt_index_zh
+            # Timed outputs for target language
+            nonlocal srt_index_tgt
             if not args.no_final_srt_zh:
                 try:
-                    used_idx = append_srt_cue(args.final_srt_zh, srt_index_zh, rel_a, rel_b, zh_txt)
+                    used_idx = append_srt_cue(args.final_srt_zh, srt_index_tgt, rel_a, rel_b, tgt_txt)
                     print(
-                        f"[io] srt append lang=zh path={args.final_srt_zh} idx={used_idx} a={rel_a:.3f} b={rel_b:.3f} chars={len(zh_txt)}"
+                        f"[io] srt append lang={tgt_lang} path={args.final_srt_zh} idx={used_idx} a={rel_a:.3f} b={rel_b:.3f} chars={len(tgt_txt)}"
                     )
-                    srt_index_zh = used_idx + 1
+                    srt_index_tgt = used_idx + 1
                 except Exception:
                     pass
             if args.combined_vtt:
                 # Rebuild combined cues from pairs and write single VTT
                 combined: List[Tuple[float, float, str]] = []
-                for (ae, be, te), (az, bz, tz) in zip(cues, zh_cues):
+                for (ae, be, te), (az, bz, tz) in zip(cues, tgt_cues):
                     a2 = max(ae, az)
                     b2 = max(a2 + 1e-3, min(be, bz))
-                    combined.append((a2, b2, f"EN: {te}\nZH: {tz}"))
+                    combined.append((a2, b2, f"{src_lang.upper()}: {te}\n{tgt_lang.upper()}: {tz}"))
                 write_vtt(combined, out_vtt)
             else:
-                # No separate zh VTT in new spec; keep legacy optional behavior disabled
+                # No separate target VTT in new spec; keep legacy optional behavior disabled
                 pass
-            print(f"ZH: {zh_txt}")
+            print(f"{tgt_lang.upper()}: {tgt_txt}")
             try:
                 translate_q.task_done()
             except Exception:
@@ -498,18 +535,18 @@ def main() -> int:
             if finalize_now.is_set():
                 try:
                     finalize_now.clear()
-                    if last_en_partial_text:
+                    if last_src_partial_text:
                         # fabricate a short segment ending at last_t1_mono
                         if session_t0_mono is not None and last_t1_mono is not None:
                             a = max(session_t0_mono, last_t1_mono - 1.0)
-                            on_final(a, last_t1_mono, last_en_partial_text)
+                            on_final(a, last_t1_mono, last_src_partial_text)
                             # clear partial files
                             try:
-                                p_en.rewrite_current_line("")
-                                p_zh.rewrite_current_line("")
+                                p_src.rewrite_current_line("")
+                                p_tgt.rewrite_current_line("")
                             except Exception:
                                 pass
-                            last_en_partial_text = ""
+                            last_src_partial_text = ""
                 except Exception:
                     pass
             time.sleep(0.05)
