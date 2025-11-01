@@ -37,7 +37,7 @@ def _env_int(name: str, default: int) -> int:
     raw = _env(name, str(default))
     try:
         return int(raw)
-    except Exception:
+    except (ValueError, TypeError):
         return default
 
 
@@ -46,7 +46,7 @@ def _env_float(name: str, default: float) -> float:
     raw = _env(name, str(default))
     try:
         return float(raw)
-    except Exception:
+    except (ValueError, OverflowError):
         return default
 
 
@@ -75,17 +75,15 @@ class Settings:
 settings = Settings()
 
 # Re-export existing config modules for backwards compatibility
-from loquilex.config.defaults import ASR, MT, RT, SEG, pick_device  # noqa: E402, F401
-from loquilex.config.model_defaults import *  # noqa: E402, F401, F403
-from loquilex.config.paths import *  # noqa: E402, F401, F403
-from loquilex.config.providers import *  # noqa: E402, F401, F403
+# This allows users to continue importing from loquilex.config instead of loquilex.config.defaults
+from loquilex.config.defaults import ASR, MT, RT, SEG, pick_device  # noqa: E402
 
 __all__ = [
     "settings",
     "Settings",
     "ASR",
     "MT",
-    "RT", 
+    "RT",
     "SEG",
     "pick_device",
 ]

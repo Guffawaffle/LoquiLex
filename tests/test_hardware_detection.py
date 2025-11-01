@@ -49,7 +49,9 @@ class TestCPUInfo:
         """Test basic CPU information retrieval."""
         cpu = _get_cpu_info()
 
-        assert cpu.__class__.__name__ == "CPUInfo"
+        # Use type().__name__ instead of isinstance() to avoid issues with module reloading
+        # (other tests may reload detection module, changing CPUInfo class identity)
+        assert type(cpu).__name__ == "CPUInfo"
         assert cpu.cores_logical >= 1
         assert cpu.cores_physical >= 1
         assert isinstance(cpu.warnings, list)
