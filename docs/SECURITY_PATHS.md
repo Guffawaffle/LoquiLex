@@ -22,7 +22,7 @@ Default roots:
 
 - `sessions`: Output tree under `LX_OUT_DIR`.
 - `exports`: `LX_OUT_DIR/exports`.
-- `profiles`: `loquilex/ui/profiles`.
+- `profiles`: `LX_OUT_DIR/profiles`.
 - Additional absolute roots may be provided via `LX_ALLOWED_STORAGE_ROOTS` (colon-separated).
 
 ## Usage Guidelines

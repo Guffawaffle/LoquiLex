@@ -79,9 +79,8 @@ endef
 	sec-scan dead-code-analysis dead-code-report clean-artifacts \
 	codeql codeql-extended codeql-js codeql-py codeql-view codeql-report \
 	codeql-export codeql-fail-high \
-        ui-setup ui-dev ui-build ui-start ui-test ui-e2e ui-verify \
-        api-start-bg ui-dev-bg ui-start-bg \
-        stop-ui stop-api stop-ws stop-all stop-all-force \
+        api-start-bg \
+        stop-api stop-ws stop-all stop-all-force \
         pids-status pids-clean-stale \
         install test-all qual-all
 
@@ -93,15 +92,6 @@ help:
 	@echo "  dev              - alias of dev-minimal"
 	@echo "  dev-ml-cpu       - add CPU-only ML stack and prefetch tiny model"
 	@echo "  lint / fmt / typecheck / test / e2e / ci"
-	@echo "  ui-setup         - install UI dependencies"
-	@echo "  ui-dev           - start dev server with proxy to FastAPI"
-	@echo "  ui-dev-bg        - start UI dev server in background"
-	@echo "  ui-build         - build UI for production"
-	@echo "  ui-start         - start FastAPI serving built UI"
-	@echo "  ui-start-bg      - start UI preview server in background"
-	@echo "  ui-test          - run UI unit tests"
-	@echo "  ui-e2e           - run UI end-to-end tests"
-	@echo "  ui-verify        - run UI tests (unit + e2e when online)"
 	@echo ""
 	@echo "Services:"
 	@echo "  api-start-bg     - start FastAPI server in background"
@@ -304,7 +294,6 @@ run-ci-mode: ci
 
 clean:
 	rm -rf .pytest_cache .coverage $(VENV) dist build
-	cd ui/app && rm -rf node_modules dist .vite || true
 
 ## ------------------------------
 ## CodeQL helpers
@@ -357,19 +346,6 @@ codeql-fail-high:
 api-start-bg: install-base
 	$(call pid_start,FastAPI server,.pids/api.pid,LX_API_PORT=$${LX_API_PORT:-8000} $(PY) -m loquilex.api.server)
 
-# Start UI dev server in background with PID tracking
-ui-dev-bg: ui-setup
-	$(call pid_start,UI dev server,.pids/ui-dev.pid,cd ui/app && LX_API_PORT=$${LX_API_PORT:-8000} LX_UI_PORT=$${LX_UI_PORT:-5173} npm run dev)
-
-# Start UI preview server in background with PID tracking
-ui-start-bg: ui-build
-	$(call pid_start,UI preview server,.pids/ui-preview.pid,cd ui/app && LX_UI_PORT=$${LX_UI_PORT:-4173} npm run preview)
-
-# Stop UI services
-stop-ui:
-	$(call pid_stop,UI dev server,.pids/ui-dev.pid,pids="$$(lsof -ti:$${LX_UI_PORT:-5173})"; [ -n "$$pids" ] && kill $$pids 2>/dev/null || true)
-	$(call pid_stop,UI preview server,.pids/ui-preview.pid,pids="$$(lsof -ti:$${LX_UI_PORT:-4173})"; [ -n "$$pids" ] && kill $$pids 2>/dev/null || true)
-
 # Stop API server
 stop-api:
 	$(call pid_stop,FastAPI server,.pids/api.pid,pids="$$(lsof -ti:$${LX_API_PORT:-8000})"; [ -n "$$pids" ] && kill $$pids 2>/dev/null || true)
@@ -379,15 +355,13 @@ stop-ws:
 	@echo "[stop-ws] No WebSocket server configured yet"
 
 # Stop all tracked services
-stop-all: stop-ui stop-api stop-ws
+stop-all: stop-api stop-ws
 	@echo "[stop-all] All services stopped"
 
 # Force stop all services (fallback to port-based killing)
 stop-all-force:
 	@echo "[stop-all-force] Force stopping all services..."
 	@pids="$$(lsof -ti:$${LX_API_PORT:-8000})"; [ -n "$$pids" ] && kill -9 $$pids 2>/dev/null || true
-	@pids="$$(lsof -ti:$${LX_UI_PORT:-5173})"; [ -n "$$pids" ] && kill -9 $$pids 2>/dev/null || true
-	@pids="$$(lsof -ti:4173)"; [ -n "$$pids" ] && kill -9 $$pids 2>/dev/null || true
 	@rm -f .pids/*.pid
 	@echo "[stop-all-force] ✓ Force stop complete"
 
@@ -395,8 +369,6 @@ stop-all-force:
 pids-status:
 	@echo "=== PID Status ==="
 	$(call pid_status,FastAPI server,.pids/api.pid)
-	$(call pid_status,UI dev server,.pids/ui-dev.pid)
-	$(call pid_status,UI preview server,.pids/ui-preview.pid)
 	$(call pid_status,E2E backend,.backend.pid)
 
 # Clean up stale PID files
@@ -425,69 +397,8 @@ clean-logs:
 	fi
 	@rm -rf .artifacts/logs || true
 
-## ------------------------------
-## UI targets
+## ------------------------------## ------(Removed UI section)-----
 
-# Install UI dependencies
-ui-setup:
-	@echo "[ui-setup] Installing UI dependencies (npm ci)"
-	cd ui/app && npm ci
-
-# Start development server with proxy to FastAPI
-ui-dev: ui-setup
-	@echo "[ui-dev] Starting development servers"
-	@echo "Starting FastAPI server in background..."
-	@LX_API_PORT=$${LX_API_PORT:-8000} LX_UI_PORT=$${LX_UI_PORT:-5173} \
-	$(PY) -m loquilex.api.server &
-	@echo "Waiting for FastAPI to start..."
-	@sleep 3
-	@echo "Starting Vite dev server..."
-	@cd ui/app && LX_API_PORT=$${LX_API_PORT:-8000} LX_UI_PORT=$${LX_UI_PORT:-5173} npm run dev
-
-# Build UI for production
-ui-build: ui-setup
-	@echo "[ui-build] Building UI for production"
-	cd ui/app && npm run build
-
-# Start FastAPI serving built UI
-ui-start: ui-build
-	@echo "[ui-start] Starting FastAPI with built UI"
-	LX_API_PORT=$${LX_API_PORT:-8000} $(PY) -m loquilex.api.server
-
-# Run UI unit tests
-ui-test: ui-setup
-	@echo "[ui-test] Running UI unit tests"
-	cd ui/app && npm run test
-
-# Run UI end-to-end tests
-ui-e2e: ui-build
-	@echo "[ui-e2e] Running UI end-to-end tests"
-	@if [ "$${LX_OFFLINE:-1}" != "1" ]; then \
-		echo "[ui-e2e] Installing Chromium for Playwright (online mode)"; \
-		cd ui/app && PLAYWRIGHT_BROWSERS_PATH=$${PLAYWRIGHT_BROWSERS_PATH:-0} npx playwright install chromium --with-deps >/dev/null 2>&1 || true; \
-	else \
-		echo "[ui-e2e] Skipping Chromium install (offline mode)"; \
-	fi
-	@echo "Starting FastAPI server for e2e tests..."
-	@LX_API_PORT=$${LX_API_PORT:-8000} $(PY) -m loquilex.api.server & echo $$! > .backend.pid
-	@echo "Waiting for FastAPI to become available on port $${LX_API_PORT:-8000}..."
-	E2E_EXIT=$$?; \
-	if [ -f ".backend.pid" ]; then \
-		kill $$(cat .backend.pid) 2>/dev/null || true; \
-		rm -f .backend.pid; \
-	fi; \
-	exit $$E2E_EXIT
-
-# UI verification (combines unit tests + e2e, skips e2e when offline)
-ui-verify: ui-test
-	@if [ "$${LX_OFFLINE:-1}" != "1" ]; then \
-		echo "[ui-verify] Running e2e tests (online mode)"; \
-		$(MAKE) ui-e2e; \
-	else \
-		echo "[ui-verify] Skipping e2e tests (offline mode)"; \
-	fi
-
-## ------------------------------
 ## Bucketed Commands
 
 # Install bucket
@@ -526,12 +437,6 @@ qual-%:
 	elif [ "$*" = "fmt-check" ]; then $(PY) -m black --check --diff loquilex tests; \
 	elif [ "$*" = "typecheck" ]; then $(PY) -m mypy loquilex; \
 	else echo "Unknown quality target: qual-$*"; exit 1; fi
-
-ui-%:
-	@if [ "$*" = "verify" ]; then $(MAKE) ui-verify; \
-	elif [ "$*" = "dev-bg" ]; then $(MAKE) ui-dev-bg; \
-	elif [ "$*" = "start-bg" ]; then $(MAKE) ui-start-bg; \
-	else echo "Unknown UI target: ui-$*"; exit 1; fi
 
 ## ------------------------------
 ## Docker CI parity (optional)

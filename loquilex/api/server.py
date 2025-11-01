@@ -165,9 +165,6 @@ async def _start_retention_loop():
         logger.exception("Failed to start retention background task")
 
 
-# UI static files path (mounted later to avoid shadowing API routes)
-UI_DIST_PATH = Path("ui/app/dist").resolve()
-
 # String-only absolute-path detector (do not resolve user inputs)
 import os as _os  # alias to avoid shadowing
 
@@ -215,7 +212,7 @@ _root_map: Dict[str, Path] = {
     "storage": OUT_ROOT,
     "sessions": OUT_ROOT,
     "exports": OUT_ROOT / "exports",
-    "profiles": Path("loquilex/ui/profiles").resolve(),
+    "profiles": OUT_ROOT / "profiles",
 }
 # Register all extra roots with unique keys instead of overwriting
 for i, p in enumerate(_EXTRA_ALLOWED_ROOTS):
@@ -385,8 +382,8 @@ def _resolve_storage_dir(candidate: Optional[str]) -> tuple[Path, bool]:
         raise PathSecurityError("invalid relative path") from exc
 
 
-# Simple profiles CRUD on disk under loquilex/ui/profiles
-PROFILES_DIR = Path("loquilex/ui/profiles")
+# Simple profiles CRUD on disk under output root
+PROFILES_DIR = OUT_ROOT / "profiles"
 PROFILES_ROOT = PROFILES_DIR.resolve()
 
 
@@ -786,7 +783,7 @@ async def get_downloads() -> DownloadQueueResp:
     active_count = 0
     queued_count = 0
     completed_count = 0
-    
+
     for job_id, info in downloads.items():
         status = info.get('status', 'unknown')
         job_data = {
@@ -801,14 +798,14 @@ async def get_downloads() -> DownloadQueueResp:
             'error_message': info.get('error_message')
         }
         jobs.append(job_data)
-        
+
         if status in ['downloading', 'active']:
             active_count += 1
         elif status in ['queued', 'pending']:
             queued_count += 1
         elif status in ['completed', 'success']:
             completed_count += 1
-    
+
     return DownloadQueueResp(
         jobs=jobs,
         active_count=active_count,
@@ -1163,41 +1160,6 @@ if ALLOW_EVENTS_ALIAS and WS_PATH != "/events":
             pass
         finally:
             await MANAGER.unregister_ws(sid, ws)
-
-
-# Serve built assets under /assets if UI is present
-if UI_DIST_PATH.exists() and UI_DIST_PATH.is_dir():
-    assets_dir = UI_DIST_PATH / "assets"
-    if assets_dir.exists() and assets_dir.is_dir():
-        app.mount("/assets", StaticFiles(directory=str(assets_dir), html=False), name="assets")
-
-
-# Root index route when UI is present
-@app.get("/")
-@app.head("/")
-async def root_index() -> FileResponse:
-    if UI_DIST_PATH.exists() and UI_DIST_PATH.is_dir():
-        index_path = UI_DIST_PATH / "index.html"
-        if index_path.exists():
-            return FileResponse(str(index_path), media_type="text/html")
-    raise HTTPException(status_code=404, detail="Not found")
-
-
-# SPA fallback route - must be last to catch all unmatched routes
-@app.get("/{full_path:path}")
-@app.head("/{full_path:path}")
-async def spa_fallback(full_path: str) -> FileResponse:  # noqa: ARG001
-    """Serve SPA index.html for all unknown routes (client-side routing)."""
-    # Guardrails: do not intercept API, WS, or asset paths
-    if full_path.startswith(("api/", "ws/", "assets/")):
-        raise HTTPException(status_code=404, detail="Not found")
-
-    if UI_DIST_PATH.exists() and UI_DIST_PATH.is_dir():
-        index_path = UI_DIST_PATH / "index.html"
-        if index_path.exists():
-            return FileResponse(str(index_path), media_type="text/html")
-    # Fallback to 404 if no UI is built
-    raise HTTPException(status_code=404, detail="Not found")
 
 
 def main() -> None:

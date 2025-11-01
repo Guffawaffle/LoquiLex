@@ -121,11 +121,9 @@ We’re prompt-driven (Codex/Copilot). See `AGENTS.md` and `.github/prompts/*`. 
 
 ### Architecture & Development
 
-LoquiLex follows a **JS-first architecture** where JavaScript orchestrates workflows and Python executes ML tasks:
+LoquiLex is a **CLI-first architecture** with Python backend and WebSocket API:
 
-- **[JS-First Architecture Guide](./docs/architecture/js-first.md)** - Core principles, patterns, and implementation guidelines
 - **[API Contracts Reference](./docs/contracts/README.md)** - Comprehensive WebSocket, REST, and data type contracts
-- **[Orchestration Module](./loquilex/ui/web/src/orchestration/README.md)** - Client-side utilities and patterns
 - **[Resource Management](./docs/RESOURCE_MANAGEMENT.md)** - Expectations for clean shutdown of threads, tasks, and subprocesses
 
 ### API Contracts & Integration

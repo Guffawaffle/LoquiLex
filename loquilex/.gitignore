@@ -9,13 +9,5 @@ __pycache__/
 # Local outputs (sessions, audio, vtt/srt/txt)
 out/
 
-# UI build artifacts (Vite/React)
-ui/web/node_modules/
-ui/web/dist/
-ui/web/.vite/
-
-# UI profiles (user-generated JSON saved from Settings)
-ui/profiles/*.json
-
 # Temporary/editor files
 *.swp
