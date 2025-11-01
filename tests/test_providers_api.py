@@ -31,7 +31,7 @@ def temp_config_dir():
             Path.home = original_home
 
 
-def test_get_providers_config(client, temp_config_dir):
+def test_get_providers_config(client):
     """Test getting provider configuration."""
     response = client.get("/api/providers/config")
     assert response.status_code == 200
@@ -74,7 +74,7 @@ def test_set_hf_token_empty(client):
     assert "Token cannot be empty" in response.json()["detail"]
 
 
-def test_set_hf_token_valid_format(client, temp_config_dir):
+def test_set_hf_token_valid_format(client):
     """Test setting valid HF token."""
     valid_token = "hf_" + "a" * 32  # Mock valid token format
 
@@ -89,7 +89,7 @@ def test_set_hf_token_valid_format(client, temp_config_dir):
     assert "successfully" in data["message"]
 
 
-def test_remove_hf_token(client, temp_config_dir):
+def test_remove_hf_token(client):
     """Test removing HF token."""
     response = client.delete("/api/providers/hf/token")
     assert response.status_code == 200
@@ -99,7 +99,7 @@ def test_remove_hf_token(client, temp_config_dir):
     assert "removed successfully" in data["message"]
 
 
-def test_set_offline_mode(client, temp_config_dir, monkeypatch):
+def test_set_offline_mode(client, monkeypatch):
     """Test setting offline mode."""
     # Clear the LX_OFFLINE env var for this test
     monkeypatch.delenv("LX_OFFLINE", raising=False)

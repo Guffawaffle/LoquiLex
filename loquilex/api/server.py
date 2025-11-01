@@ -11,7 +11,7 @@ import shutil
 import time
 import uuid
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, TYPE_CHECKING, TextIO, cast
+from typing import Any, Callable, Dict, List, Optional, TextIO, cast
 import logging
 import asyncio
 
@@ -25,6 +25,9 @@ from .model_discovery import list_asr_models, list_mt_models, mt_supported_langu
 from loquilex.hardware.detection import get_hardware_snapshot
 from loquilex.config.model_defaults import get_model_defaults_manager
 from loquilex.security import PathGuard, PathSecurityError
+from loquilex.security._types import CanonicalPath
+from loquilex.storage.retention import RetentionPolicy, enforce_retention
+from loquilex import __version__
 from .supervisor import SessionConfig, SessionManager, StreamingSession
 from ..config.providers import (
     ProvidersConfig, HuggingFaceConfig, BackendConfig,
@@ -844,26 +847,26 @@ async def set_hf_token(req: SetHFTokenReq) -> Dict[str, Any]:
     """Set or update HuggingFace token."""
     try:
         config = get_providers_config()
-        
+
         # Validate token format
         token = req.token.strip()
         if not token:
             raise ValueError("Token cannot be empty")
-            
+
         if not (token.startswith("hf_") and len(token) >= 30):
             raise ValueError("Invalid HuggingFace token format")
-        
+
         # Update configuration
         new_hf_config = HuggingFaceConfig(token=token, enabled=True)
         new_config = ProvidersConfig(
             huggingface=new_hf_config,
             backend=config.backend
         )
-        
+
         update_providers_config(new_config)
-        
+
         return {"status": "ok", "message": "HuggingFace token updated successfully"}
-        
+
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
@@ -876,18 +879,18 @@ async def delete_hf_token() -> Dict[str, Any]:
     """Remove HuggingFace token."""
     try:
         config = get_providers_config()
-        
+
         # Update configuration to remove token
         new_hf_config = HuggingFaceConfig(token=None, enabled=True)
         new_config = ProvidersConfig(
             huggingface=new_hf_config,
             backend=config.backend
         )
-        
+
         update_providers_config(new_config)
-        
+
         return {"status": "ok", "message": "HuggingFace token removed successfully"}
-        
+
     except Exception as e:
         logger.error(f"Failed to remove HF token: {e}")
         raise HTTPException(status_code=500, detail="Failed to remove token")
@@ -898,23 +901,23 @@ async def set_offline_mode(req: SetOfflineModeReq) -> Dict[str, Any]:
     """Toggle offline mode."""
     try:
         config = get_providers_config()
-        
+
         # Check if offline mode is enforced by environment
         if config.backend.offline_enforced and not req.offline:
             raise ValueError("Cannot disable offline mode: enforced by environment (LX_OFFLINE=1)")
-        
+
         # Update configuration
         new_backend_config = BackendConfig(offline=req.offline)
         new_config = ProvidersConfig(
             huggingface=config.huggingface,
             backend=new_backend_config
         )
-        
+
         update_providers_config(new_config)
-        
+
         mode = "enabled" if req.offline else "disabled"
         return {"status": "ok", "message": f"Offline mode {mode} successfully"}
-        
+
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
