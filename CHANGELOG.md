@@ -11,10 +11,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Authoritative `PathGuard` with strict resolution, symlink protections, safe open helpers, and quota utilities
 - CI: Bandit static analysis and grep guard workflow for unsafe path usage
 - Documentation: `docs/SECURITY_PATHS.md` describing threat model and usage
+- Migration guide for deprecated orchestration patterns: `docs/ORCHESTRATION_MIGRATION.md`
 
 ### Changed
 - Legacy /events WebSocket alias is now dev-only and deprecated (use /ws instead)
 - API server refactored to route session, profile, and storage paths through `PathGuard`
+
+### Deprecated
+- **`Session` class** (subprocess-based orchestration) - Use `StreamingSession` for in-process execution (#60)
+- **`loquilex.cli.live_en_to_zh`** - CLI orchestrator deprecated in favor of TypeScript orchestration (#60)
+- **`loquilex.cli.demo`** - CLI orchestrator deprecated in favor of TypeScript orchestration (#60)
+- Migration path: Use JS-first architecture with TypeScript orchestrating Python executor services
 
 ### Fixed
 - Blocked absolute/traversal path injections and hidden/reserved filename usage across API path flows

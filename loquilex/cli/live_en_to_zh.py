@@ -1,3 +1,22 @@
+"""DEPRECATED: Legacy CLI orchestrator for live EN→ZH captioning.
+
+This CLI tool orchestrates the complete workflow including audio capture,
+ASR, MT, and output writing. This duplicates orchestration logic that
+should now be handled by TypeScript in the JS-first architecture.
+
+DEPRECATION NOTICE:
+- This CLI is deprecated for orchestration purposes
+- It is currently used only as a subprocess by the legacy Session class
+- For new development, use the StreamingSession in-process execution
+- TypeScript should orchestrate via the FastAPI WebSocket API
+
+Migration path:
+1. Use TypeScript orchestration layer (see docs/architecture/js-first.md)
+2. Call Python executor services directly (StreamingASR, MTService)
+3. Use FastAPI WebSocket API for real-time streaming
+
+See: https://github.com/Guffawaffle/LoquiLex/issues/60
+"""
 from __future__ import annotations
 
 import argparse
@@ -9,6 +28,7 @@ import sys
 import threading
 import time
 import wave
+import warnings
 from collections import deque
 from typing import List, Tuple
 
@@ -27,6 +47,13 @@ from loquilex.segmentation.aggregator import Aggregator
 
 
 def main() -> int:
+    warnings.warn(
+        "loquilex.cli.live_en_to_zh is deprecated for orchestration. "
+        "Use TypeScript orchestration with Python executor services instead. "
+        "See docs/architecture/js-first.md",
+        DeprecationWarning,
+        stacklevel=2
+    )
     ap = argparse.ArgumentParser()
     # Legacy flags (kept for compatibility with older docs)
     ap.add_argument("--out-prefix", default=f"{RT.out_dir}/live")
