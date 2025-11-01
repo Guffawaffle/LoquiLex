@@ -41,11 +41,43 @@ See CI-TESTING.md for details on run-ci-mode vs run-local-ci.
 LoquiLex uses `LX_*` as the canonical environment prefix.
 
 ### Supported LX_ variables
-- LX_ASR_LANGUAGE, LX_ASR_MODEL, LX_ASR_COMPUTE, LX_ASR_BEAM, LX_ASR_VAD, LX_ASR_NO_SPEECH, LX_ASR_LOGPROB, LX_ASR_COND_PREV, LX_ASR_SAMPLE_RATE, LX_ASR_CPU_THREADS
-- LX_PAUSE_FLUSH_SEC, LX_SEGMENT_MAX_SEC, LX_PARTIAL_DEBOUNCE_MS
-- LX_NLLB_MODEL, LX_M2M_MODEL, LX_MT_BEAMS, LX_MT_NO_REPEAT, LX_MT_MAX_INPUT, LX_MT_MAX_NEW
-- LX_MT_PROVIDER, LX_MT_MODEL_DIR, LX_MT_DEVICE, LX_MT_COMPUTE_TYPE, LX_MT_WORKERS, LX_LANG_VARIANT_ZH
-- LX_OUT_DIR, LX_DEVICE, LX_DECODE_INTERVAL_SEC, LX_PARTIAL_DEBOUNCE_SEC, LX_MAX_BUFFER_SEC, LX_MAX_LINES, LX_PARTIAL_WORD_CAP, LX_SAVE_AUDIO, LX_SAVE_AUDIO_PATH
+- **ASR**: LX_ASR_LANGUAGE, LX_ASR_MODEL, LX_ASR_COMPUTE, LX_ASR_BEAM, LX_ASR_VAD, LX_ASR_NO_SPEECH, LX_ASR_LOGPROB, LX_ASR_COND_PREV, LX_ASR_SAMPLE_RATE, LX_ASR_CPU_THREADS
+- **Segmentation**: LX_PAUSE_FLUSH_SEC, LX_SEGMENT_MAX_SEC, LX_PARTIAL_DEBOUNCE_MS
+- **Translation**: LX_NLLB_MODEL, LX_M2M_MODEL, LX_MT_BEAMS, LX_MT_NO_REPEAT, LX_MT_MAX_INPUT, LX_MT_MAX_NEW, LX_MT_PROVIDER, LX_MT_MODEL_DIR, LX_MT_DEVICE, LX_MT_COMPUTE_TYPE, LX_MT_WORKERS
+- **Language Pairs (NEW)**: LX_SRC_LANG (default: `en`), LX_TGT_LANG (default: `zh`), LX_TGT_PARTIAL_DEBOUNCE_SEC (default: `0.5`), LX_LANG_VARIANT_ZH
+- **Output**: LX_OUT_DIR, LX_DEVICE, LX_DECODE_INTERVAL_SEC, LX_PARTIAL_DEBOUNCE_SEC, LX_MAX_BUFFER_SEC, LX_MAX_LINES, LX_PARTIAL_WORD_CAP, LX_SAVE_AUDIO, LX_SAVE_AUDIO_PATH
+
+### CLI Usage
+
+The `loquilex-live` command now supports **any language pair**:
+
+```bash
+# English to Chinese (default)
+loquilex-live
+
+# Chinese to English
+loquilex-live --src-lang zh --tgt-lang en
+
+# English to Spanish
+loquilex-live --src-lang en --tgt-lang es
+
+# Spanish to English
+loquilex-live --src-lang es --tgt-lang en
+
+# Custom debounce timing
+loquilex-live --src-lang en --tgt-lang zh --tgt-partial-debounce-sec 1.0
+```
+
+**Migration Note**: The old `--zh-partial-debounce-sec` flag is deprecated. Use `--tgt-partial-debounce-sec` instead. See [MIGRATION.md](MIGRATION.md) for complete migration guide.
+
+### Supported Language Pairs
+
+LoquiLex supports **200+ languages** via NLLB-200 or **100+ languages** via M2M-100:
+
+- **NLLB-200** (default): EN ↔ ZH, EN ↔ ES, EN ↔ FR, EN ↔ DE, EN ↔ JA, EN ↔ KO, ZH ↔ ES, and any other combination
+- **M2M-100**: Set `LX_MT_PROVIDER=m2m` for alternative model
+
+See [MIGRATION.md](MIGRATION.md) for language codes and examples.
 
 ## Development
 

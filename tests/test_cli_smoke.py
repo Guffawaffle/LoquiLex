@@ -8,7 +8,7 @@ def test_cli_runs_with_fake_capture_and_translator(monkeypatch, tmp_path: Path):
 
     # Patch capture_stream to emit a few silent frames then stop
     import loquilex.audio.capture as cap
-    import loquilex.cli.live_en_to_zh as cli
+    import loquilex.cli.live as cli
     import loquilex.mt.translator as tr
 
     def fake_capture_stream(cb):
