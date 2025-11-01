@@ -67,6 +67,10 @@ def test_set_base_directory_valid_path(client):
 
 def test_set_base_directory_invalid_path(client, tmp_path):
     """Test setting an invalid base directory."""
+    # Skip if running as root (e.g., in Docker) since root can access 0o000 dirs
+    if os.geteuid() == 0:
+        pytest.skip("Test requires non-root user (root bypasses permission checks)")
+
     # Create a temporary directory with restricted permissions
     restricted_dir = tmp_path / "restricted"
     restricted_dir.mkdir()
