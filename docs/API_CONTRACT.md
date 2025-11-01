@@ -1432,7 +1432,7 @@ docker run -d \
   loquilex:latest
 ```
 
-See [docs/DOCKER.md](./DOCKER.md) for detailed Docker instructions.
+See [DOCKER.md](./DOCKER.md) for detailed Docker instructions.
 
 ### Health Checks
 
