@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Callable
 
+from loquilex.capabilities import normalize_language_code
+
 # Import language-specific post-processors
 from .zh_text import post_process as zh_post_process
 
@@ -42,7 +44,14 @@ def post_process(text: str, lang: str) -> str:
         >>> post_process("Hello world.", "en")
         "Hello world."
     """
-    processor = POST_PROCESSORS.get(lang, identity_post_process)
+    # Normalize language code first
+    try:
+        normalized_lang = normalize_language_code(lang)
+    except ValueError:
+        # If normalization fails, use original code
+        normalized_lang = lang
+
+    processor = POST_PROCESSORS.get(normalized_lang, identity_post_process)
     return processor(text)
 
 

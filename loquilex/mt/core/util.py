@@ -4,10 +4,14 @@ from __future__ import annotations
 
 import os
 from .types import Lang
+from loquilex.capabilities import normalize_language_code
 
 
 def resolve_zh_variant() -> Lang:
-    """Resolve Chinese variant from environment."""
+    """Resolve Chinese variant from environment.
+
+    Deprecated: Use loquilex.capabilities.normalize_language_code instead.
+    """
     variant = os.getenv("LX_LANG_VARIANT_ZH", "Hans")
     if variant == "Hans":
         return "zh-Hans"
@@ -19,15 +23,8 @@ def resolve_zh_variant() -> Lang:
 
 
 def normalize_lang(lang: str) -> Lang:
-    """Normalize language code to supported Lang type."""
-    if lang == "en":
-        return "en"
-    elif lang == "zh" or lang == "zho":
-        # Map generic zh to environment-specified variant
-        return resolve_zh_variant()
-    elif lang == "zh-Hans":
-        return "zh-Hans"
-    elif lang == "zh-Hant":
-        return "zh-Hant"
-    else:
-        raise ValueError(f"Unsupported language: {lang}")
+    """Normalize language code to supported Lang type.
+
+    Uses the centralized BCP-47 canonicalizer.
+    """
+    return normalize_language_code(lang)  # type: ignore

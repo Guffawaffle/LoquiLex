@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Any, Optional
 
 from loquilex.config.defaults import MT, pick_device
 from loquilex.mt.core.util import normalize_lang
+from loquilex.capabilities import get_mapper
 from ..logging import PerformanceMetrics, create_logger
 
 
@@ -27,33 +28,8 @@ if TYPE_CHECKING:  # only for typing; avoid runtime hard dep
 # Constants for translation behavior
 # ============================================================================
 
-# FLORES-200 language code mappings for NLLB model
-NLLB_FLORES_MAP = {
-    "en": "eng_Latn",
-    "zh-Hans": "zho_Hans",
-    "zh-Hant": "zho_Hant",
-    "es": "spa_Latn",
-    "fr": "fra_Latn",
-    "de": "deu_Latn",
-    "ja": "jpn_Jpan",
-    "ko": "kor_Hang",
-    "ru": "rus_Cyrl",
-    "ar": "arb_Arab",
-}
-
-# M2M language code mappings (simpler format than FLORES)
-M2M_LANG_MAP = {
-    "en": "en",
-    "zh-Hans": "zh",
-    "zh-Hant": "zh",
-    "es": "es",
-    "fr": "fr",
-    "de": "de",
-    "ja": "ja",
-    "ko": "ko",
-    "ru": "ru",
-    "ar": "ar",
-}
+# Note: Language code mappings are now centralized in loquilex.capabilities
+# See loquilex/capabilities/mapper.py and fixtures/ for token mappings
 
 # Draft mode generation parameters for faster low-latency translation
 DRAFT_MAX_TOKENS = 48  # Maximum tokens for draft quality translations
@@ -194,8 +170,10 @@ class Translator:
         try:
             tok, model = self._load_nllb()
 
-            src_flores = NLLB_FLORES_MAP.get(src, "eng_Latn")
-            tgt_flores = NLLB_FLORES_MAP.get(tgt, "zho_Hans")
+            # Use token mapper for language code conversion
+            mapper = get_mapper()
+            src_flores = mapper.bcp47_to_token(src, "nllb")
+            tgt_flores = mapper.bcp47_to_token(tgt, "nllb")
 
             tok.src_lang = src_flores
             inputs = tok(text, return_tensors="pt", truncation=True, max_length=MT.max_input_tokens)
@@ -254,8 +232,10 @@ class Translator:
         try:
             tok, model = self._load_m2m()
 
-            src_m2m = M2M_LANG_MAP.get(src, "en")
-            tgt_m2m = M2M_LANG_MAP.get(tgt, "zh")
+            # Use token mapper for language code conversion
+            mapper = get_mapper()
+            src_m2m = mapper.bcp47_to_token(src, "m2m")
+            tgt_m2m = mapper.bcp47_to_token(tgt, "m2m")
 
             tok.src_lang = src_m2m
             inputs = tok(text, return_tensors="pt", truncation=True, max_length=MT.max_input_tokens)
