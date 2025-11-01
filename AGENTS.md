@@ -105,6 +105,156 @@ Treat `docs/deliverables/.live.md` as scratch space during execution. When the w
 
 ---
 
+## Merge-Weave Strategy (Multi-PR Orchestration)
+
+**Use this when:** Multiple related PRs are ready for integration and you want to parallelize independent work while minimizing conflicts.
+
+### Overview
+
+**Merge-weave** is a **topologically-ordered pyramid** approach to integrating multiple dependent PRs:
+- **Dependency graph:** Model PRs as a DAG (directed acyclic graph) where edges indicate "PR A must merge before PR B"
+- **Topological sort:** Order PRs so leaves (no dependents) merge first, then parents (dependents) merge in sequence
+- **Integration branch:** Use a staging branch (`merge-weave`) to aggregate leaves before landing on `main`
+- **Parallel execution:** Independent PRs at the same dependency level can be processed in parallel
+
+### When to Use
+
+1. **Multiple foundational PRs:** e.g., npm setup, CI/CD, health endpoint (all independent)
+2. **Layered features:** e.g., auth → API endpoints → UI (each layer depends on prior)
+3. **High merge risk:** Staging aggregation reduces risk of partial merges corrupting `main`
+4. **Checkpoint control:** Each merge to weave is a checkpoint; close issues/PRs as validation
+
+### Process
+
+#### 1. **Dependency Analysis**
+```bash
+# Map all open PRs and their dependencies
+# Create a mental/documented dependency graph:
+#   Level 0 (leaves): PR #A, PR #B (independent)
+#   Level 1: PR #C depends on A or B
+#   Level 2: PR #D depends on C
+```
+
+#### 2. **Create Integration Branch**
+```bash
+git fetch origin
+git checkout -b merge-weave origin/main
+# This branch is your staging area for leaves
+```
+
+#### 3. **Merge Leaves (Independent PRs) in Parallel**
+For each leaf PR (in any order; they don't affect each other):
+```bash
+# Checkout weave branch
+git checkout merge-weave
+
+# Merge the leaf PR (use squash for cleanliness)
+git merge origin/<leaf-branch> --squash
+git commit -m "merge: integrate <leaf-pr-description>"
+
+# Verify CI passes on merge-weave
+make run-ci-mode  # or Docker CI
+
+# Push the updated weave branch
+git push origin merge-weave
+
+# Close the leaf PR/issue as a checkpoint
+# (via GitHub UI or gh pr close <number>)
+```
+
+#### 4. **Validate Weave Branch**
+```bash
+# Once all leaves merged to weave, run final comprehensive tests
+make docker-ci-build && make docker-ci-test
+
+# Or full local CI parity
+make run-local-ci
+```
+
+#### 5. **Merge Weave to Main**
+```bash
+git checkout main
+git pull origin main
+git merge merge-weave --squash
+git commit -m "merge: integrate merge-weave batch (leaves: #A, #B, ...)"
+git push origin main
+
+# Delete the weave branch (optional, for cleanup)
+git push origin --delete merge-weave
+```
+
+#### 6. **Rebase & Merge Parents (Sequential)**
+For each parent PR (in dependency order):
+```bash
+git checkout <parent-branch>
+
+# Rebase on new main (which includes merged leaves)
+git merge origin/main  # or git rebase origin/main
+
+# Verify CI passes
+make run-ci-mode
+
+# Merge to main
+git checkout main
+git pull origin main
+git merge <parent-branch> --squash
+git commit -m "merge: integrate <parent-pr-description> (depends on <leaves>)"
+git push origin main
+
+# Close the parent PR/issue
+```
+
+### Conflict Handling
+
+**In the weave branch:**
+- **Trivial conflicts** (append-only files like `CHANGELOG.md`, docs): Use `git merge -X ours` and combine manually
+- **Code conflicts:** Merge leaves sequentially; if conflicts arise, resolve and push updated weave branch; retest
+- **Dependency order:** If PR A and PR B both modify `package.json`, ensure they're at the **same level** (both leaves or both parents); if one depends on the other, merge the leaf first
+
+**When rebasing parents:**
+- Use `git merge origin/main` (not rebase, to preserve history)
+- Conflicts should be minimal if leaves don't overlap with parents
+- If conflicts occur, apply `git merge -X ours` for code, manual combine for configs
+
+### Gotchas & Best Practices
+
+1. **Commit messages matter:** Use clear imperative messages (`merge: integrate X`) so the git log is readable
+2. **No force-push on weave:** The weave branch is shared staging; don't rewrite its history
+3. **Test aggressively:** Run CI after each leaf merge to catch issues early
+4. **Close PRs incrementally:** Close leaves as soon as they're integrated to weave; close parents after they merge to main. This gives clear checkpoints.
+5. **Dependency accuracy is critical:** Mislabeled dependencies will cause merge failures or hidden regressions. Double-check the graph before starting.
+
+### Example: Three-Level Pyramid
+
+```
+         [main]
+          /  \
+    PR #157  PR #156
+    (CI/CD)  (docs)
+        |
+    PR #155
+    (health)
+         |
+    [merged leaves]
+
+Merge order:
+  1. Merge PR #155 to merge-weave, test, close issue
+  2. Merge PR #156 to merge-weave, test, close issue (can start after 1)
+  3. Merge PR #157 to merge-weave, test, close issue (can start after 2)
+  4. Test merge-weave fully
+  5. Merge weave → main
+  6. Close all three PRs
+```
+
+### Rollback Strategy
+
+If something goes wrong:
+1. Delete the weave branch: `git push origin --delete merge-weave`
+2. Reopen closed PRs (via GitHub UI)
+3. Start fresh with a corrected dependency graph
+
+---
+
 ## Guardrails
 
 * Never run destructive commands.
