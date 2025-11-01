@@ -932,6 +932,7 @@ interface WSEnvelope<TData = Record<string, unknown>> {
 | `client.hello` | Client → Server | Initial handshake with capabilities |
 | `server.welcome` | Server → Client | Connection established, server config |
 | `server.error` | Server → Client | Error notification |
+| `server.ack` | Server → Client | Generic acknowledgement response |
 | `client.hb` | Client → Server | Client heartbeat |
 | `server.hb` | Server → Client | Server heartbeat with metrics |
 | `client.ack` | Client → Server | Acknowledge received messages |
@@ -956,6 +957,7 @@ interface WSEnvelope<TData = Record<string, unknown>> {
 | `session.new` | Server → Client | Resume failed, fresh start required |
 | `session.ack` | Server → Client | Session handshake complete |
 | `system.heartbeat` | Server → Client | System metrics heartbeat |
+| `system.metrics` | Server → Client | Detailed system telemetry |
 | `queue.drop` | Server → Client | Queue overflow notification |
 
 ### Example Messages
