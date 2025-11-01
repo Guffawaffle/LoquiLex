@@ -64,6 +64,7 @@ jobs:
 
       - name: Type check with mypy
         run: python -m mypy loquilex
+        # Allow mypy to fail (matches local behavior: mypy loquilex || true)
         continue-on-error: true
 
   test:
