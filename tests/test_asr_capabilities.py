@@ -135,18 +135,20 @@ class TestASRCapabilityProbe:
         """Test that errors are handled gracefully."""
         probe = ASRCapabilityProbe()
 
-        # Simulate an error during probing
+        # Simulate an error during probing - this should trigger fallback
         with patch(
             "faster_whisper.WhisperModel",
             side_effect=RuntimeError("Catastrophic failure"),
         ):
             result = probe.probe_model("broken-model")
 
-        # Should return a safe response with error field
+        # Should return a safe response with fallback languages
         assert result["kind"] == "asr"
         assert result["model"] == "broken-model"
-        assert result["supports_auto"] is True  # Fallback still sets this
+        assert result["supports_auto"] is True  # Always true for Whisper
         assert isinstance(result["languages"], list)
+        assert len(result["languages"]) > 0  # Should have fallback languages
+        # Normal model loading failures use fallback, not error field
 
     def test_bcp47_mapping(self):
         """Test BCP-47 code mapping."""

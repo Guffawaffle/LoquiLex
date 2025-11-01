@@ -752,7 +752,6 @@ def get_mt_langs(model_id: str) -> Dict[str, Any]:
     return {"model_id": model_id, "languages": mt_supported_languages(model_id)}
 
 
-
 @app.get("/healthz")
 async def healthz() -> Dict[str, Any]:
     """Health endpoint for Electron readiness check.

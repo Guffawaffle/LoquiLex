@@ -96,7 +96,6 @@ WHISPER_LANG_TO_BCP47 = {
     "hr": "hr",
     "et": "et",
     "fo": "fo",
-    "ka": "ka",
     "ha": "ha",
     "ht": "ht",
     "lb": "lb",
@@ -162,13 +161,15 @@ class ASRCapabilityProbe:
             
         except Exception as e:
             logger.error(f"Failed to probe {model_name}: {e}", exc_info=True)
-            # Return minimal safe response
+            # Return minimal safe response with fallback
+            # Note: supports_auto is still True for Whisper models even on error
+            fallback_langs, fallback_tokens = self._fallback_languages(model_name)
             return {
                 "kind": "asr",
                 "model": model_name,
-                "supports_auto": False,
-                "languages": [],
-                "tokens": {},
+                "supports_auto": True,
+                "languages": fallback_langs,
+                "tokens": fallback_tokens,
                 "error": str(e),
             }
 
