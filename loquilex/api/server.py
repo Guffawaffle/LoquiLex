@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+from datetime import datetime, timezone
 import json
 import logging
 import os
@@ -16,7 +17,7 @@ import asyncio
 
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, model_validator
 
@@ -26,6 +27,7 @@ from loquilex.config.model_defaults import get_model_defaults_manager
 from loquilex.security import PathGuard, PathSecurityError
 from .supervisor import SessionConfig, SessionManager, StreamingSession
 from loquilex.storage.retention import RetentionPolicy, enforce_retention
+from loquilex import __version__
 
 if TYPE_CHECKING:  # pragma: no cover - type-only import
     from loquilex.security import CanonicalPath
@@ -279,17 +281,20 @@ class DownloadCancelResp(BaseModel):
 
 class BandwidthConfigReq(BaseModel):
     """Bandwidth configuration request."""
+
     limit_mbps: int = Field(ge=0, description="Bandwidth limit in MB/s, 0 = unlimited")
 
 
 class BandwidthConfigResp(BaseModel):
     """Bandwidth configuration response."""
+
     limit_mbps: int
     active: bool
 
 
 class DownloadQueueResp(BaseModel):
     """Download queue status response."""
+
     jobs: List[Dict[str, Any]]
     active_count: int
     queued_count: int
@@ -736,6 +741,23 @@ async def api_health_head() -> Response:
     return Response(status_code=200)
 
 
+@app.get("/health")
+async def health() -> Dict[str, Any]:
+    """Health check endpoint for frontend verification.
+
+    Returns service status, version, and current timestamp.
+    Used by LoquiLex-UI to verify backend availability.
+
+    Response time target: < 100ms
+    No authentication required.
+    """
+    return {
+        "status": "ok",
+        "version": __version__,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
+
+
 # Model defaults management
 @app.get("/settings/defaults")
 def get_model_defaults() -> Dict[str, Any]:
@@ -785,25 +807,25 @@ async def get_downloads() -> DownloadQueueResp:
     completed_count = 0
 
     for job_id, info in downloads.items():
-        status = info.get('status', 'unknown')
+        status = info.get("status", "unknown")
         job_data = {
-            'job_id': job_id,
-            'repo_id': info.get('repo_id', ''),
-            'type': info.get('type', ''),
-            'status': status,
-            'progress': info.get('progress', 0),
-            'created_at': info.get('created_at', ''),
-            'started_at': info.get('started_at'),
-            'completed_at': info.get('completed_at'),
-            'error_message': info.get('error_message')
+            "job_id": job_id,
+            "repo_id": info.get("repo_id", ""),
+            "type": info.get("type", ""),
+            "status": status,
+            "progress": info.get("progress", 0),
+            "created_at": info.get("created_at", ""),
+            "started_at": info.get("started_at"),
+            "completed_at": info.get("completed_at"),
+            "error_message": info.get("error_message"),
         }
         jobs.append(job_data)
 
-        if status in ['downloading', 'active']:
+        if status in ["downloading", "active"]:
             active_count += 1
-        elif status in ['queued', 'pending']:
+        elif status in ["queued", "pending"]:
             queued_count += 1
-        elif status in ['completed', 'success']:
+        elif status in ["completed", "success"]:
             completed_count += 1
 
     return DownloadQueueResp(
@@ -811,7 +833,7 @@ async def get_downloads() -> DownloadQueueResp:
         active_count=active_count,
         queued_count=queued_count,
         completed_count=completed_count,
-        total_count=len(jobs)
+        total_count=len(jobs),
     )
 
 
@@ -819,20 +841,14 @@ async def get_downloads() -> DownloadQueueResp:
 async def set_bandwidth_limit(req: BandwidthConfigReq) -> BandwidthConfigResp:
     """Set bandwidth limit for downloads."""
     MANAGER.set_bandwidth_limit(req.limit_mbps)
-    return BandwidthConfigResp(
-        limit_mbps=req.limit_mbps,
-        active=req.limit_mbps > 0
-    )
+    return BandwidthConfigResp(limit_mbps=req.limit_mbps, active=req.limit_mbps > 0)
 
 
 @app.get("/models/downloads/bandwidth", response_model=BandwidthConfigResp)
 async def get_bandwidth_limit() -> BandwidthConfigResp:
     """Get current bandwidth limit."""
     limit = MANAGER.get_bandwidth_limit()
-    return BandwidthConfigResp(
-        limit_mbps=limit,
-        active=limit > 0
-    )
+    return BandwidthConfigResp(limit_mbps=limit, active=limit > 0)
 
 
 @app.post("/models/downloads/pause-all")
