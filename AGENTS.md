@@ -109,6 +109,10 @@ Treat `docs/deliverables/.live.md` as scratch space during execution. When the w
 
 **Use this when:** Multiple related PRs are ready for integration and you want to parallelize independent work while minimizing conflicts.
 
+**Critical principle:** Each PR should be **structurally independent** (can be reviewed, tested, and merged in isolation). They may have **logical dependencies** (PR B uses code from PR A), but each PR should not require another PR's branch to test or review. This allows them to be built in parallel, then merged together on `main`.
+
+*Analogy: Build 4 car frame sections in parallel, then assemble them together.*
+
 ### Overview
 
 **Merge-weave** is a **topologically-ordered pyramid** approach to integrating multiple dependent PRs:
@@ -119,10 +123,10 @@ Treat `docs/deliverables/.live.md` as scratch space during execution. When the w
 
 ### When to Use
 
-1. **Multiple foundational PRs:** e.g., npm setup, CI/CD, health endpoint (all independent)
-2. **Layered features:** e.g., auth → API endpoints → UI (each layer depends on prior)
-3. **High merge risk:** Staging aggregation reduces risk of partial merges corrupting `main`
-4. **Checkpoint control:** Each merge to weave is a checkpoint; close issues/PRs as validation
+1. **Multiple independent PRs:** e.g., npm setup, CI/CD, health endpoint—each builds separately but combines on `main`
+2. **Structural independence, logical layers:** Each PR is self-contained; they may logically depend on each other but don't need to be reviewed/tested sequentially
+3. **High merge risk:** Staging aggregation reduces risk of partial merges from corrupting `main`
+4. **Checkpoint control:** Each merge to weave is a checkpoint; close issues/PRs after leaves integrate and after final weave→main
 
 ### Process
 
@@ -142,24 +146,30 @@ git checkout -b merge-weave origin/main
 # This branch is your staging area for leaves
 ```
 
-#### 3. **Merge Leaves (Independent PRs) in Parallel**
-For each leaf PR (in any order; they don't affect each other):
+#### 3. **Merge Leaves (Independent PRs)**
+Since all leaves are independent, merge them all to the weave branch (in any order; it doesn't matter):
 ```bash
 # Checkout weave branch
 git checkout merge-weave
 
-# Merge the leaf PR (use squash for cleanliness)
-git merge origin/<leaf-branch> --squash
-git commit -m "merge: integrate <leaf-pr-description>"
+# For each leaf PR (order is irrelevant; they're independent):
+git merge origin/<leaf-branch-1> --squash
+git commit -m "merge: integrate <leaf-pr-1-description>"
 
-# Verify CI passes on merge-weave
+git merge origin/<leaf-branch-2> --squash
+git commit -m "merge: integrate <leaf-pr-2-description>"
+
+git merge origin/<leaf-branch-N> --squash
+git commit -m "merge: integrate <leaf-pr-N-description>"
+
+# Verify CI passes on merge-weave (with all leaves together)
 make run-ci-mode  # or Docker CI
 
 # Push the updated weave branch
 git push origin merge-weave
 
-# Close the leaf PR/issue as a checkpoint
-# (via GitHub UI or gh pr close <number>)
+# Close leaf PRs/issues as checkpoints
+# (via GitHub UI or gh pr close <numbers>)
 ```
 
 #### 4. **Validate Weave Branch**
@@ -226,24 +236,45 @@ git push origin main
 
 ### Example: Three-Level Pyramid
 
+**Dependency structure:**
 ```
          [main]
-          /  \
-    PR #157  PR #156
-    (CI/CD)  (docs)
-        |
-    PR #155
-    (health)
-         |
-    [merged leaves]
+          |
+    [merged leaves batch]
+         /  |  \
+    PR #155 PR #156 PR #157
+    (health) (docs) (CI/CD)
 
-Merge order:
-  1. Merge PR #155 to merge-weave, test, close issue
-  2. Merge PR #156 to merge-weave, test, close issue (can start after 1)
-  3. Merge PR #157 to merge-weave, test, close issue (can start after 2)
-  4. Test merge-weave fully
-  5. Merge weave → main
-  6. Close all three PRs
+    All independent: can be built in parallel
+```
+
+**Merge order (parallel batching):**
+```bash
+# 1. Create weave branch
+git checkout -b merge-weave origin/main
+
+# 2. Merge all leaves to weave (can do in any order, parallel or sequential—doesn't matter)
+git merge origin/feature/health --squash         # PR #155
+git commit -m "merge: integrate health endpoint"
+git merge origin/feature/docs --squash           # PR #156
+git commit -m "merge: integrate API documentation"
+git merge origin/feature/ci --squash             # PR #157
+git commit -m "merge: integrate CI/CD workflows"
+
+# 3. Test merge-weave with all three together
+make docker-ci-build && make docker-ci-test
+
+# 4. Push weave branch
+git push origin merge-weave
+
+# 5. Merge weave → main (all three land together)
+git checkout main && git pull origin main
+git merge merge-weave --squash
+git commit -m "merge: integrate merge-weave batch (leaves: #155, #156, #157)"
+git push origin main
+
+# 6. Close all three PRs/issues as checkpoints
+gh pr close 155 156 157
 ```
 
 ### Rollback Strategy
