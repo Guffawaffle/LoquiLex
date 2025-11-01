@@ -21,7 +21,7 @@ from loquilex.hardware.detection import (
 @pytest.fixture
 def reload_config_after():
     """Restore config module to default state after test.
-    
+
     This fixture reloads the config module after tests that modify env vars
     to ensure changes don't affect other tests.
     """
@@ -33,7 +33,7 @@ def reload_config_after():
     ]
     for var in test_env_vars:
         os.environ.pop(var, None)
-    
+
     # Reload config and detection modules to restore defaults
     from loquilex import config
     from loquilex.hardware import detection

@@ -153,23 +153,7 @@ class Translator:
         # Determine translation strategy based on quality and language pair
         is_draft = quality in ("realtime", "draft")
 
-        # For EN→ZH, use existing optimized methods (for now, during transition)
-        if src == "en" and tgt in ("zh-Hans", "zh-Hant"):
-            if is_draft:
-                legacy_result = self.translate_en_to_zh_draft(text)
-            else:
-                legacy_result = self.translate_en_to_zh(text)
-            # Update lang codes to match request
-            return TranslationResult(
-                legacy_result.text,
-                legacy_result.model,
-                src_lang=src,
-                tgt_lang=tgt,
-                duration_ms=legacy_result.duration_ms,
-                confidence=legacy_result.confidence,
-            )
-
-        # For other pairs, use generic provider-based translation
+        # Use generic provider-based translation for all language pairs
         # Try NLLB first (supports more language pairs)
         try:
             tok, model = self._load_nllb()
@@ -393,4 +377,3 @@ class Translator:
                 )
                 raise
         return self._m2m
-

@@ -24,6 +24,7 @@ Migration path:
 See: https://github.com/Guffawaffle/LoquiLex/issues/60
 See: https://github.com/Guffawaffle/LoquiLex/issues/164
 """
+
 from __future__ import annotations
 
 import argparse
@@ -59,7 +60,7 @@ def main() -> int:
         "Use TypeScript orchestration with Python executor services instead. "
         "See docs/architecture/js-first.md",
         DeprecationWarning,
-        stacklevel=2
+        stacklevel=2,
     )
     ap = argparse.ArgumentParser()
 
@@ -156,7 +157,9 @@ def main() -> int:
     # Prime MT with a tiny draft translation to load weights/caches
     warmup_text_src = "Starting service"
     try:
-        tgt_warm = tr.translate(warmup_text_src, src_lang=src_lang, tgt_lang=tgt_lang, quality="draft").text
+        tgt_warm = tr.translate(
+            warmup_text_src, src_lang=src_lang, tgt_lang=tgt_lang, quality="draft"
+        ).text
         tgt_warm = post_process(tgt_warm)
     except Exception:
         tgt_warm = ""
@@ -265,7 +268,9 @@ def main() -> int:
                 print(f"{tgt_lang.upper()}* ≫ {draft}")
                 try:
                     p_tgt.rewrite_current_line(draft)
-                    _io_log(f"[io] partial rewrite lang={tgt_lang} path={p_tgt.path} chars={len(draft)}")
+                    _io_log(
+                        f"[io] partial rewrite lang={tgt_lang} path={p_tgt.path} chars={len(draft)}"
+                    )
                 except Exception:
                     pass
                 last_tgt_partial_text = draft
@@ -336,7 +341,9 @@ def main() -> int:
             if src_chunk != last_src_live:
                 if args.live_draft_files:
                     write_atomic(out_live_src, src_chunk + "\n")
-                tgt_draft = tr.translate(src_chunk, src_lang=src_lang, tgt_lang=tgt_lang, quality="draft").text
+                tgt_draft = tr.translate(
+                    src_chunk, src_lang=src_lang, tgt_lang=tgt_lang, quality="draft"
+                ).text
                 tgt_draft = post_process(tgt_draft, tgt_lang)
                 if tgt_draft and tgt_draft != last_tgt_live:
                     print(f"{tgt_lang.upper()}* ≫ {tgt_draft}")
@@ -483,7 +490,9 @@ def main() -> int:
             nonlocal srt_index_tgt
             if not args.no_final_srt_zh:
                 try:
-                    used_idx = append_srt_cue(args.final_srt_zh, srt_index_tgt, rel_a, rel_b, tgt_txt)
+                    used_idx = append_srt_cue(
+                        args.final_srt_zh, srt_index_tgt, rel_a, rel_b, tgt_txt
+                    )
                     print(
                         f"[io] srt append lang={tgt_lang} path={args.final_srt_zh} idx={used_idx} a={rel_a:.3f} b={rel_b:.3f} chars={len(tgt_txt)}"
                     )

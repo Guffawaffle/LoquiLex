@@ -370,6 +370,7 @@ class Session:
 
     See: docs/architecture/js-first.md for the JS-first architecture pattern.
     """
+
     def __init__(self, sid: str, cfg: SessionConfig, run_dir: Path) -> None:
         warnings.warn(
             "Session class (subprocess orchestration) is deprecated. "
@@ -377,7 +378,7 @@ class Session:
             "TypeScript orchestration with Python executor services. "
             "See docs/architecture/js-first.md",
             DeprecationWarning,
-            stacklevel=2
+            stacklevel=2,
         )
         self.sid = sid
         self.cfg = cfg

@@ -52,8 +52,8 @@ def main() -> None:
     zh_lines: List[str] = []
     zh_cues: List[Tuple[float, float, str]] = []
     for a, b, t in cues:
-        zh = tr.translate_en_to_zh(t)
-        txt = post_process(zh.text)
+        result = tr.translate(t, src_lang="en", tgt_lang="zh", quality="final")
+        txt = post_process(result.text, "zh")
         zh_lines.append(txt)
         zh_cues.append((a, b, txt))
 

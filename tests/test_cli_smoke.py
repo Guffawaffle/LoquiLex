@@ -40,7 +40,11 @@ def test_cli_runs_with_fake_capture_and_translator(monkeypatch, tmp_path: Path):
         def translate(self, text, src_lang="en", tgt_lang="zh", quality="final"):
             """Generic translate method."""
             return tr.TranslationResult(
-                text=text, model=f"echo:{quality}", src_lang=src_lang, tgt_lang=tgt_lang, duration_ms=0.0
+                text=text,
+                model=f"echo:{quality}",
+                src_lang=src_lang,
+                tgt_lang=tgt_lang,
+                duration_ms=0.0,
             )
 
     # Patch both the module and the CLI's imported Translator

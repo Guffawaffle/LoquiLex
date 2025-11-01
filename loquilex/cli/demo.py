@@ -543,7 +543,7 @@ def main(argv: list[str] | None = None) -> int:
         "Use TypeScript orchestration with Python executor services instead. "
         "See docs/architecture/js-first.md",
         DeprecationWarning,
-        stacklevel=2
+        stacklevel=2,
     )
     p = argparse.ArgumentParser(prog="loquilex-demo")
     p.add_argument("--duration", type=int, default=30)
