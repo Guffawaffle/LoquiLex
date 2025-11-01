@@ -359,7 +359,25 @@ class SessionConfig:
 
 
 class Session:
+    """DEPRECATED: Subprocess-based session orchestration.
+    
+    This class spawns CLI orchestrators as subprocesses, which duplicates
+    orchestration logic that should now be handled by TypeScript.
+    
+    Migration: Use StreamingSession for in-process execution, or refactor
+    to call executor services directly from TypeScript orchestration layer.
+    
+    See: docs/architecture/js-first.md for the JS-first architecture pattern.
+    """
     def __init__(self, sid: str, cfg: SessionConfig, run_dir: Path) -> None:
+        import warnings
+        warnings.warn(
+            "Session class (subprocess orchestration) is deprecated. "
+            "Use StreamingSession for in-process execution or refactor to "
+            "TypeScript orchestration with Python executors.",
+            DeprecationWarning,
+            stacklevel=2
+        )
         self.sid = sid
         self.cfg = cfg
         self.run_dir = run_dir

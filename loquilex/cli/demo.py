@@ -1,6 +1,22 @@
-"""Microphone demo CLI: stream mic or WAV through StreamingASR -> MT and persist outputs.
+"""DEPRECATED: Microphone demo CLI orchestrator.
 
-Usage: python -m loquilex.cli.demo [--duration N] [--wav path.wav] [--no-partials]
+This demo orchestrates the complete workflow including audio capture,
+StreamingASR, MT, and file persistence. This duplicates orchestration
+logic that should now be handled by TypeScript in the JS-first architecture.
+
+DEPRECATION NOTICE:
+- This CLI is deprecated for orchestration purposes
+- For new development, use TypeScript orchestration layer
+- Python should provide executor services, not orchestration
+
+Migration path:
+1. Use TypeScript orchestration layer (see docs/architecture/js-first.md)
+2. Call Python executor services directly (StreamingASR, MTService)
+3. Use FastAPI WebSocket API for real-time streaming
+
+Usage (legacy): python -m loquilex.cli.demo [--duration N] [--wav path.wav] [--no-partials]
+
+See: https://github.com/Guffawaffle/LoquiLex/issues/60
 """
 
 from __future__ import annotations
@@ -11,6 +27,7 @@ import json
 import logging
 import time
 import uuid
+import warnings
 from pathlib import Path
 from typing import Any
 import queue
@@ -31,6 +48,15 @@ from loquilex.mt.service import MTService
 from loquilex.api.server import OUT_ROOT
 
 logger = logging.getLogger("loquilex.demo")
+
+# Emit deprecation warning when module is imported/run
+warnings.warn(
+    "loquilex.cli.demo is deprecated for orchestration. "
+    "Use TypeScript orchestration with Python executor services instead. "
+    "See docs/architecture/js-first.md",
+    DeprecationWarning,
+    stacklevel=2
+)
 
 
 def _make_session_dir(name: str | None) -> Path:
