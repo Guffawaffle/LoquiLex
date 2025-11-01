@@ -128,6 +128,10 @@ LoquiLex is a **CLI-first architecture** with Python backend and WebSocket API:
 
 ### API Contracts & Integration
 
+Complete API specification for frontend integration:
+
+- **[API Contract](./docs/API_CONTRACT.md)** - Complete REST + WebSocket API reference for LoquiLex backend
+
 Detailed contracts for all JS ↔ Python communication:
 
 - **[WebSocket Protocol](./docs/contracts/websocket.md)** - Message envelope format, session management
