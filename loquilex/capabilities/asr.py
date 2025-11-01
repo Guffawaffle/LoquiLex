@@ -170,7 +170,6 @@ class ASRCapabilityProbe:
                 "supports_auto": True,
                 "languages": fallback_langs,
                 "tokens": fallback_tokens,
-                "error": str(e),
             }
 
     def _probe_whisper_model(
