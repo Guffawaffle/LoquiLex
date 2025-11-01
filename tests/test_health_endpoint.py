@@ -9,7 +9,7 @@ Validates health check endpoint requirements:
 """
 
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 
 import pytest
 from fastapi.testclient import TestClient
@@ -44,9 +44,13 @@ def test_health_endpoint_timestamp_format():
         timestamp_str = data["timestamp"]
 
         # Validate ISO8601 format by parsing it
+        # The endpoint uses datetime.now(timezone.utc).isoformat()
+        # which returns format like "2025-11-01T03:32:31.420495+00:00"
         try:
-            parsed = datetime.fromisoformat(timestamp_str.replace("Z", "+00:00"))
+            parsed = datetime.fromisoformat(timestamp_str)
             assert parsed is not None
+            # Verify it's a recent timestamp (within last minute)
+            assert abs((datetime.now(timezone.utc) - parsed).total_seconds()) < 60
         except ValueError:
             pytest.fail(f"Timestamp is not valid ISO8601 format: {timestamp_str}")
 
