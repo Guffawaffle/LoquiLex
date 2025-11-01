@@ -726,18 +726,28 @@ def get_mt_langs(model_id: str) -> Dict[str, Any]:
 
 @app.get("/healthz")
 async def healthz() -> Dict[str, Any]:
-    """Health endpoint for Electron readiness check."""
+    """Health endpoint for Electron readiness check.
+
+    Returns Unix timestamp for Electron app initialization.
+    Legacy endpoint - prefer /health for new integrations.
+    """
     return {"status": "ok", "timestamp": time.time()}
 
 
 # Minimal API health endpoint used by external checks and tests
 @app.get("/api/health")
 async def api_health() -> Dict[str, Any]:
+    """Minimal health check for external monitoring and tests.
+
+    Returns minimal response for lightweight health checks.
+    Use /health for detailed status including version and timestamp.
+    """
     return {"status": "ok"}
 
 
 @app.head("/api/health")
 async def api_health_head() -> Response:
+    """HEAD request support for /api/health endpoint."""
     return Response(status_code=200)
 
 
@@ -746,10 +756,21 @@ async def health() -> Dict[str, Any]:
     """Health check endpoint for frontend verification.
 
     Returns service status, version, and current timestamp.
-    Used by LoquiLex-UI to verify backend availability.
+    This is the recommended health check endpoint for UI/frontend integration.
+
+    Used by:
+    - LoquiLex-UI to verify backend availability
+    - Frontend startup verification
 
     Response time target: < 100ms
     No authentication required.
+
+    Returns:
+        dict: {
+            "status": "ok",
+            "version": "0.1.0",
+            "timestamp": "2025-11-01T03:32:31.420495+00:00"
+        }
     """
     return {
         "status": "ok",
