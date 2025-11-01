@@ -1,6 +1,10 @@
 """Tests for hardware detection module."""
 
+import importlib
+import os
 from unittest.mock import Mock, patch
+
+import pytest
 
 from loquilex.hardware.detection import (
     get_hardware_snapshot,
@@ -14,6 +18,30 @@ from loquilex.hardware.detection import (
 )
 
 
+@pytest.fixture
+def reload_config_after():
+    """Restore config module to default state after test.
+    
+    This fixture reloads the config module after tests that modify env vars
+    to ensure changes don't affect other tests.
+    """
+    yield
+    # After test: clear any test env vars and reload config with defaults
+    test_env_vars = [
+        "LX_MIN_CPU_CORES",
+        "LX_MAX_CPU_USAGE",
+    ]
+    for var in test_env_vars:
+        os.environ.pop(var, None)
+    
+    # Reload config and detection modules to restore defaults
+    from loquilex import config
+    from loquilex.hardware import detection
+
+    importlib.reload(config)
+    importlib.reload(detection)
+
+
 class TestCPUInfo:
     """Test CPU information detection."""
 
@@ -21,16 +49,24 @@ class TestCPUInfo:
         """Test basic CPU information retrieval."""
         cpu = _get_cpu_info()
 
-        assert isinstance(cpu, CPUInfo)
+        assert cpu.__class__.__name__ == "CPUInfo"
         assert cpu.cores_logical >= 1
         assert cpu.cores_physical >= 1
         assert isinstance(cpu.warnings, list)
         assert isinstance(cpu.meets_threshold, bool)
 
     @patch.dict("os.environ", {"LX_MIN_CPU_CORES": "8"})
-    def test_cpu_threshold_warning(self):
+    def test_cpu_threshold_warning(self, reload_config_after):  # noqa: ARG002
         """Test CPU threshold warnings."""
-        cpu = _get_cpu_info()
+        # Reload config to pick up env var changes
+        import importlib
+        from loquilex import config
+        from loquilex.hardware import detection
+
+        importlib.reload(config)
+        importlib.reload(detection)
+
+        cpu = detection._get_cpu_info()
 
         # Should warn if we have fewer than 8 cores (most systems do)
         if cpu.cores_logical < 8:
