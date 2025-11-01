@@ -66,6 +66,16 @@ def _env_time_seconds(name: str, default_seconds: float) -> float:
         return default_seconds
 
 
+def _env_path_absolute(name: str, default: str) -> str:
+    """Get an environment variable as an absolute path string.
+    
+    Resolves relative paths to absolute paths to ensure consistency.
+    """
+    from pathlib import Path
+    raw = _env(name, default)
+    return str(Path(raw).expanduser().resolve())
+
+
 _DEFAULT_SAVE_AUDIO = _env("LX_SAVE_AUDIO", "off")
 _DEFAULT_SAVE_AUDIO_PATH = _env("LX_SAVE_AUDIO_PATH", "loquilex/out/session.wav")
 
@@ -118,7 +128,7 @@ class MTDefaults:
 
 @dataclass(frozen=True)
 class RuntimeDefaults:
-    out_dir: str = _env("LX_OUT_DIR", "loquilex/out")
+    out_dir: str = _env_path_absolute("LX_OUT_DIR", "loquilex/out")
     hf_cache: str | None = os.getenv("HF_HOME") or os.getenv("HF_DATASETS_CACHE")
     device_preference: str = _env("LX_DEVICE", "auto")  # auto|cuda|cpu
     # streaming controls
