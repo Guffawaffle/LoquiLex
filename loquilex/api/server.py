@@ -92,6 +92,9 @@ _hw_snapshot_cache_ts: Optional[float] = None
 # MT capability cache: {model_name: (mtime, capability_dict)}
 _mt_capability_cache: Dict[str, tuple[float, Dict[str, Any]]] = {}
 
+# Float comparison tolerance for mtime validation (seconds)
+_MTIME_TOLERANCE_SECS = 0.001
+
 
 # CSP and security headers
 @app.middleware("http")
@@ -763,7 +766,7 @@ def get_mt_capabilities(name: str) -> Dict[str, Any]:
         # Validate cache: check if model path still exists and mtime unchanged
         if model_path and Path(model_path).exists():
             current_mtime = Path(model_path).stat().st_mtime
-            if abs(current_mtime - cached_mtime) < 0.001:  # Float comparison tolerance
+            if abs(current_mtime - cached_mtime) < _MTIME_TOLERANCE_SECS:
                 logger.debug("Returning cached MT capabilities", extra={"model": name})
                 return cached_result
         elif not model_path:

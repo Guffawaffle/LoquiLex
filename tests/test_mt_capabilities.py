@@ -175,16 +175,22 @@ class TestMTCapabilitiesEndpoint:
 
             result = response.json()
 
-            # Check that language codes look like BCP-47
+            # Check that language codes follow BCP-47 structure
             for lang in result["source_languages"]:
-                # BCP-47 codes should be lowercase with optional script subtag
-                assert lang.islower() or "-" in lang
-                # Common pattern: "en" or "zh-Hans"
+                # Split on hyphen to check parts
                 parts = lang.split("-")
-                assert len(parts) <= 2
+
+                # Language code (first part) should be 2-3 lowercase letters
+                assert parts[0].islower(), f"Language code must be lowercase: {lang}"
+                assert 2 <= len(parts[0]) <= 3, f"Language code should be 2-3 chars: {lang}"
+
+                # If there's a script subtag, it should be 4 chars starting with uppercase
                 if len(parts) == 2:
-                    # Script subtag should start with uppercase
-                    assert parts[1][0].isupper()
+                    assert len(parts[1]) >= 1, f"Script subtag must not be empty: {lang}"
+                    assert parts[1][0].isupper(), f"Script must start with uppercase: {lang}"
+
+                # Should have at most 2 parts for our use case (language-Script)
+                assert len(parts) <= 2, f"Too many parts in language code: {lang}"
 
     def test_capabilities_token_mapping(self):
         """Test that token mapping is consistent."""

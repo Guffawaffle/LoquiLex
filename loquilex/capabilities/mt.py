@@ -131,6 +131,11 @@ class MTCapabilityProbe:
             }
 
     @staticmethod
+    def _is_offline_mode() -> bool:
+        """Check if we're in offline mode (no network access)."""
+        return os.getenv("HF_HUB_OFFLINE") == "1" or os.getenv("TRANSFORMERS_OFFLINE") == "1"
+
+    @staticmethod
     def _probe_nllb(model_name: str, model_path: Optional[str] = None) -> Dict[str, Any]:
         """Probe NLLB-200 model capabilities.
 
@@ -185,10 +190,11 @@ class MTCapabilityProbe:
         # Try to detect languages from tokenizer if available
         detected_langs = MTCapabilityProbe._detect_m2m_languages(model_path)
 
+        # Build reverse mapping once
+        bcp_to_m2m = {v: k for k, v in M2M_TO_BCP47.items()}
+
         if detected_langs:
             bcp47_codes = sorted(detected_langs)
-            # Build reverse mapping for tokens
-            bcp_to_m2m = {v: k for k, v in M2M_TO_BCP47.items()}
             tokens = {
                 bcp: bcp_to_m2m.get(bcp, bcp.split("-")[0])  # Fallback to language prefix
                 for bcp in bcp47_codes
@@ -196,7 +202,6 @@ class MTCapabilityProbe:
         else:
             # Fallback to curated subset
             bcp47_codes = ["en", "zh-Hans", "es", "fr", "de", "ja", "ko", "ru", "ar", "it", "pt"]
-            bcp_to_m2m = {v: k for k, v in M2M_TO_BCP47.items()}
             tokens = {bcp: bcp_to_m2m[bcp] for bcp in bcp47_codes}
 
         return {
@@ -223,13 +228,13 @@ class MTCapabilityProbe:
             from transformers import AutoTokenizer
 
             # Check if we're in offline mode
-            offline = os.getenv("HF_HUB_OFFLINE") == "1" or os.getenv("TRANSFORMERS_OFFLINE") == "1"
-
-            if offline and not Path(model_path).exists():
+            if MTCapabilityProbe._is_offline_mode() and not Path(model_path).exists():
                 logger.debug("Skipping tokenizer load in offline mode without local model")
                 return []
 
-            tokenizer = AutoTokenizer.from_pretrained(model_path, local_files_only=offline)
+            tokenizer = AutoTokenizer.from_pretrained(
+                model_path, local_files_only=MTCapabilityProbe._is_offline_mode()
+            )
 
             # NLLB tokenizers have fairseq_tokens_to_ids or similar attributes
             # that contain the language tokens
@@ -276,13 +281,13 @@ class MTCapabilityProbe:
             from transformers import AutoTokenizer
 
             # Check if we're in offline mode
-            offline = os.getenv("HF_HUB_OFFLINE") == "1" or os.getenv("TRANSFORMERS_OFFLINE") == "1"
-
-            if offline and not Path(model_path).exists():
+            if MTCapabilityProbe._is_offline_mode() and not Path(model_path).exists():
                 logger.debug("Skipping tokenizer load in offline mode without local model")
                 return []
 
-            tokenizer = AutoTokenizer.from_pretrained(model_path, local_files_only=offline)
+            tokenizer = AutoTokenizer.from_pretrained(
+                model_path, local_files_only=MTCapabilityProbe._is_offline_mode()
+            )
 
             # M2M tokenizers have lang_code_to_token attribute
             lang_codes = []
