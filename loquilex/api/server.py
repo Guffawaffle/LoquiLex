@@ -22,6 +22,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, model_validator
 
 from .model_discovery import list_asr_models, list_mt_models, mt_supported_languages
+from loquilex.capabilities import MTCapabilityProbe
 from loquilex.hardware.detection import get_hardware_snapshot
 from loquilex.config.model_defaults import get_model_defaults_manager
 from loquilex.security import PathGuard, PathSecurityError
@@ -87,6 +88,12 @@ async def unhandled_exception_handler(request: Request, exc: Exception):
 _ADMIN_TOKEN: Optional[str] = os.getenv("LX_ADMIN_TOKEN")
 _hw_snapshot_cache: Optional[Dict[str, Any]] = None
 _hw_snapshot_cache_ts: Optional[float] = None
+
+# MT capability cache: {model_name: (mtime, capability_dict)}
+_mt_capability_cache: Dict[str, tuple[float, Dict[str, Any]]] = {}
+
+# Float comparison tolerance for mtime validation (seconds)
+_MTIME_TOLERANCE_SECS = 0.001
 
 
 # CSP and security headers
@@ -728,6 +735,72 @@ def get_mt_models() -> List[Dict[str, Any]]:
 @app.get("/languages/mt/{model_id}")
 def get_mt_langs(model_id: str) -> Dict[str, Any]:
     return {"model_id": model_id, "languages": mt_supported_languages(model_id)}
+
+
+@app.get("/models/mt/{name}/capabilities")
+def get_mt_capabilities(name: str) -> Dict[str, Any]:
+    """Get MT model capabilities with language support and tokens.
+
+    Returns capability information including:
+    - Supported source/target languages (BCP-47 codes)
+    - Language pair constraints (null for many-to-many models)
+    - Token mappings (BCP-47 to internal model tokens)
+
+    Results are cached based on model path mtime.
+    """
+    logger.info("Fetching MT capabilities", extra={"model": name})
+
+    # Find the model in discovered models to get path
+    models = list_mt_models()
+    model_path = None
+    for model in models:
+        if model["id"] == name or model["name"] == name:
+            model_path = model.get("path")
+            break
+
+    # Check cache validity based on mtime
+    cache_key = name
+    if cache_key in _mt_capability_cache:
+        cached_mtime, cached_result = _mt_capability_cache[cache_key]
+
+        # Validate cache: check if model path still exists and mtime unchanged
+        if model_path and Path(model_path).exists():
+            current_mtime = Path(model_path).stat().st_mtime
+            if abs(current_mtime - cached_mtime) < _MTIME_TOLERANCE_SECS:
+                logger.debug("Returning cached MT capabilities", extra={"model": name})
+                return cached_result
+        elif not model_path:
+            # No path available, cache without mtime validation
+            logger.debug("Returning cached MT capabilities (no path)", extra={"model": name})
+            return cached_result
+
+    # Probe the model
+    try:
+        result = MTCapabilityProbe.probe(name, model_path)
+
+        # Cache the result with mtime
+        if model_path and Path(model_path).exists():
+            mtime = Path(model_path).stat().st_mtime
+            _mt_capability_cache[cache_key] = (mtime, result)
+        else:
+            # Cache with sentinel mtime for models without paths
+            _mt_capability_cache[cache_key] = (0.0, result)
+
+        logger.info(
+            "MT capabilities probed successfully",
+            extra={
+                "model": name,
+                "source_langs": len(result.get("source_languages", [])),
+                "target_langs": len(result.get("target_languages", [])),
+            },
+        )
+        return result
+
+    except Exception as e:
+        logger.error(
+            "Failed to probe MT capabilities", extra={"model": name, "error": str(e)}, exc_info=True
+        )
+        raise HTTPException(status_code=500, detail=f"Failed to probe model capabilities: {str(e)}")
 
 
 @app.get("/healthz")
