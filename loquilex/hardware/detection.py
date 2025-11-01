@@ -10,6 +10,8 @@ import platform
 from dataclasses import dataclass, asdict
 from typing import Any, Dict, List, Optional, Tuple, cast
 
+from loquilex.config import settings
+
 # Optional runtime import: psutil may not be installed in minimal profiles.
 # Use an internal alias and cast to avoid mypy's Module/None assignment conflict.
 try:
@@ -20,32 +22,8 @@ except Exception:
 psutil = cast(Any, _psutil)
 
 
-# Module-level fallback memory values (can be overridden via env vars).
-#
-# Rationale and guidance for future developers / AI agents:
-# - These constants provide safe defaults when `psutil` is not available at
-#   runtime (minimal containers, CI runners, or lightweight installs).
-# - Values are expressed in gigabytes (GB) as floats.
-# - Override using environment variables when creating reproducible test
-#   environments or when running in constrained systems:
-#     - `LX_FALLBACK_MEMORY_TOTAL_GB` (default: "8.0")
-#     - `LX_FALLBACK_MEMORY_AVAILABLE_GB` (default: "4.0")
-# - Choose conservative defaults that won't falsely mark typical developer
-#   machines as unusable; tests and CI can set these env vars to smaller
-#   values to simulate low-memory environments.
-# - If the project later centralizes runtime configuration, consider moving
-#   these to a single config module (e.g., `loquilex.config`) and using a
-#   typed settings object for runtime overrides.
-#
-# Examples:
-# ```bash
-# LX_FALLBACK_MEMORY_TOTAL_GB=16 LX_FALLBACK_MEMORY_AVAILABLE_GB=12 python -m loquilex
-# ```
-#
-# Implementation note: keep these as module-level constants to make them easy
-# to patch in unit tests (monkeypatch / import-time overrides).
-FALLBACK_MEMORY_TOTAL_GB: float = float(os.getenv("LX_FALLBACK_MEMORY_TOTAL_GB", "8.0"))
-FALLBACK_MEMORY_AVAILABLE_GB: float = float(os.getenv("LX_FALLBACK_MEMORY_AVAILABLE_GB", "4.0"))
+# Configuration values are now centralized in loquilex.config.
+# See loquilex.config.Settings for documentation and environment variable names.
 
 
 @dataclass
@@ -144,8 +122,8 @@ def _get_cpu_info() -> CPUInfo:
         warnings.append(f"Failed to get CPU info: {e}")
 
     # Threshold checking
-    min_cores = int(os.getenv("LX_MIN_CPU_CORES", "2"))
-    max_usage = float(os.getenv("LX_MAX_CPU_USAGE", "80.0"))
+    min_cores = settings.min_cpu_cores
+    max_usage = settings.max_cpu_usage_percent
 
     meets_threshold = True
 
@@ -200,7 +178,7 @@ def _get_gpu_info() -> List[GPUInfo]:
                     utilization_percent = None
 
                     # Threshold checking
-                    min_memory_gb = float(os.getenv("LX_MIN_GPU_MEMORY_GB", "4.0"))
+                    min_memory_gb = settings.min_gpu_memory_gb
                     min_memory_mb = int(min_memory_gb * 1024)
 
                     meets_threshold = True
@@ -415,9 +393,9 @@ def get_hardware_snapshot() -> HardwareSnapshot:
         memory_total_gb = memory.total / (1024**3)
         memory_available_gb = memory.available / (1024**3)
     else:
-        # Fallback without psutil - use module-level configurable defaults
-        memory_total_gb = FALLBACK_MEMORY_TOTAL_GB
-        memory_available_gb = FALLBACK_MEMORY_AVAILABLE_GB
+        # Fallback without psutil - use centralized config defaults
+        memory_total_gb = settings.fallback_memory_total_gb
+        memory_available_gb = settings.fallback_memory_available_gb
 
     # Platform information
     platform_info = {
@@ -441,7 +419,7 @@ def get_hardware_snapshot() -> HardwareSnapshot:
         warnings.extend(device.warnings)
 
     # Add memory warnings
-    min_memory_gb = float(os.getenv("LX_MIN_MEMORY_GB", "8.0"))
+    min_memory_gb = settings.min_memory_gb
     if memory_total_gb < min_memory_gb:
         warnings.append(f"System memory {memory_total_gb:.1f}GB below threshold {min_memory_gb}GB")
 

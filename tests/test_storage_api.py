@@ -1,5 +1,6 @@
 """Tests for storage API endpoints."""
 
+import os
 import pytest
 from fastapi.testclient import TestClient
 from loquilex.api.server import app
@@ -64,17 +65,29 @@ def test_set_base_directory_valid_path(client):
     assert "valid and writable" in data["message"].lower()
 
 
-def test_set_base_directory_invalid_path(client):
+def test_set_base_directory_invalid_path(client, tmp_path):
     """Test setting an invalid base directory."""
-    response = client.post("/storage/base-directory", json={"path": "/root/protected"})
-    assert response.status_code == 200
+    # Create a temporary directory with restricted permissions
+    restricted_dir = tmp_path / "restricted"
+    restricted_dir.mkdir()
+    # Remove all permissions to make it inaccessible
+    os.chmod(restricted_dir, 0o000)
 
-    data = response.json()
-    assert data["path"] == "/root/protected"
-    assert data["valid"] is False
-    assert (
-        "permission denied" in data["message"].lower() or "invalid path" in data["message"].lower()
-    )
+    try:
+        response = client.post("/storage/base-directory", json={"path": str(restricted_dir)})
+        assert response.status_code == 200
+
+        data = response.json()
+        assert data["path"] == str(restricted_dir)
+        assert data["valid"] is False
+        assert (
+            "permission denied" in data["message"].lower()
+            or "invalid path" in data["message"].lower()
+            or "not writable" in data["message"].lower()
+        )
+    finally:
+        # Restore permissions so pytest can clean up the temp directory
+        os.chmod(restricted_dir, 0o755)
 
 
 def test_set_base_directory_relative_path(client):
