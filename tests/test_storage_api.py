@@ -70,7 +70,7 @@ def test_set_base_directory_invalid_path(client, tmp_path):
     # Create a temporary directory with restricted permissions
     restricted_dir = tmp_path / "restricted"
     restricted_dir.mkdir()
-    # Remove all write permissions to make it inaccessible
+    # Remove all permissions to make it inaccessible
     os.chmod(restricted_dir, 0o000)
 
     try:
