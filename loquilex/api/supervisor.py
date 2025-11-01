@@ -11,6 +11,7 @@ import sys
 import threading
 import time
 import uuid
+import warnings
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Tuple, Union
@@ -370,7 +371,6 @@ class Session:
     See: docs/architecture/js-first.md for the JS-first architecture pattern.
     """
     def __init__(self, sid: str, cfg: SessionConfig, run_dir: Path) -> None:
-        import warnings
         warnings.warn(
             "Session class (subprocess orchestration) is deprecated. "
             "Use StreamingSession for in-process execution or refactor to "

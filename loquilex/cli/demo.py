@@ -49,15 +49,6 @@ from loquilex.api.server import OUT_ROOT
 
 logger = logging.getLogger("loquilex.demo")
 
-# Emit deprecation warning when module is imported/run
-warnings.warn(
-    "loquilex.cli.demo is deprecated for orchestration. "
-    "Use TypeScript orchestration with Python executor services instead. "
-    "See docs/architecture/js-first.md",
-    DeprecationWarning,
-    stacklevel=2
-)
-
 
 def _make_session_dir(name: str | None) -> Path:
     ts = time.strftime("%Y%m%dT%H%M%S")
@@ -547,6 +538,13 @@ async def _run_demo(
 
 
 def main(argv: list[str] | None = None) -> int:
+    warnings.warn(
+        "loquilex.cli.demo is deprecated for orchestration. "
+        "Use TypeScript orchestration with Python executor services instead. "
+        "See docs/architecture/js-first.md",
+        DeprecationWarning,
+        stacklevel=2
+    )
     p = argparse.ArgumentParser(prog="loquilex-demo")
     p.add_argument("--duration", type=int, default=30)
     p.add_argument("--wav", type=str, default=None)
