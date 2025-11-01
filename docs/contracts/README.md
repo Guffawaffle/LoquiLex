@@ -2,6 +2,8 @@
 
 This directory contains the comprehensive API contracts for LoquiLex, defining the interfaces between JavaScript orchestration and Python execution layers.
 
+> **📘 Complete API Reference**: For a comprehensive, single-document API specification covering all REST endpoints, WebSocket protocol, authentication, configuration, and deployment, see **[API_CONTRACT.md](../API_CONTRACT.md)**.
+
 ## Contract Categories
 
 ### 🔌 WebSocket Contracts
