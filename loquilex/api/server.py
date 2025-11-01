@@ -22,6 +22,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, model_validator
 
 from .model_discovery import list_asr_models, list_mt_models, mt_supported_languages
+from loquilex.capabilities.asr import ASRCapabilityProbe
 from loquilex.hardware.detection import get_hardware_snapshot
 from loquilex.config.model_defaults import get_model_defaults_manager
 from loquilex.security import PathGuard, PathSecurityError
@@ -207,6 +208,8 @@ app.mount("/out", StaticFiles(directory=str(OUT_ROOT), html=False), name="out")
 # Global manager instance
 MANAGER = SessionManager()
 
+# Global capability probe instance
+ASR_PROBE = ASRCapabilityProbe()
 
 # Allowed storage roots for path-based operations (named roots)
 _env_allowed_roots = os.getenv("LX_ALLOWED_STORAGE_ROOTS")
@@ -723,6 +726,25 @@ def get_asr_models() -> List[Dict[str, Any]]:
 @app.get("/models/mt")
 def get_mt_models() -> List[Dict[str, Any]]:
     return list_mt_models()
+
+
+@app.get("/models/asr/{name}/capabilities")
+def get_asr_capabilities(name: str) -> Dict[str, Any]:
+    """Get capabilities for an ASR model.
+    
+    Returns supported languages, tokens, and auto-detection capability.
+    Results are cached based on model file mtime.
+    """
+    # Find model path for caching
+    models = list_asr_models()
+    model_path = None
+    for m in models:
+        if m.get("id") == name or m.get("name") == name:
+            model_path = m.get("path")
+            break
+    
+    # Probe the model
+    return ASR_PROBE.probe_model(name, model_path)
 
 
 @app.get("/languages/mt/{model_id}")
