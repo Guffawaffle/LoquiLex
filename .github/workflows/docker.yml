@@ -64,6 +64,7 @@ jobs:
           context: .
           file: ./Dockerfile.ci
           push: false
+          load: true
           tags: ${{ env.REGISTRY }}/${{ steps.repo.outputs.name }}:test
           cache-from: type=gha
           cache-to: type=gha,mode=max
