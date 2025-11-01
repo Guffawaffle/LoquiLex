@@ -1,0 +1,65 @@
+{
+  "sessionId": "merge-weave-kickoff",
+  "repository": "LoquiLex",
+  "defaultBranch": "main",
+  "createdAt": "2025-11-01T00:00:00Z",
+  "nodes": [
+    {
+      "id": "PR-158",
+      "prNumber": 158,
+      "branch": "copilot/add-centralized-config-module",
+      "title": "Add centralized loquilex.config for hardware runtime settings",
+      "level": 0,
+      "dependsOn": [],
+      "gates": ["lint", "typecheck", "test", "determinism"],
+      "description": "New centralized Settings module consolidating hardware config constants and env var reads"
+    },
+    {
+      "id": "PR-161",
+      "prNumber": 161,
+      "branch": "copilot/cleanup-remove-legacy-orchestration",
+      "title": "Deprecate legacy Python orchestration in favor of JS-first architecture",
+      "level": 0,
+      "dependsOn": [],
+      "gates": ["lint", "typecheck", "test", "determinism"],
+      "description": "Deprecation of Session class and legacy CLI orchestrators with migration guide"
+    },
+    {
+      "id": "PR-159",
+      "prNumber": 159,
+      "branch": "copilot/fix-base-directory-path",
+      "title": "Fix base_directory default to use absolute paths",
+      "level": 1,
+      "dependsOn": ["PR-158"],
+      "gates": ["lint", "typecheck", "test", "determinism"],
+      "description": "Adds .resolve() to config paths to ensure absolute paths; validates absolute path requirement from API"
+    },
+    {
+      "id": "PR-160",
+      "prNumber": 160,
+      "branch": "copilot/fix-hard-coded-path-in-tests",
+      "title": "Replace hard-coded /root/protected path with portable temp directory in test",
+      "level": 2,
+      "dependsOn": ["PR-159"],
+      "gates": ["lint", "typecheck", "test", "determinism"],
+      "description": "Test portability fix using pytest tmp_path fixture with permission simulation"
+    }
+  ],
+  "levels": [
+    {
+      "level": 0,
+      "description": "Independent PRs (can merge in any order)",
+      "nodes": ["PR-158", "PR-161"]
+    },
+    {
+      "level": 1,
+      "description": "Depends on Level 0",
+      "nodes": ["PR-159"]
+    },
+    {
+      "level": 2,
+      "description": "Depends on Level 1",
+      "nodes": ["PR-160"]
+    }
+  ]
+}

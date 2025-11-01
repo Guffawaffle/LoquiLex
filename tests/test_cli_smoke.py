@@ -8,7 +8,7 @@ def test_cli_runs_with_fake_capture_and_translator(monkeypatch, tmp_path: Path):
 
     # Patch capture_stream to emit a few silent frames then stop
     import loquilex.audio.capture as cap
-    import loquilex.cli.live_en_to_zh as cli
+    import loquilex.cli.live as cli
     import loquilex.mt.translator as tr
 
     def fake_capture_stream(cb):
@@ -37,13 +37,19 @@ def test_cli_runs_with_fake_capture_and_translator(monkeypatch, tmp_path: Path):
         def __init__(self):
             pass
 
-        def translate_en_to_zh(self, text):
-            return tr.TranslationResult(text, "echo")
+        def translate(self, text, src_lang="en", tgt_lang="zh", quality="final"):
+            """Generic translate method."""
+            return tr.TranslationResult(
+                text=text,
+                model=f"echo:{quality}",
+                src_lang=src_lang,
+                tgt_lang=tgt_lang,
+                duration_ms=0.0,
+            )
 
-        def translate_en_to_zh_draft(self, text):
-            return tr.TranslationResult(text, "echo:draft")
-
+    # Patch both the module and the CLI's imported Translator
     monkeypatch.setattr(tr, "Translator", Echo)
+    monkeypatch.setattr(cli, "Translator", Echo)
 
     # Run CLI main with short seconds and custom output dir
     outdir = tmp_path / "out"

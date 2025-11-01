@@ -10,7 +10,7 @@ import pytest
 @pytest.fixture
 def reload_config_after():
     """Restore config module to default state after test.
-    
+
     This fixture reloads the config module after tests that modify env vars
     to ensure changes don't affect other tests. Use this fixture explicitly
     in tests that reload config.
@@ -27,7 +27,7 @@ def reload_config_after():
     ]
     for var in test_env_vars:
         os.environ.pop(var, None)
-    
+
     # Reload config and detection modules to restore defaults
     from loquilex import config
     from loquilex.hardware import detection
@@ -101,7 +101,9 @@ class TestSettings:
 
         assert config.settings.min_gpu_memory_gb == 8.0
 
-    def test_invalid_env_var_falls_back_to_default(self, monkeypatch, reload_config_after):  # noqa: ARG002
+    def test_invalid_env_var_falls_back_to_default(
+        self, monkeypatch, reload_config_after  # noqa: ARG002
+    ):
         """Test that invalid env var values fall back to defaults."""
         monkeypatch.setenv("LX_MIN_CPU_CORES", "not-a-number")
         monkeypatch.setenv("LX_MIN_MEMORY_GB", "invalid")
@@ -155,7 +157,9 @@ class TestBackwardsCompatibility:
 class TestHardwareDetectionIntegration:
     """Test that hardware detection uses config settings."""
 
-    def test_hardware_detection_uses_config_fallbacks(self, monkeypatch, reload_config_after):  # noqa: ARG002
+    def test_hardware_detection_uses_config_fallbacks(
+        self, monkeypatch, reload_config_after  # noqa: ARG002
+    ):
         """Test that hardware detection respects config fallback values."""
         # Set custom fallback values
         monkeypatch.setenv("LX_FALLBACK_MEMORY_TOTAL_GB", "16.0")
@@ -194,7 +198,9 @@ class TestHardwareDetectionIntegration:
             else:
                 sys.modules.pop("psutil", None)
 
-    def test_hardware_detection_uses_config_thresholds(self, monkeypatch, reload_config_after):  # noqa: ARG002
+    def test_hardware_detection_uses_config_thresholds(
+        self, monkeypatch, reload_config_after  # noqa: ARG002
+    ):
         """Test that hardware detection respects config threshold values."""
         # Set custom thresholds
         monkeypatch.setenv("LX_MIN_CPU_CORES", "8")

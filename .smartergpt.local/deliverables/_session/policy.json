@@ -1,0 +1,14 @@
+{
+  "requiredGates": ["lint", "typecheck", "test"],
+  "proceedWithSiblings": true,
+  "mergeStrategy": "no-fast-forward",
+  "blockingGates": ["determinism"],
+  "description": "Merge-weave policy for LoquiLex PR consolidation",
+  "notes": [
+    "Gates run sequentially after each fold-in merge",
+    "Siblings at same level can proceed independently if gate passes",
+    "Determinism gate prevents accidental uncommitted state",
+    "Merge commits use --no-ff for auditability",
+    "Folded PRs are closed with umbrella PR reference"
+  ]
+}

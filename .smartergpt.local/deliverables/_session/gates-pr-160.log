@@ -1,0 +1,21 @@
+Success: no issues found in 65 source files
+tests/test_streaming_integration.py::TestStreamingIntegration::test_regular_session_no_asr_snapshot
+tests/test_streaming_integration.py::TestErrorHygiene::test_metrics_error_no_exception_leak
+tests/test_ws_integration.py::test_websocket_envelope_integration
+  /home/guff/LoquiLex/loquilex/api/supervisor.py:651: DeprecationWarning: Session class (subprocess orchestration) is deprecated. Use StreamingSession for in-process execution or TypeScript orchestration with Python executor services. See docs/architecture/js-first.md
+    sess = Session(sid, cfg, run_dir)
+
+tests/test_resource_management.py::TestSessionResourceManagement::test_context_manager_cleanup
+  /home/guff/LoquiLex/tests/test_resource_management.py:131: DeprecationWarning: Session class (subprocess orchestration) is deprecated. Use StreamingSession for in-process execution or TypeScript orchestration with Python executor services. See docs/architecture/js-first.md
+    async with Session("test_session", cfg, run_dir) as session:
+
+tests/test_resource_management.py::TestSessionResourceManagement::test_destructor_handles_subprocess_cleanup
+  /home/guff/LoquiLex/tests/test_resource_management.py:164: DeprecationWarning: Session class (subprocess orchestration) is deprecated. Use StreamingSession for in-process execution or TypeScript orchestration with Python executor services. See docs/architecture/js-first.md
+    session = Session("test_session", cfg, run_dir)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+SKIPPED [1] tests/test_offline_isolation.py:58: LX_OFFLINE is not '1'; skipping offline env var test.
+SKIPPED [1] tests/test_resilient_comms.py:169: System heartbeat causes infinite loop in tests
+SKIPPED [1] tests/test_resilient_comms.py:215: Need to fix ReplayBuffer TTL setup
+411 passed, 3 skipped, 17 warnings in 129.46s (0:02:09)

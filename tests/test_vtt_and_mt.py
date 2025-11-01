@@ -18,6 +18,6 @@ def test_vtt_monotonic(tmp_path):
 def test_translator_bos_handling():
     tr = Translator()
     # We don't download models in test env; ensure fallback works and doesn't throw.
-    out = tr.translate_en_to_zh("Hello world")
+    out = tr.translate("Hello world", src_lang="en", tgt_lang="zh", quality="final")
     assert isinstance(out.text, str)
     assert out.model in {"facebook/nllb-200-distilled-600M", "facebook/m2m100_418M", "echo"}

@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Optional
 
 from loquilex.config.defaults import MT, pick_device
+from loquilex.mt.core.util import normalize_lang
 from ..logging import PerformanceMetrics, create_logger
 
 
@@ -20,6 +21,43 @@ else:
 
 if TYPE_CHECKING:  # only for typing; avoid runtime hard dep
     pass
+
+
+# ============================================================================
+# Constants for translation behavior
+# ============================================================================
+
+# FLORES-200 language code mappings for NLLB model
+NLLB_FLORES_MAP = {
+    "en": "eng_Latn",
+    "zh-Hans": "zho_Hans",
+    "zh-Hant": "zho_Hant",
+    "es": "spa_Latn",
+    "fr": "fra_Latn",
+    "de": "deu_Latn",
+    "ja": "jpn_Jpan",
+    "ko": "kor_Hang",
+    "ru": "rus_Cyrl",
+    "ar": "arb_Arab",
+}
+
+# M2M language code mappings (simpler format than FLORES)
+M2M_LANG_MAP = {
+    "en": "en",
+    "zh-Hans": "zh",
+    "zh-Hant": "zh",
+    "es": "es",
+    "fr": "fr",
+    "de": "de",
+    "ja": "ja",
+    "ko": "ko",
+    "ru": "ru",
+    "ar": "ar",
+}
+
+# Draft mode generation parameters for faster low-latency translation
+DRAFT_MAX_TOKENS = 48  # Maximum tokens for draft quality translations
+DRAFT_NO_REPEAT_NGRAM_SIZE = 0  # Disable n-gram repetition penalty for speed
 
 
 def _log(msg: str) -> None:
@@ -88,6 +126,196 @@ class Translator:
             device=self.device_str,
             torch_device=self.torch_device,
             cuda_available=is_cuda,
+        )
+
+    def translate(
+        self,
+        text: str,
+        src_lang: str = "en",
+        tgt_lang: str = "zh",
+        quality: str = "final",
+    ) -> TranslationResult:
+        """Generic translation method supporting any language pair.
+
+        Args:
+            text: Text to translate
+            src_lang: Source language code (e.g., 'en', 'zh', 'es')
+            tgt_lang: Target language code (e.g., 'zh', 'en', 'es')
+            quality: Translation quality mode ('final' or 'realtime'/'draft')
+
+        Returns:
+            TranslationResult with translated text and metadata
+
+        Example:
+            tr = Translator()
+            result = tr.translate("Hello", src_lang="en", tgt_lang="zh", quality="final")
+            result = tr.translate("你好", src_lang="zh", tgt_lang="en", quality="draft")
+        """
+        text = text.strip()
+        if not text:
+            return TranslationResult(
+                "",
+                "echo",
+                src_lang=src_lang,
+                tgt_lang=tgt_lang,
+                duration_ms=0.0,
+            )
+
+        self.logger.debug(
+            "Starting generic translation",
+            text_length=len(text),
+            src_lang=src_lang,
+            tgt_lang=tgt_lang,
+            quality=quality,
+        )
+
+        self.metrics.start_timer("translation_latency")
+
+        # Normalize language codes (map "zh" → "zh-Hans" based on variant config)
+        try:
+            src = normalize_lang(src_lang)
+            tgt = normalize_lang(tgt_lang)
+        except ValueError as e:
+            self.logger.error(f"Unsupported language: {e}")
+            # Echo fallback
+            return TranslationResult(
+                text,
+                "echo",
+                src_lang=src_lang,
+                tgt_lang=tgt_lang,
+                duration_ms=0.0,
+            )
+
+        # Determine translation strategy based on quality and language pair
+        is_draft = quality in ("realtime", "draft")
+
+        # Use generic provider-based translation for all language pairs
+        # Try NLLB first (supports more language pairs)
+        try:
+            tok, model = self._load_nllb()
+
+            src_flores = NLLB_FLORES_MAP.get(src, "eng_Latn")
+            tgt_flores = NLLB_FLORES_MAP.get(tgt, "zho_Hans")
+
+            tok.src_lang = src_flores
+            inputs = tok(text, return_tensors="pt", truncation=True, max_length=MT.max_input_tokens)
+            inputs = {k: v.to(self.torch_device) for k, v in inputs.items()}
+            cm = torch.no_grad() if torch is not None else contextlib.nullcontext()
+
+            # Adjust generation params based on quality
+            beam_size = 1 if is_draft else MT.num_beams
+            max_tokens = min(DRAFT_MAX_TOKENS, MT.max_new_tokens) if is_draft else MT.max_new_tokens
+
+            with cm:
+                gen = model.generate(
+                    **inputs,
+                    forced_bos_token_id=tok.convert_tokens_to_ids(tgt_flores),
+                    num_beams=beam_size,
+                    no_repeat_ngram_size=(
+                        MT.no_repeat_ngram_size if not is_draft else DRAFT_NO_REPEAT_NGRAM_SIZE
+                    ),
+                    max_new_tokens=max_tokens,
+                )
+            out = tok.batch_decode(gen, skip_special_tokens=True)[0]
+
+            duration_ms = self.metrics.end_timer("translation_latency")
+            self.metrics.increment_counter("translations_success")
+
+            result = TranslationResult(
+                out,
+                f"{MT.nllb_model}:{quality}",
+                src_lang=src,
+                tgt_lang=tgt,
+                duration_ms=duration_ms,
+            )
+
+            self.logger.info(
+                "Translation completed successfully",
+                method="nllb",
+                src_lang=src,
+                tgt_lang=tgt,
+                quality=quality,
+                input_length=len(text),
+                output_length=len(out),
+                duration_ms=duration_ms,
+            )
+
+            return result
+
+        except Exception as e:
+            self.logger.warning(
+                "NLLB translation failed, trying M2M",
+                error=str(e),
+                src_lang=src,
+                tgt_lang=tgt,
+            )
+
+        # Try M2M fallback
+        try:
+            tok, model = self._load_m2m()
+
+            src_m2m = M2M_LANG_MAP.get(src, "en")
+            tgt_m2m = M2M_LANG_MAP.get(tgt, "zh")
+
+            tok.src_lang = src_m2m
+            inputs = tok(text, return_tensors="pt", truncation=True, max_length=MT.max_input_tokens)
+            inputs = {k: v.to(self.torch_device) for k, v in inputs.items()}
+            cm = torch.no_grad() if torch is not None else contextlib.nullcontext()
+
+            beam_size = 1 if is_draft else MT.num_beams
+            max_tokens = min(DRAFT_MAX_TOKENS, MT.max_new_tokens) if is_draft else MT.max_new_tokens
+
+            with cm:
+                gen = model.generate(
+                    **inputs,
+                    forced_bos_token_id=tok.get_lang_id(tgt_m2m),
+                    num_beams=beam_size,
+                    max_new_tokens=max_tokens,
+                    pad_token_id=getattr(tok, "pad_token_id", None),
+                )
+            out = tok.batch_decode(gen, skip_special_tokens=True)[0]
+
+            duration_ms = self.metrics.end_timer("translation_latency")
+            self.metrics.increment_counter("translations_success")
+
+            result = TranslationResult(
+                out,
+                f"{MT.m2m_model}:{quality}",
+                src_lang=src,
+                tgt_lang=tgt,
+                duration_ms=duration_ms,
+            )
+
+            self.logger.info(
+                "Translation completed successfully",
+                method="m2m",
+                src_lang=src,
+                tgt_lang=tgt,
+                quality=quality,
+                input_length=len(text),
+                output_length=len(out),
+                duration_ms=duration_ms,
+            )
+
+            return result
+
+        except Exception as e:
+            self.logger.error(
+                "Both NLLB and M2M translation failed",
+                error=str(e),
+                src_lang=src,
+                tgt_lang=tgt,
+            )
+            self.metrics.increment_counter("translations_failed")
+            duration_ms = self.metrics.end_timer("translation_latency")
+
+        # Echo fallback
+        return TranslationResult(
+            text,
+            "echo",
+            src_lang=src,
+            tgt_lang=tgt,
+            duration_ms=duration_ms,
         )
 
     def _load_nllb(self):
@@ -159,205 +387,3 @@ class Translator:
                 )
                 raise
         return self._m2m
-
-    def translate_en_to_zh(self, text: str) -> TranslationResult:
-        text = text.strip()
-        if not text:
-            return TranslationResult(
-                "",
-                "echo",
-                src_lang="en",
-                tgt_lang="zh",
-                duration_ms=0.0,
-            )
-
-        self.logger.debug(
-            "Starting translation",
-            text_length=len(text),
-            src_lang="en",
-            tgt_lang="zh",
-        )
-
-        self.metrics.start_timer("translation_latency")
-
-        # Try NLLB first
-        try:
-            tok, model = self._load_nllb()
-            tok.src_lang = "eng_Latn"
-            inputs = tok(text, return_tensors="pt", truncation=True, max_length=MT.max_input_tokens)
-            inputs = {k: v.to(self.torch_device) for k, v in inputs.items()}
-            cm = torch.no_grad() if torch is not None else contextlib.nullcontext()
-            with cm:
-                gen = model.generate(
-                    **inputs,
-                    forced_bos_token_id=tok.convert_tokens_to_ids("zho_Hans"),
-                    num_beams=MT.num_beams,
-                    no_repeat_ngram_size=MT.no_repeat_ngram_size,
-                    max_new_tokens=MT.max_new_tokens,
-                )
-            out = tok.batch_decode(gen, skip_special_tokens=True)[0]
-
-            duration_ms = self.metrics.end_timer("translation_latency")
-            self.metrics.increment_counter("translations_success")
-
-            result = TranslationResult(
-                out,
-                MT.nllb_model,
-                src_lang="en",
-                tgt_lang="zh",
-                duration_ms=duration_ms,
-            )
-
-            self.logger.info(
-                "Translation completed successfully",
-                method="nllb",
-                input_length=len(text),
-                output_length=len(out),
-                duration_ms=duration_ms,
-            )
-
-            return result
-
-        except Exception as e:
-            self.logger.warning(
-                "NLLB translation failed, trying M2M",
-                error=str(e),
-                text_length=len(text),
-            )
-            self.metrics.increment_counter("nllb_failures")
-
-        # Fallback M2M
-        try:
-            tok, model = self._load_m2m()
-            tok.src_lang = "en"
-            inputs = tok(text, return_tensors="pt", truncation=True, max_length=MT.max_input_tokens)
-            inputs = {k: v.to(self.torch_device) for k, v in inputs.items()}
-            cm = torch.no_grad() if torch is not None else contextlib.nullcontext()
-            with cm:
-                gen = model.generate(
-                    **inputs,
-                    forced_bos_token_id=tok.get_lang_id("zh"),
-                    num_beams=max(1, min(2, MT.num_beams)),
-                    no_repeat_ngram_size=MT.no_repeat_ngram_size,
-                    max_new_tokens=MT.max_new_tokens,
-                )
-            out = tok.batch_decode(gen, skip_special_tokens=True)[0]
-
-            duration_ms = self.metrics.end_timer("translation_latency")
-            self.metrics.increment_counter("translations_success")
-
-            result = TranslationResult(
-                out,
-                MT.m2m_model,
-                src_lang="en",
-                tgt_lang="zh",
-                duration_ms=duration_ms,
-            )
-
-            self.logger.info(
-                "Translation completed successfully",
-                method="m2m",
-                input_length=len(text),
-                output_length=len(out),
-                duration_ms=duration_ms,
-            )
-
-            return result
-
-        except Exception as e:
-            self.logger.error(
-                "Both NLLB and M2M translation failed",
-                error=str(e),
-                text_length=len(text),
-            )
-            self.metrics.increment_counter("translations_failed")
-            duration_ms = self.metrics.end_timer("translation_latency")
-
-        # Echo fallback
-        return TranslationResult(
-            text,
-            "echo",
-            src_lang="en",
-            tgt_lang="zh",
-            duration_ms=duration_ms,
-        )
-
-    def translate_en_to_zh_draft(self, text: str) -> TranslationResult:
-        """Low-latency 'draft' translation for live partials.
-
-        Prioritize speed: beam_size=1, shorter max_new_tokens, minimal constraints.
-        Try M2M first (often faster on CPU), then NLLB, then echo.
-        """
-        text = text.strip()
-        if not text:
-            return TranslationResult(
-                "",
-                "echo",
-                src_lang="en",
-                tgt_lang="zh",
-                duration_ms=0.0,
-            )
-
-        # Draft via M2M
-        try:
-            tok, model = self._load_m2m()
-            tok.src_lang = "en"
-            inputs = tok(
-                text, return_tensors="pt", truncation=True, max_length=min(64, MT.max_input_tokens)
-            )
-            inputs = {k: v.to(self.torch_device) for k, v in inputs.items()}
-            cm = torch.no_grad() if torch is not None else contextlib.nullcontext()
-            with cm:
-                gen = model.generate(
-                    **inputs,
-                    forced_bos_token_id=tok.get_lang_id("zh"),
-                    num_beams=1,
-                    max_new_tokens=min(48, MT.max_new_tokens),
-                    pad_token_id=getattr(tok, "pad_token_id", None),
-                )
-            out = tok.batch_decode(gen, skip_special_tokens=True)[0]
-            return TranslationResult(
-                out,
-                f"{MT.m2m_model}:draft",
-                src_lang="en",
-                tgt_lang="zh",
-                duration_ms=0.0,
-            )
-        except Exception as e:
-            _log(f"m2m draft failed: {e}")
-
-        # Draft via NLLB
-        try:
-            tok, model = self._load_nllb()
-            tok.src_lang = "eng_Latn"
-            inputs = tok(
-                text, return_tensors="pt", truncation=True, max_length=min(64, MT.max_input_tokens)
-            )
-            inputs = {k: v.to(self.torch_device) for k, v in inputs.items()}
-            cm = torch.no_grad() if torch is not None else contextlib.nullcontext()
-            with cm:
-                gen = model.generate(
-                    **inputs,
-                    forced_bos_token_id=tok.convert_tokens_to_ids("zho_Hans"),
-                    num_beams=1,
-                    max_new_tokens=min(48, MT.max_new_tokens),
-                    pad_token_id=getattr(tok, "pad_token_id", None),
-                )
-            out = tok.batch_decode(gen, skip_special_tokens=True)[0]
-            return TranslationResult(
-                out,
-                f"{MT.nllb_model}:draft",
-                src_lang="en",
-                tgt_lang="zh",
-                duration_ms=0.0,
-            )
-        except Exception as e:
-            _log(f"nllb draft failed: {e}")
-
-        return TranslationResult(
-            text,
-            "echo:draft",
-            src_lang="en",
-            tgt_lang="zh",
-            duration_ms=0.0,
-        )

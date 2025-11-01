@@ -361,15 +361,16 @@ class SessionConfig:
 
 class Session:
     """DEPRECATED: Subprocess-based session orchestration.
-    
+
     This class spawns CLI orchestrators as subprocesses, which duplicates
     orchestration logic that should now be handled by TypeScript.
-    
+
     Migration: Use StreamingSession for in-process execution, or refactor
     to call executor services directly from TypeScript orchestration layer.
-    
+
     See: docs/architecture/js-first.md for the JS-first architecture pattern.
     """
+
     def __init__(self, sid: str, cfg: SessionConfig, run_dir: Path) -> None:
         warnings.warn(
             "Session class (subprocess orchestration) is deprecated. "
@@ -377,7 +378,7 @@ class Session:
             "TypeScript orchestration with Python executor services. "
             "See docs/architecture/js-first.md",
             DeprecationWarning,
-            stacklevel=2
+            stacklevel=2,
         )
         self.sid = sid
         self.cfg = cfg
@@ -425,7 +426,7 @@ class Session:
         env["LX_OUT_DIR"] = str(self.run_dir)
         env["LX_SAVE_AUDIO"] = self.cfg.save_audio
 
-        script = [sys.executable, "-m", "loquilex.cli.live_en_to_zh", "--seconds", "-1"]
+        script = [sys.executable, "-m", "loquilex.cli.live", "--seconds", "-1"]
         creationflags = 0
         if os.name == "nt":
             # Windows: create new process group to enable CTRL_BREAK_EVENT

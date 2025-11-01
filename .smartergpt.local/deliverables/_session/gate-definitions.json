@@ -1,0 +1,40 @@
+{
+  "gates": [
+    {
+      "id": "lint",
+      "name": "Lint (ruff)",
+      "command": "make lint",
+      "timeout_seconds": 60,
+      "required": true,
+      "description": "Python code linting with ruff"
+    },
+    {
+      "id": "typecheck",
+      "name": "Typecheck (mypy)",
+      "command": "make typecheck",
+      "timeout_seconds": 120,
+      "required": true,
+      "description": "Static type checking with mypy"
+    },
+    {
+      "id": "test",
+      "name": "Unit Tests",
+      "command": "make unit",
+      "timeout_seconds": 300,
+      "required": true,
+      "description": "Run pytest unit tests"
+    },
+    {
+      "id": "determinism",
+      "name": "Build Determinism",
+      "command": "cd /home/guff/LoquiLex && git diff --exit-code",
+      "timeout_seconds": 30,
+      "required": true,
+      "description": "Verify no uncommitted changes (build determinism)"
+    }
+  ],
+  "log_dir": ".smartergpt.local/deliverables/_session",
+  "environment": {
+    "activate_venv": "source .venv/bin/activate"
+  }
+}

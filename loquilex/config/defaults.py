@@ -68,20 +68,20 @@ def _env_time_seconds(name: str, default_seconds: float) -> float:
 
 def _env_path_absolute(name: str, default: str, legacy_name: str | None = None) -> str:
     """Get an environment variable as an absolute path string.
-    
+
     Resolves relative paths to absolute paths to ensure consistency.
     Supports optional legacy environment variable name as fallback.
-    
+
     Args:
         name: Primary environment variable name
         default: Default value if neither env var is set
         legacy_name: Optional legacy environment variable to check as fallback
-    
+
     Returns:
         Absolute path string
     """
     from pathlib import Path
-    
+
     # Check primary name first, then legacy, then default
     raw = os.getenv(name) or (os.getenv(legacy_name) if legacy_name else None) or default
     return str(Path(raw).expanduser().resolve())
@@ -120,6 +120,10 @@ class SegmentationDefaults:
 
 @dataclass(frozen=True)
 class MTDefaults:
+    # Language pair configuration (generic, not hardcoded to EN→ZH)
+    src_lang: str = _env("LX_SRC_LANG", "en")
+    tgt_lang: str = _env("LX_TGT_LANG", "zh")
+
     # Legacy HF model names (for backward compatibility)
     nllb_model: str = _env("LX_NLLB_MODEL", "facebook/nllb-200-distilled-600M")
     m2m_model: str = _env("LX_M2M_MODEL", "facebook/m2m100_418M")
@@ -134,6 +138,8 @@ class MTDefaults:
     device: str = _env("LX_MT_DEVICE", "auto")
     compute_type: str = _env("LX_MT_COMPUTE_TYPE", "int8_float16")
     workers: int = _env_int("LX_MT_WORKERS", 2)
+
+    # Language variant configuration (backward compatible)
     lang_variant_zh: str = _env("LX_LANG_VARIANT_ZH", "Hans")
 
 
@@ -147,6 +153,8 @@ class RuntimeDefaults:
     decode_interval_sec: float = _env_float("LX_DECODE_INTERVAL_SEC", 0.25)
     partial_debounce_sec: float = _env_float("LX_PARTIAL_DEBOUNCE_SEC", 0.25)
     max_buffer_sec: float = _env_float("LX_MAX_BUFFER_SEC", 8.0)
+    # Translation partial settings (language-agnostic)
+    tgt_partial_debounce_sec: float = _env_float("LX_TGT_PARTIAL_DEBOUNCE_SEC", 0.5)
     # new IO options
     max_lines: int = _env_int("LX_MAX_LINES", 1000)
     partial_word_cap: int = _env_int("LX_PARTIAL_WORD_CAP", 0)

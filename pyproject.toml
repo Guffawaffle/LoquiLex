@@ -24,7 +24,7 @@ dependencies = [
 ]
 
 [project.scripts]
-loquilex-live = "loquilex.cli.live_en_to_zh:main"
+loquilex-live = "loquilex.cli.live:main"
 loquilex-wav-to-vtt = "loquilex.cli.wav_to_vtt:main"
 loquilex-vtt-to-zh = "loquilex.cli.vtt_to_zh:main"
 

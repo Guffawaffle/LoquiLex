@@ -1,0 +1,31 @@
+Requirement already satisfied: sortedcontainers in ./.venv/lib/python3.12/site-packages (from trio==0.25.0->-r requirements-dev.txt (line 22)) (2.4.0)
+Requirement already satisfied: outcome in ./.venv/lib/python3.12/site-packages (from trio==0.25.0->-r requirements-dev.txt (line 22)) (1.3.0.post0)
+Requirement already satisfied: python-dateutil>=2.7 in ./.venv/lib/python3.12/site-packages (from freezegun<2,>=1.5->-r requirements-dev.txt (line 8)) (2.9.0.post0)
+Requirement already satisfied: annotated-types>=0.6.0 in ./.venv/lib/python3.12/site-packages (from pydantic!=1.8,!=1.8.1,!=2.0.0,!=2.0.1,!=2.1.0,<3.0.0,>=1.7.4->fastapi==0.109.2->-r requirements-ci.txt (line 13)) (0.7.0)
+Requirement already satisfied: pydantic-core==2.33.2 in ./.venv/lib/python3.12/site-packages (from pydantic!=1.8,!=1.8.1,!=2.0.0,!=2.0.1,!=2.1.0,<3.0.0,>=1.7.4->fastapi==0.109.2->-r requirements-ci.txt (line 13)) (2.33.2)
+Requirement already satisfied: typing-inspection>=0.4.0 in ./.venv/lib/python3.12/site-packages (from pydantic!=1.8,!=1.8.1,!=2.0.0,!=2.0.1,!=2.1.0,<3.0.0,>=1.7.4->fastapi==0.109.2->-r requirements-ci.txt (line 13)) (0.4.1)
+Requirement already satisfied: mdurl~=0.1 in ./.venv/lib/python3.12/site-packages (from markdown-it-py>=2.2.0->rich==13.9.2->-r requirements-ci.txt (line 8)) (0.1.2)
+Requirement already satisfied: six>=1.5 in ./.venv/lib/python3.12/site-packages (from python-dateutil>=2.7->freezegun<2,>=1.5->-r requirements-dev.txt (line 8)) (1.17.0)
+.venv/bin/python -m ruff check loquilex tests
+All checks passed!
+Success: no issues found in 65 source files
+tests/test_streaming_integration.py::TestStreamingIntegration::test_regular_session_no_asr_snapshot
+tests/test_streaming_integration.py::TestErrorHygiene::test_metrics_error_no_exception_leak
+tests/test_ws_integration.py::test_websocket_envelope_integration
+  /home/guff/LoquiLex/loquilex/api/supervisor.py:651: DeprecationWarning: Session class (subprocess orchestration) is deprecated. Use StreamingSession for in-process execution or TypeScript orchestration with Python executor services. See docs/architecture/js-first.md
+    sess = Session(sid, cfg, run_dir)
+
+tests/test_resource_management.py::TestSessionResourceManagement::test_context_manager_cleanup
+  /home/guff/LoquiLex/tests/test_resource_management.py:131: DeprecationWarning: Session class (subprocess orchestration) is deprecated. Use StreamingSession for in-process execution or TypeScript orchestration with Python executor services. See docs/architecture/js-first.md
+    async with Session("test_session", cfg, run_dir) as session:
+
+tests/test_resource_management.py::TestSessionResourceManagement::test_destructor_handles_subprocess_cleanup
+  /home/guff/LoquiLex/tests/test_resource_management.py:164: DeprecationWarning: Session class (subprocess orchestration) is deprecated. Use StreamingSession for in-process execution or TypeScript orchestration with Python executor services. See docs/architecture/js-first.md
+    session = Session("test_session", cfg, run_dir)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+SKIPPED [1] tests/test_offline_isolation.py:58: LX_OFFLINE is not '1'; skipping offline env var test.
+SKIPPED [1] tests/test_resilient_comms.py:169: System heartbeat causes infinite loop in tests
+SKIPPED [1] tests/test_resilient_comms.py:215: Need to fix ReplayBuffer TTL setup
+400 passed, 3 skipped, 17 warnings in 129.26s (0:02:09)
