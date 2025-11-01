@@ -1,0 +1,14 @@
+{
+	"folders": [
+		{
+			"path": "../.."
+		},
+		{
+			"path": "../../../LoquiLex-UI"
+		}
+	],
+	"settings": {
+		"python-envs.defaultEnvManager": "ms-python.python:venv",
+		"makefile.configureOnOpen": false
+	}
+}

@@ -30,8 +30,12 @@ from loquilex.storage.retention import RetentionPolicy, enforce_retention
 from loquilex import __version__
 from .supervisor import SessionConfig, SessionManager, StreamingSession
 from ..config.providers import (
-    ProvidersConfig, HuggingFaceConfig, BackendConfig,
-    get_providers_config, update_providers_config, is_offline_mode
+    ProvidersConfig,
+    HuggingFaceConfig,
+    BackendConfig,
+    get_providers_config,
+    update_providers_config,
+    is_offline_mode,
 )
 
 logger = logging.getLogger(__name__)
@@ -747,9 +751,9 @@ async def api_health() -> Dict[str, Any]:
         "providers": {
             "huggingface": {
                 "enabled": config.huggingface.enabled,
-                "has_token": bool(config.huggingface.token)
+                "has_token": bool(config.huggingface.token),
             }
-        }
+        },
     }
 
 
@@ -858,10 +862,7 @@ async def set_hf_token(req: SetHFTokenReq) -> Dict[str, Any]:
 
         # Update configuration
         new_hf_config = HuggingFaceConfig(token=token, enabled=True)
-        new_config = ProvidersConfig(
-            huggingface=new_hf_config,
-            backend=config.backend
-        )
+        new_config = ProvidersConfig(huggingface=new_hf_config, backend=config.backend)
 
         update_providers_config(new_config)
 
@@ -882,10 +883,7 @@ async def delete_hf_token() -> Dict[str, Any]:
 
         # Update configuration to remove token
         new_hf_config = HuggingFaceConfig(token=None, enabled=True)
-        new_config = ProvidersConfig(
-            huggingface=new_hf_config,
-            backend=config.backend
-        )
+        new_config = ProvidersConfig(huggingface=new_hf_config, backend=config.backend)
 
         update_providers_config(new_config)
 
@@ -908,10 +906,7 @@ async def set_offline_mode(req: SetOfflineModeReq) -> Dict[str, Any]:
 
         # Update configuration
         new_backend_config = BackendConfig(offline=req.offline)
-        new_config = ProvidersConfig(
-            huggingface=config.huggingface,
-            backend=new_backend_config
-        )
+        new_config = ProvidersConfig(huggingface=config.huggingface, backend=new_backend_config)
 
         update_providers_config(new_config)
 
