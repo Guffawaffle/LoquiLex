@@ -47,3 +47,24 @@ def test_out_dir_custom_relative(monkeypatch):
     # Should resolve relative to current working directory
     expected = str(Path.cwd() / "relative/path")
     assert mod.RT.out_dir == expected
+
+
+def test_out_dir_legacy_env_var(monkeypatch):
+    """Test that legacy LLX_OUT_DIR is supported."""
+    monkeypatch.delenv("LX_OUT_DIR", raising=False)
+    monkeypatch.setenv("LLX_OUT_DIR", "/tmp/legacy-out")
+    from loquilex.config import defaults as mod
+
+    importlib.reload(mod)
+    assert Path(mod.RT.out_dir).is_absolute()
+    assert mod.RT.out_dir == "/tmp/legacy-out"
+
+
+def test_out_dir_prefers_lx_over_llx(monkeypatch):
+    """Test that LX_OUT_DIR takes precedence over LLX_OUT_DIR."""
+    monkeypatch.setenv("LX_OUT_DIR", "/tmp/new-out")
+    monkeypatch.setenv("LLX_OUT_DIR", "/tmp/legacy-out")
+    from loquilex.config import defaults as mod
+
+    importlib.reload(mod)
+    assert mod.RT.out_dir == "/tmp/new-out"

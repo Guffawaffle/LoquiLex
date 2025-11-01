@@ -66,13 +66,24 @@ def _env_time_seconds(name: str, default_seconds: float) -> float:
         return default_seconds
 
 
-def _env_path_absolute(name: str, default: str) -> str:
+def _env_path_absolute(name: str, default: str, legacy_name: str | None = None) -> str:
     """Get an environment variable as an absolute path string.
     
     Resolves relative paths to absolute paths to ensure consistency.
+    Supports optional legacy environment variable name as fallback.
+    
+    Args:
+        name: Primary environment variable name
+        default: Default value if neither env var is set
+        legacy_name: Optional legacy environment variable to check as fallback
+    
+    Returns:
+        Absolute path string
     """
     from pathlib import Path
-    raw = _env(name, default)
+    
+    # Check primary name first, then legacy, then default
+    raw = os.getenv(name) or (os.getenv(legacy_name) if legacy_name else None) or default
     return str(Path(raw).expanduser().resolve())
 
 
@@ -128,7 +139,7 @@ class MTDefaults:
 
 @dataclass(frozen=True)
 class RuntimeDefaults:
-    out_dir: str = _env_path_absolute("LX_OUT_DIR", "loquilex/out")
+    out_dir: str = _env_path_absolute("LX_OUT_DIR", "loquilex/out", "LLX_OUT_DIR")
     hf_cache: str | None = os.getenv("HF_HOME") or os.getenv("HF_DATASETS_CACHE")
     device_preference: str = _env("LX_DEVICE", "auto")  # auto|cuda|cpu
     # streaming controls
