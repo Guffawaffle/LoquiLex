@@ -42,14 +42,6 @@ htmlcov/
 # CI outputs
 .artifacts/
 
-# UI Node.js
-node_modules/
-ui/app/node_modules/
-ui/app/dist/
-ui/app/.vite/
-ui/app/playwright-report/
-ui/app/test-results/
-
 # PID files from background services
 .pids/
 
