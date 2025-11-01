@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Optional
 
 from loquilex.config.defaults import MT, pick_device
+from loquilex.mt.core.util import normalize_lang
 from ..logging import PerformanceMetrics, create_logger
 
 
@@ -20,6 +21,43 @@ else:
 
 if TYPE_CHECKING:  # only for typing; avoid runtime hard dep
     pass
+
+
+# ============================================================================
+# Constants for translation behavior
+# ============================================================================
+
+# FLORES-200 language code mappings for NLLB model
+NLLB_FLORES_MAP = {
+    "en": "eng_Latn",
+    "zh-Hans": "zho_Hans",
+    "zh-Hant": "zho_Hant",
+    "es": "spa_Latn",
+    "fr": "fra_Latn",
+    "de": "deu_Latn",
+    "ja": "jpn_Jpan",
+    "ko": "kor_Hang",
+    "ru": "rus_Cyrl",
+    "ar": "arb_Arab",
+}
+
+# M2M language code mappings (simpler format than FLORES)
+M2M_LANG_MAP = {
+    "en": "en",
+    "zh-Hans": "zh",
+    "zh-Hant": "zh",
+    "es": "es",
+    "fr": "fr",
+    "de": "de",
+    "ja": "ja",
+    "ko": "ko",
+    "ru": "ru",
+    "ar": "ar",
+}
+
+# Draft mode generation parameters for faster low-latency translation
+DRAFT_MAX_TOKENS = 48  # Maximum tokens for draft quality translations
+DRAFT_NO_REPEAT_NGRAM_SIZE = 0  # Disable n-gram repetition penalty for speed
 
 
 def _log(msg: str) -> None:
@@ -134,8 +172,6 @@ class Translator:
         self.metrics.start_timer("translation_latency")
 
         # Normalize language codes (map "zh" → "zh-Hans" based on variant config)
-        from loquilex.mt.core.util import normalize_lang
-
         try:
             src = normalize_lang(src_lang)
             tgt = normalize_lang(tgt_lang)
@@ -158,22 +194,8 @@ class Translator:
         try:
             tok, model = self._load_nllb()
 
-            # Map language codes to NLLB FLORES codes
-            flores_map = {
-                "en": "eng_Latn",
-                "zh-Hans": "zho_Hans",
-                "zh-Hant": "zho_Hant",
-                "es": "spa_Latn",
-                "fr": "fra_Latn",
-                "de": "deu_Latn",
-                "ja": "jpn_Jpan",
-                "ko": "kor_Hang",
-                "ru": "rus_Cyrl",
-                "ar": "arb_Arab",
-            }
-
-            src_flores = flores_map.get(src, "eng_Latn")
-            tgt_flores = flores_map.get(tgt, "zho_Hans")
+            src_flores = NLLB_FLORES_MAP.get(src, "eng_Latn")
+            tgt_flores = NLLB_FLORES_MAP.get(tgt, "zho_Hans")
 
             tok.src_lang = src_flores
             inputs = tok(text, return_tensors="pt", truncation=True, max_length=MT.max_input_tokens)
@@ -182,14 +204,14 @@ class Translator:
 
             # Adjust generation params based on quality
             beam_size = 1 if is_draft else MT.num_beams
-            max_tokens = min(48, MT.max_new_tokens) if is_draft else MT.max_new_tokens
+            max_tokens = min(DRAFT_MAX_TOKENS, MT.max_new_tokens) if is_draft else MT.max_new_tokens
 
             with cm:
                 gen = model.generate(
                     **inputs,
                     forced_bos_token_id=tok.convert_tokens_to_ids(tgt_flores),
                     num_beams=beam_size,
-                    no_repeat_ngram_size=MT.no_repeat_ngram_size if not is_draft else 0,
+                    no_repeat_ngram_size=MT.no_repeat_ngram_size if not is_draft else DRAFT_NO_REPEAT_NGRAM_SIZE,
                     max_new_tokens=max_tokens,
                 )
             out = tok.batch_decode(gen, skip_special_tokens=True)[0]
@@ -230,22 +252,8 @@ class Translator:
         try:
             tok, model = self._load_m2m()
 
-            # M2M uses simpler language codes
-            m2m_lang_map = {
-                "en": "en",
-                "zh-Hans": "zh",
-                "zh-Hant": "zh",
-                "es": "es",
-                "fr": "fr",
-                "de": "de",
-                "ja": "ja",
-                "ko": "ko",
-                "ru": "ru",
-                "ar": "ar",
-            }
-
-            src_m2m = m2m_lang_map.get(src, "en")
-            tgt_m2m = m2m_lang_map.get(tgt, "zh")
+            src_m2m = M2M_LANG_MAP.get(src, "en")
+            tgt_m2m = M2M_LANG_MAP.get(tgt, "zh")
 
             tok.src_lang = src_m2m
             inputs = tok(text, return_tensors="pt", truncation=True, max_length=MT.max_input_tokens)
@@ -253,7 +261,7 @@ class Translator:
             cm = torch.no_grad() if torch is not None else contextlib.nullcontext()
 
             beam_size = 1 if is_draft else MT.num_beams
-            max_tokens = min(48, MT.max_new_tokens) if is_draft else MT.max_new_tokens
+            max_tokens = min(DRAFT_MAX_TOKENS, MT.max_new_tokens) if is_draft else MT.max_new_tokens
 
             with cm:
                 gen = model.generate(

@@ -18,18 +18,11 @@ def identity_post_process(text: str) -> str:
 
 
 # Post-processor registry mapping language codes to processor functions
+# Only languages with non-identity processors are listed
 POST_PROCESSORS: dict[str, PostProcessor] = {
     "zh-Hans": zh_post_process,
     "zh-Hant": zh_post_process,
     "zh": zh_post_process,  # Generic Chinese (uses variant config)
-    "en": identity_post_process,
-    "es": identity_post_process,
-    "fr": identity_post_process,
-    "de": identity_post_process,
-    "ja": identity_post_process,
-    "ko": identity_post_process,
-    "ru": identity_post_process,
-    "ar": identity_post_process,
 }
 
 
