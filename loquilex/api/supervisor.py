@@ -877,32 +877,31 @@ class SessionManager:
         # Initialize download status
         with self._lock:
             self._download_status[job_id] = {
-                'job_id': job_id,
-                'repo_id': repo_id,
-                'type': _typ,
-                'status': 'queued',
-                'progress': 0,
-                'created_at': time.strftime('%Y-%m-%dT%H:%M:%SZ'),
-                'started_at': None,
-                'completed_at': None,
-                'error_message': None
+                "job_id": job_id,
+                "repo_id": repo_id,
+                "type": _typ,
+                "status": "queued",
+                "progress": 0,
+                "created_at": time.strftime("%Y-%m-%dT%H:%M:%SZ"),
+                "started_at": None,
+                "completed_at": None,
+                "error_message": None,
             }
-        
+
         t = threading.Thread(target=self._download_worker, args=(job_id, repo_id, _typ))
         t.start()
         self._bg_threads.append(t)
 
     def _download_worker(self, job_id: str, repo_id: str, _typ: str) -> None:
         chan = f"_download/{job_id}"
-        
+
         # Update status to downloading
         with self._lock:
             if job_id in self._download_status:
-                self._download_status[job_id].update({
-                    'status': 'downloading',
-                    'started_at': time.strftime('%Y-%m-%dT%H:%M:%SZ')
-                })
-        
+                self._download_status[job_id].update(
+                    {"status": "downloading", "started_at": time.strftime("%Y-%m-%dT%H:%M:%SZ")}
+                )
+
         # Initial progress
         self._safe_broadcast(
             chan,
@@ -949,8 +948,8 @@ class SessionManager:
                 # Update progress in status tracking
                 with self._lock:
                     if job_id in self._download_status:
-                        self._download_status[job_id]['progress'] = pct
-                
+                        self._download_status[job_id]["progress"] = pct
+
                 self._safe_broadcast(
                     chan,
                     {
@@ -989,12 +988,14 @@ class SessionManager:
             # Update status to completed
             with self._lock:
                 if job_id in self._download_status:
-                    self._download_status[job_id].update({
-                        'status': 'completed',
-                        'progress': 100,
-                        'completed_at': time.strftime('%Y-%m-%dT%H:%M:%SZ')
-                    })
-            
+                    self._download_status[job_id].update(
+                        {
+                            "status": "completed",
+                            "progress": 100,
+                            "completed_at": time.strftime("%Y-%m-%dT%H:%M:%SZ"),
+                        }
+                    )
+
             self._safe_broadcast(
                 chan, {"type": "download_done", "job_id": job_id, "local_path": out}
             )
@@ -1003,12 +1004,14 @@ class SessionManager:
             error_msg = out or f"Process exited with code {ret}"
             with self._lock:
                 if job_id in self._download_status:
-                    self._download_status[job_id].update({
-                        'status': 'failed',
-                        'completed_at': time.strftime('%Y-%m-%dT%H:%M:%SZ'),
-                        'error_message': error_msg
-                    })
-            
+                    self._download_status[job_id].update(
+                        {
+                            "status": "failed",
+                            "completed_at": time.strftime("%Y-%m-%dT%H:%M:%SZ"),
+                            "error_message": error_msg,
+                        }
+                    )
+
             self._safe_broadcast(
                 chan, {"type": "download_error", "job_id": job_id, "message": error_msg}
             )

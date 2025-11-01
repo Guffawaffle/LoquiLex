@@ -1,131 +1,93 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "LoquiLex UI Settings Schema",
-  "description": "Schema for LoquiLex application settings stored in localStorage",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "LoquiLex Settings Schema",
+  "description": "Configuration schema for LoquiLex application settings including provider tokens and offline mode",
   "type": "object",
   "properties": {
-    "asr_model_id": {
-      "type": "string",
-      "description": "Selected ASR (Automatic Speech Recognition) model identifier",
-      "examples": ["whisper-small", "whisper-medium", "whisper-large"]
+    "providers": {
+      "type": "object",
+      "description": "Provider-specific configuration and tokens",
+      "properties": {
+        "huggingface": {
+          "type": "object",
+          "description": "HuggingFace provider configuration",
+          "properties": {
+            "token": {
+              "type": ["string", "null"],
+              "description": "HuggingFace access token for enhanced model access",
+              "pattern": "^hf_[a-zA-Z0-9]{32}$|^$",
+              "minLength": 0,
+              "maxLength": 100
+            },
+            "enabled": {
+              "type": "boolean",
+              "description": "Whether HuggingFace provider is enabled",
+              "default": true
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
     },
-    "mt_model_id": {
-      "type": "string", 
-      "description": "Selected MT (Machine Translation) model identifier",
-      "examples": ["nllb-200-600M", "nllb-200-1.3B", "m2m-100-418M"]
+    "backend": {
+      "type": "object",
+      "description": "Backend operation configuration",
+      "properties": {
+        "offline": {
+          "type": "boolean",
+          "description": "Enable offline-only mode (no network requests)",
+          "default": false
+        },
+        "offline_enforced": {
+          "type": "boolean",
+          "description": "Whether offline mode is enforced by environment",
+          "default": false,
+          "readOnly": true
+        }
+      },
+      "additionalProperties": false
     },
-    "device": {
-      "type": "string",
-      "enum": ["auto", "cpu", "cuda"],
-      "default": "auto",
-      "description": "Preferred computation device for model inference"
+    "models": {
+      "type": "object",
+      "description": "Model-specific settings",
+      "properties": {
+        "asr_model_id": {
+          "type": "string",
+          "description": "Default ASR model identifier"
+        },
+        "mt_model_id": {
+          "type": "string", 
+          "description": "Default MT model identifier"
+        },
+        "device": {
+          "type": "string",
+          "enum": ["auto", "cpu", "cuda"],
+          "default": "auto",
+          "description": "Compute device preference"
+        }
+      },
+      "additionalProperties": false
     },
-    "cadence_threshold": {
-      "type": "integer",
-      "minimum": 1,
-      "maximum": 8,
-      "default": 3,
-      "description": "Word count threshold for triggering EN→ZH translation. Lower values provide faster but potentially less accurate translations."
-    },
-    "show_timestamps": {
-      "type": "boolean",
-      "default": true,
-      "description": "Whether to display timestamps in the caption view and include them in exports"
-    },
-    "base_directory": {
-      "type": "string",
-      "default": "loquilex/out",
-      "description": "Base directory for storing session outputs and transcriptions. Must be an absolute path or relative to the application root.",
-      "examples": [
-        "loquilex/out",
-        "/home/user/Documents/LoquiLex",
-        "/tmp/loquilex-sessions",
-        "C:\\Users\\Name\\LoquiLex"
-      ]
+    "ui": {
+      "type": "object",
+      "description": "User interface preferences",
+      "properties": {
+        "cadence_threshold": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 8,
+          "default": 3,
+          "description": "Word count threshold for triggering translation"
+        },
+        "show_timestamps": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show timestamps in caption view"
+        }
+      },
+      "additionalProperties": false
     }
   },
-  "required": [
-    "asr_model_id",
-    "mt_model_id", 
-    "device",
-    "cadence_threshold",
-    "show_timestamps",
-    "base_directory"
-  ],
-  "additionalProperties": false,
-  "examples": [
-    {
-      "asr_model_id": "whisper-small",
-      "mt_model_id": "nllb-200-600M",
-      "device": "auto",
-      "cadence_threshold": 3,
-      "show_timestamps": true,
-      "base_directory": "loquilex/out"
-    },
-    {
-      "asr_model_id": "whisper-large",
-      "mt_model_id": "nllb-200-1.3B", 
-      "device": "cuda",
-      "cadence_threshold": 5,
-      "show_timestamps": false,
-      "base_directory": "/home/user/transcriptions"
-    }
-  ],
-  "definitions": {
-    "storage_info": {
-      "type": "object",
-      "description": "Storage information returned by the storage API",
-      "properties": {
-        "path": {
-          "type": "string",
-          "description": "Resolved absolute path to the storage directory"
-        },
-        "total_bytes": {
-          "type": "integer",
-          "minimum": 0,
-          "description": "Total storage capacity in bytes"
-        },
-        "free_bytes": {
-          "type": "integer", 
-          "minimum": 0,
-          "description": "Available free storage in bytes"
-        },
-        "used_bytes": {
-          "type": "integer",
-          "minimum": 0, 
-          "description": "Used storage in bytes"
-        },
-        "percent_used": {
-          "type": "number",
-          "minimum": 0,
-          "maximum": 100,
-          "description": "Percentage of storage used"
-        },
-        "writable": {
-          "type": "boolean",
-          "description": "Whether the directory is writable by the application"
-        }
-      },
-      "required": ["path", "total_bytes", "free_bytes", "used_bytes", "percent_used", "writable"]
-    },
-    "base_directory_validation": {
-      "type": "object",
-      "description": "Validation result for base directory selection",
-      "properties": {
-        "path": {
-          "type": "string",
-          "description": "The path that was validated"
-        },
-        "valid": {
-          "type": "boolean",
-          "description": "Whether the path is valid and usable"
-        },
-        "message": {
-          "type": "string",
-          "description": "Human-readable message about the validation result"
-        }
-      },
-      "required": ["path", "valid", "message"]
-    }
-  }
+  "additionalProperties": false
 }
