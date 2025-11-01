@@ -211,7 +211,9 @@ class Translator:
                     **inputs,
                     forced_bos_token_id=tok.convert_tokens_to_ids(tgt_flores),
                     num_beams=beam_size,
-                    no_repeat_ngram_size=MT.no_repeat_ngram_size if not is_draft else DRAFT_NO_REPEAT_NGRAM_SIZE,
+                    no_repeat_ngram_size=(
+                        MT.no_repeat_ngram_size if not is_draft else DRAFT_NO_REPEAT_NGRAM_SIZE
+                    ),
                     max_new_tokens=max_tokens,
                 )
             out = tok.batch_decode(gen, skip_special_tokens=True)[0]
