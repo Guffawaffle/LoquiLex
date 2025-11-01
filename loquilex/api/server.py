@@ -26,11 +26,10 @@ from loquilex.hardware.detection import get_hardware_snapshot
 from loquilex.config.model_defaults import get_model_defaults_manager
 from loquilex.security import PathGuard, PathSecurityError
 from .supervisor import SessionConfig, SessionManager, StreamingSession
-from loquilex.storage.retention import RetentionPolicy, enforce_retention
-from loquilex import __version__
-
-if TYPE_CHECKING:  # pragma: no cover - type-only import
-    from loquilex.security import CanonicalPath
+from ..config.providers import (
+    ProvidersConfig, HuggingFaceConfig, BackendConfig,
+    get_providers_config, update_providers_config, is_offline_mode
+)
 
 logger = logging.getLogger(__name__)
 
@@ -737,12 +736,18 @@ async def healthz() -> Dict[str, Any]:
 # Minimal API health endpoint used by external checks and tests
 @app.get("/api/health")
 async def api_health() -> Dict[str, Any]:
-    """Minimal health check for external monitoring and tests.
-
-    Returns minimal response for lightweight health checks.
-    Use /health for detailed status including version and timestamp.
-    """
-    return {"status": "ok"}
+    """Health endpoint with offline mode and provider status."""
+    config = get_providers_config()
+    return {
+        "status": "ok",
+        "offline_mode": is_offline_mode(),
+        "providers": {
+            "huggingface": {
+                "enabled": config.huggingface.enabled,
+                "has_token": bool(config.huggingface.token)
+            }
+        }
+    }
 
 
 @app.head("/api/health")
@@ -818,72 +823,103 @@ async def delete_download(job_id: str) -> DownloadCancelResp:
     return DownloadCancelResp(cancelled=ok)
 
 
-@app.get("/models/downloads", response_model=DownloadQueueResp)
-async def get_downloads() -> DownloadQueueResp:
-    """Get all download jobs with status."""
-    downloads = MANAGER.get_download_status()
-    jobs = []
-    active_count = 0
-    queued_count = 0
-    completed_count = 0
-
-    for job_id, info in downloads.items():
-        status = info.get("status", "unknown")
-        job_data = {
-            "job_id": job_id,
-            "repo_id": info.get("repo_id", ""),
-            "type": info.get("type", ""),
-            "status": status,
-            "progress": info.get("progress", 0),
-            "created_at": info.get("created_at", ""),
-            "started_at": info.get("started_at"),
-            "completed_at": info.get("completed_at"),
-            "error_message": info.get("error_message"),
-        }
-        jobs.append(job_data)
-
-        if status in ["downloading", "active"]:
-            active_count += 1
-        elif status in ["queued", "pending"]:
-            queued_count += 1
-        elif status in ["completed", "success"]:
-            completed_count += 1
-
-    return DownloadQueueResp(
-        jobs=jobs,
-        active_count=active_count,
-        queued_count=queued_count,
-        completed_count=completed_count,
-        total_count=len(jobs),
-    )
+# Provider configuration endpoints
+class SetHFTokenReq(BaseModel):
+    token: str = Field(..., description="HuggingFace access token")
 
 
-@app.post("/models/downloads/bandwidth", response_model=BandwidthConfigResp)
-async def set_bandwidth_limit(req: BandwidthConfigReq) -> BandwidthConfigResp:
-    """Set bandwidth limit for downloads."""
-    MANAGER.set_bandwidth_limit(req.limit_mbps)
-    return BandwidthConfigResp(limit_mbps=req.limit_mbps, active=req.limit_mbps > 0)
+class SetOfflineModeReq(BaseModel):
+    offline: bool = Field(..., description="Enable/disable offline mode")
 
 
-@app.get("/models/downloads/bandwidth", response_model=BandwidthConfigResp)
-async def get_bandwidth_limit() -> BandwidthConfigResp:
-    """Get current bandwidth limit."""
-    limit = MANAGER.get_bandwidth_limit()
-    return BandwidthConfigResp(limit_mbps=limit, active=limit > 0)
+@app.get("/api/providers/config")
+async def get_providers_config_api() -> Dict[str, Any]:
+    """Get current provider configuration."""
+    config = get_providers_config()
+    return config.to_dict()
 
 
-@app.post("/models/downloads/pause-all")
-async def pause_all_downloads() -> Dict[str, Any]:
-    """Pause all active downloads."""
-    count = MANAGER.pause_all_downloads()
-    return {"paused_count": count}
+@app.post("/api/providers/hf/token")
+async def set_hf_token(req: SetHFTokenReq) -> Dict[str, Any]:
+    """Set or update HuggingFace token."""
+    try:
+        config = get_providers_config()
+        
+        # Validate token format
+        token = req.token.strip()
+        if not token:
+            raise ValueError("Token cannot be empty")
+            
+        if not (token.startswith("hf_") and len(token) >= 30):
+            raise ValueError("Invalid HuggingFace token format")
+        
+        # Update configuration
+        new_hf_config = HuggingFaceConfig(token=token, enabled=True)
+        new_config = ProvidersConfig(
+            huggingface=new_hf_config,
+            backend=config.backend
+        )
+        
+        update_providers_config(new_config)
+        
+        return {"status": "ok", "message": "HuggingFace token updated successfully"}
+        
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Failed to set HF token: {e}")
+        raise HTTPException(status_code=500, detail="Failed to update token")
 
 
-@app.post("/models/downloads/resume-all")
-async def resume_all_downloads() -> Dict[str, Any]:
-    """Resume all paused downloads."""
-    count = MANAGER.resume_all_downloads()
-    return {"resumed_count": count}
+@app.delete("/api/providers/hf/token")
+async def delete_hf_token() -> Dict[str, Any]:
+    """Remove HuggingFace token."""
+    try:
+        config = get_providers_config()
+        
+        # Update configuration to remove token
+        new_hf_config = HuggingFaceConfig(token=None, enabled=True)
+        new_config = ProvidersConfig(
+            huggingface=new_hf_config,
+            backend=config.backend
+        )
+        
+        update_providers_config(new_config)
+        
+        return {"status": "ok", "message": "HuggingFace token removed successfully"}
+        
+    except Exception as e:
+        logger.error(f"Failed to remove HF token: {e}")
+        raise HTTPException(status_code=500, detail="Failed to remove token")
+
+
+@app.post("/api/providers/offline")
+async def set_offline_mode(req: SetOfflineModeReq) -> Dict[str, Any]:
+    """Toggle offline mode."""
+    try:
+        config = get_providers_config()
+        
+        # Check if offline mode is enforced by environment
+        if config.backend.offline_enforced and not req.offline:
+            raise ValueError("Cannot disable offline mode: enforced by environment (LX_OFFLINE=1)")
+        
+        # Update configuration
+        new_backend_config = BackendConfig(offline=req.offline)
+        new_config = ProvidersConfig(
+            huggingface=config.huggingface,
+            backend=new_backend_config
+        )
+        
+        update_providers_config(new_config)
+        
+        mode = "enabled" if req.offline else "disabled"
+        return {"status": "ok", "message": f"Offline mode {mode} successfully"}
+        
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Failed to set offline mode: {e}")
+        raise HTTPException(status_code=500, detail="Failed to update offline mode")
 
 
 @app.post("/sessions", response_model=CreateSessionResp)
