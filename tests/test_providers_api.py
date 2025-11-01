@@ -2,13 +2,10 @@
 
 import pytest
 from fastapi.testclient import TestClient
-import os
 import tempfile
-import json
 from pathlib import Path
 
 from loquilex.api.server import app
-from loquilex.config.providers import ProvidersConfig, HuggingFaceConfig, BackendConfig
 
 
 @pytest.fixture
@@ -23,11 +20,11 @@ def temp_config_dir():
     with tempfile.TemporaryDirectory() as tmpdir:
         config_path = Path(tmpdir) / '.loquilex'
         config_path.mkdir(parents=True, exist_ok=True)
-        
+
         # Mock the home directory for testing
         original_home = Path.home
         Path.home = lambda: Path(tmpdir)
-        
+
         try:
             yield config_path
         finally:
@@ -38,7 +35,7 @@ def test_get_providers_config(client, temp_config_dir):
     """Test getting provider configuration."""
     response = client.get("/api/providers/config")
     assert response.status_code == 200
-    
+
     data = response.json()
     assert "providers" in data
     assert "backend" in data
@@ -49,7 +46,7 @@ def test_api_health_includes_offline_status(client):
     """Test that health endpoint includes offline mode status."""
     response = client.get("/api/health")
     assert response.status_code == 200
-    
+
     data = response.json()
     assert "status" in data
     assert "offline_mode" in data
@@ -80,13 +77,13 @@ def test_set_hf_token_empty(client):
 def test_set_hf_token_valid_format(client, temp_config_dir):
     """Test setting valid HF token."""
     valid_token = "hf_" + "a" * 32  # Mock valid token format
-    
+
     response = client.post(
         "/api/providers/hf/token",
         json={"token": valid_token}
     )
     assert response.status_code == 200
-    
+
     data = response.json()
     assert data["status"] == "ok"
     assert "successfully" in data["message"]
@@ -96,7 +93,7 @@ def test_remove_hf_token(client, temp_config_dir):
     """Test removing HF token."""
     response = client.delete("/api/providers/hf/token")
     assert response.status_code == 200
-    
+
     data = response.json()
     assert data["status"] == "ok"
     assert "removed successfully" in data["message"]
@@ -106,29 +103,29 @@ def test_set_offline_mode(client, temp_config_dir, monkeypatch):
     """Test setting offline mode."""
     # Clear the LX_OFFLINE env var for this test
     monkeypatch.delenv("LX_OFFLINE", raising=False)
-    
+
     # Reset global config to pick up env changes
     import loquilex.config.providers
     loquilex.config.providers._config = None
-    
+
     # Test enabling offline mode
     response = client.post(
         "/api/providers/offline",
         json={"offline": True}
     )
     assert response.status_code == 200
-    
+
     data = response.json()
     assert data["status"] == "ok"
     assert "enabled successfully" in data["message"]
-    
+
     # Test disabling offline mode
     response = client.post(
         "/api/providers/offline",
         json={"offline": False}
     )
     assert response.status_code == 200
-    
+
     data = response.json()
     assert data["status"] == "ok"
     assert "disabled successfully" in data["message"]
@@ -138,11 +135,11 @@ def test_offline_mode_enforced_by_environment(client, monkeypatch):
     """Test that offline mode cannot be disabled when enforced by environment."""
     # Set environment variable to enforce offline mode
     monkeypatch.setenv("LX_OFFLINE", "1")
-    
+
     # Reset global config to pick up env changes
     import loquilex.config.providers
     loquilex.config.providers._config = None
-    
+
     response = client.post(
         "/api/providers/offline",
         json={"offline": False}
